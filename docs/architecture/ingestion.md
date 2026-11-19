@@ -84,3 +84,10 @@ The object store verifies that the bytes it stores match the digest computed bef
 - The reconciler is scoped to failed/expired-session artifacts; global object-store orphan discovery requires a future list-capable storage adapter and inventory policy.
 - The service does not delete the staged source file; staging cleanup belongs to the upload boundary and retention workflow.
 - The local storage adapter is suitable for development/single-node use only.
+
+
+## Staging and retention lifecycle
+
+Staged files remain available until a terminal/completed session is reconciled. Completed sessions lose only their temporary staged copy; the durable object and asset metadata remain. Failed, cancelled, and expired sessions have staging, object data, and asset metadata reconciled idempotently. An active upload lease prevents the reconciler from removing source or partial-upload files.
+
+The API assigns a deployment-default retention expiry from VOXPIPE_DEFAULT_RETENTION_DAYS. A value of 0 (default) means no automatic asset expiry; positive values are copied into the durable asset metadata. The client cannot choose a policy. Reconciliation deletes object data before metadata and records tenant-scoped audit events. There are no transcript or embedding artifacts in the current ingestion scope.

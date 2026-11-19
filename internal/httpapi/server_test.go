@@ -77,6 +77,9 @@ func (m *memoryStore) GetAsset(_ context.Context, tenant, id string) (map[string
 func (m *memoryStore) SearchAssets(_ context.Context, tenant, query string, limit int) ([]map[string]any, error) {
 	return []map[string]any{}, nil
 }
+func (m *memoryStore) BeginUpload(_ context.Context, tenant, session, owner string, leaseSeconds int) error { return nil }
+func (m *memoryStore) EndUpload(_ context.Context, tenant, session, owner, outcome, errorCode string) error { return nil }
+func (m *memoryStore) RecordAuditEvent(_ context.Context, tenant, session, asset, eventType, outcome, errorCode string, metadata map[string]any) error { return nil }
 func (m *memoryStore) Cancel(_ context.Context,tenant,id string)(string,error){
 	m.mu.Lock(); defer m.mu.Unlock()
 	key:=sessionKey(tenant,id); session,ok:=m.sessions[key]; if !ok { return "",ErrNotFound }
@@ -167,6 +170,8 @@ func TestPublicAssetOmitsTenantAndPrivateReferences(t *testing.T) {
 		"media": map[string]any{"container_format": "wav"},
 		"integrity": map[string]any{"algorithm": "sha256", "digest": strings.Repeat("a", 64)},
 		"state": "accepted",
+		"retention_policy_id": "deployment-default",
+		"retention_expires_at": "2027-11-19T00:00:00Z",
 		"created_at": "2026-11-19T00:00:00Z",
 		"updated_at": "2026-11-19T00:00:00Z",
 	}
@@ -177,6 +182,7 @@ func TestPublicAssetOmitsTenantAndPrivateReferences(t *testing.T) {
 	if _, ok := source["external_reference"]; ok { t.Fatal("external reference leaked in public asset") }
 	if _, ok := source["declared_by"]; ok { t.Fatal("declared_by leaked in public asset") }
 	if source["kind"] != "file_upload" { t.Fatal("public source kind was omitted") }
+	if public["retention_policy_id"] != "deployment-default" || public["retention_expires_at"] == nil { t.Fatal("server-assigned retention metadata was omitted") }
 }
 
 func TestAssetMetadataEndpointsAreTenantAuthenticated(t *testing.T) {
@@ -191,6 +197,31 @@ func TestAssetMetadataEndpointsAreTenantAuthenticated(t *testing.T) {
 	if _, ok := decodeResponse(t, search)["items"]; !ok { t.Fatal("search response omitted items") }
 	unauthorized := request(handler, http.MethodGet, "/v1/assets/search?q=wav", "", nil)
 	if unauthorized.Code != http.StatusUnauthorized { t.Fatalf("unauthenticated search should fail: %d", unauthorized.Code) }
+}
+
+func TestRetentionPolicyIsServerAuthoritative(t *testing.T) {
+	server, store, tenantID, token := testServer(t)
+	if err := server.SetRetentionDays(30); err != nil { t.Fatal(err) }
+	payload, _ := json.Marshal(map[string]any{
+		"expected_size_bytes": 12,
+		"expected_sha256": strings.Repeat("a", 64),
+		"source": map[string]any{"kind": "file_upload"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/ingestions", bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Idempotency-Key", "retention-server-policy-0001")
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusCreated { t.Fatalf("create failed: %d %s", recorder.Code, recorder.Body.String()) }
+	sessionID := decodeResponse(t, recorder)["session_id"].(string)
+	session, err := store.GetSession(context.Background(), tenantID, sessionID)
+	if err != nil { t.Fatal(err) }
+	if session["retention_policy_id"] != "deployment-default" { t.Fatalf("unexpected policy: %#v", session["retention_policy_id"]) }
+	expiry, ok := session["retention_expires_at"].(string)
+	if !ok { t.Fatal("server did not assign retention expiry") }
+	parsed, err := time.Parse(time.RFC3339Nano, expiry)
+	if err != nil || !parsed.After(time.Now().UTC()) { t.Fatalf("invalid retention expiry %q: %v", expiry, err) }
+	if err := server.SetRetentionDays(-1); err == nil { t.Fatal("negative retention period must be rejected") }
 }
 
 func TestClientCannotChooseRetentionPolicy(t *testing.T) {

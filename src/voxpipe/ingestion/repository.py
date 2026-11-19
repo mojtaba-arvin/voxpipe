@@ -29,6 +29,9 @@ class IngestionRepositoryPort(Protocol):
     def claim_session(self, tenant_id: str, session_id: str, worker_id: str, now: str, lease_expires_at: str) -> dict[str, Any] | None: ...
     def list_recoverable_sessions(self, now: str, limit: int, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
     def list_sessions_by_state(self, state: str, limit: int, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
+    def list_expired_sessions(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
+    def record_audit_event(self, tenant_id: str, session_id: str | None, asset_id: str | None, event_type: str, outcome: str, error_code: str | None = None, metadata: dict[str, Any] | None = None) -> None: ...
+    def list_expired_assets(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
 
 
 class SQLiteIngestionRepository:
@@ -74,6 +77,14 @@ class SQLiteIngestionRepository:
                 existing = json.loads(row["payload_json"])
                 connection.commit()
                 return existing, False
+            import uuid
+            connection.execute(
+                """INSERT INTO ingestion_audit_events
+                (event_id, tenant_id, session_id, asset_id, event_type, outcome, metadata_json)
+                VALUES (?, ?, ?, ?, 'ingestion.created', 'succeeded', ?)""",
+                (str(uuid.uuid4()), session["tenant_id"], session["session_id"], session.get("asset_id"),
+                 self._dump({"state": session["state"]})),
+            )
             connection.commit()
             return session, True
 
@@ -114,6 +125,15 @@ class SQLiteIngestionRepository:
             if cursor.rowcount != 1:
                 connection.rollback()
                 raise IngestionRepositoryConflict("session state changed concurrently")
+            if expected_state != updated_session["state"]:
+                import uuid
+                connection.execute(
+                    """INSERT INTO ingestion_audit_events
+                    (event_id, tenant_id, session_id, asset_id, event_type, outcome, metadata_json)
+                    VALUES (?, ?, ?, ?, 'ingestion.state_transition', 'succeeded', ?)""",
+                    (str(uuid.uuid4()), tenant_id, session_id, updated_session.get("asset_id"),
+                     self._dump({"from": expected_state, "to": updated_session["state"]})),
+                )
             connection.commit()
         return updated_session
 
@@ -243,6 +263,28 @@ class SQLiteIngestionRepository:
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
 
+    def list_expired_sessions(
+        self, now: str, limit: int = 100, tenant_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        tenant_clause = " AND tenant_id = ?" if tenant_id is not None else ""
+        parameters: tuple[Any, ...] = (now, now, limit)
+        if tenant_id is not None:
+            parameters = (now, now, tenant_id, limit)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                f"""SELECT payload_json FROM ingestion_sessions
+                WHERE state IN ('created', 'receiving')
+                  AND json_extract(payload_json, '$.expires_at') <= ?
+                  AND COALESCE(json_extract(payload_json, '$.lease.expires_at'), '') <= ?
+                  AND json_extract(payload_json, '$.staging_cleanup_completed_at') IS NULL
+                  {tenant_clause}
+                ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
+                parameters,
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
     def list_sessions_by_state(
         self,
         state: str,
@@ -259,7 +301,42 @@ class SQLiteIngestionRepository:
             rows = connection.execute(
                 f"""SELECT payload_json FROM ingestion_sessions
                 WHERE state = ?{tenant_clause}
+                  AND json_extract(payload_json, '$.staging_cleanup_completed_at') IS NULL
                 ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
+                parameters,
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
+    def record_audit_event(
+        self, tenant_id: str, session_id: str | None, asset_id: str | None,
+        event_type: str, outcome: str, error_code: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        import uuid
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """INSERT INTO ingestion_audit_events
+                (event_id, tenant_id, session_id, asset_id, event_type, outcome, error_code, metadata_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (str(uuid.uuid4()), tenant_id, session_id, asset_id, event_type, outcome,
+                 error_code, self._dump(metadata or {})),
+            )
+            connection.commit()
+
+    def list_expired_assets(
+        self, now: str, limit: int = 100, tenant_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        tenant_clause = " AND tenant_id = ?" if tenant_id is not None else ""
+        parameters: tuple[Any, ...] = (now, limit)
+        if tenant_id is not None:
+            parameters = (now, tenant_id, limit)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                f"""SELECT payload_json FROM audio_assets
+                WHERE json_extract(payload_json, '$.retention_expires_at') <= ?{tenant_clause}
+                ORDER BY json_extract(payload_json, '$.retention_expires_at') ASC LIMIT ?""",
                 parameters,
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
@@ -293,6 +370,17 @@ class SQLiteIngestionRepository:
                     tenant_id TEXT NOT NULL,
                     payload_json TEXT NOT NULL,
                     UNIQUE (tenant_id, asset_id)
+                );
+                CREATE TABLE IF NOT EXISTS ingestion_audit_events (
+                    event_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    session_id TEXT,
+                    asset_id TEXT,
+                    event_type TEXT NOT NULL,
+                    outcome TEXT NOT NULL,
+                    error_code TEXT,
+                    metadata_json TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
                 """
             )

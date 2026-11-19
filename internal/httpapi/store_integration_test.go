@@ -56,12 +56,23 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	receiving["state"]="receiving"
 	receiving["updated_at"]=time.Now().UTC().Format(time.RFC3339Nano)
 	if err:=store.UpdateSession(ctx,tenantID,sessionID,"created",receiving); err!=nil { t.Fatal(err) }
+	ownerID, err := newUUID()
+	if err != nil { t.Fatal(err) }
+	if err := store.BeginUpload(ctx, tenantID, sessionID, ownerID, 30); err != nil { t.Fatal(err) }
+	if err := store.BeginUpload(ctx, tenantID, sessionID, "33333333-3333-4333-8333-333333333333", 30); err != ErrConflict {
+		t.Fatalf("concurrent upload lease should conflict, got %v", err)
+	}
 	finalizing:=cloneMap(receiving)
 	finalizing["state"]="finalizing"
 	finalizing["updated_at"]=time.Now().UTC().Format(time.RFC3339Nano)
+	if _,err:=store.FinalizeSession(ctx,tenantID,sessionID,jobID,3,finalizing); err!=ErrConflict {
+		t.Fatalf("finalization must be fenced by active upload lease, got %v",err)
+	}
+	if err := store.EndUpload(ctx, tenantID, sessionID, ownerID, "succeeded", ""); err != nil { t.Fatal(err) }
 	job,err:=store.FinalizeSession(ctx,tenantID,sessionID,jobID,3,finalizing)
 	if err!=nil { t.Fatal(err) }
 	if job["state"]!="pending" { t.Fatalf("expected pending job: %#v",job) }
+	if err := store.RecordAuditEvent(ctx, tenantID, sessionID, "", "test.event", "succeeded", "", map[string]any{"source":"test"}); err != nil { t.Fatal(err) }
 	missingAssetID, err := newUUID()
 	if err != nil { t.Fatal(err) }
 	if _, err := store.GetAsset(ctx, tenantID, missingAssetID); err != ErrNotFound {

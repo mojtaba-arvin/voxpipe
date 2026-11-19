@@ -395,7 +395,7 @@
       "title": "Reconcile staged uploads and enforce retention and deletion",
       "phase": 1,
       "priority": 10,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0015"
       ],

@@ -24,6 +24,9 @@ type Store interface {
 	GetStatus(context.Context, string, string) (map[string]any, map[string]any, error)
 	GetAsset(context.Context, string, string) (map[string]any, error)
 	SearchAssets(context.Context, string, string, int) ([]map[string]any, error)
+	BeginUpload(context.Context, string, string, string, int) error
+	EndUpload(context.Context, string, string, string, string, string) error
+	RecordAuditEvent(context.Context, string, string, string, string, string, string, map[string]any) error
 	Cancel(context.Context, string, string) (string, error)
 }
 
@@ -63,6 +66,7 @@ func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string,
         ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING payload
     `, session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
 	if err == nil {
+		if err := insertAuditEvent(ctx, tx, tenantID, session["session_id"].(string), "", "ingestion.created", "succeeded", "", nil); err != nil { return nil, false, err }
 		if err := tx.Commit(ctx); err != nil { return nil, false, err }
 		value, err := decodePayload(result); return value, true, err
 	}
@@ -92,7 +96,63 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
         WHERE tenant_id=$4::text::uuid AND session_id=$5::text::uuid AND state=$6
     `, updated["state"], payload, updated["updated_at"], tenantID, sessionID, expectedState)
 	if err != nil { return err }; if tag.RowsAffected()!=1 { return ErrConflict }
+	if expectedState != updated["state"] {
+		if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "ingestion.state_transition", "succeeded", "", map[string]any{"from": expectedState, "to": updated["state"]}); err != nil { return err }
+	}
 	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) BeginUpload(ctx context.Context, tenantID, sessionID, ownerID string, leaseSeconds int) error {
+	if leaseSeconds < 1 || leaseSeconds > 31622400 { return fmt.Errorf("upload lease must be between 1 and 86400 seconds") }
+	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
+	var raw []byte
+	err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid FOR UPDATE", tenantID, sessionID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) { return ErrNotFound }; if err != nil { return err }
+	session, err := decodePayload(raw); if err != nil { return err }
+	state, _ := session["state"].(string)
+	if state != "created" && state != "receiving" { return ErrConflict }
+	expiresAt, ok := session["expires_at"].(string)
+	if !ok { return ErrConflict }
+	expiry, parseErr := time.Parse(time.RFC3339Nano, expiresAt)
+	if parseErr != nil || !expiry.After(time.Now().UTC()) { return ErrConflict }
+	var claimed string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO ingestion_upload_leases (tenant_id, session_id, owner_id, lease_expires_at, created_at, updated_at)
+		VALUES ($1::text::uuid, $2::text::uuid, $3::text::uuid, now()+make_interval(secs=>$4), now(), now())
+		ON CONFLICT (tenant_id, session_id) DO UPDATE
+		SET owner_id=EXCLUDED.owner_id, lease_expires_at=EXCLUDED.lease_expires_at, updated_at=now()
+		WHERE ingestion_upload_leases.lease_expires_at <= now()
+		RETURNING owner_id::text
+	`, tenantID, sessionID, ownerID, leaseSeconds).Scan(&claimed)
+	if errors.Is(err, pgx.ErrNoRows) { return ErrConflict }; if err != nil { return err }
+	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "upload.started", "started", "", nil); err != nil { return err }
+	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) EndUpload(ctx context.Context, tenantID, sessionID, ownerID, outcome, errorCode string) error {
+	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx, "DELETE FROM ingestion_upload_leases WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid AND owner_id=$3::text::uuid", tenantID, sessionID, ownerID)
+	if err != nil { return err }
+	if outcome == "failed" && errorCode == "" { errorCode = "UPLOAD_FAILED" }
+	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "upload.finished", outcome, errorCode, nil); err != nil { return err }
+	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) RecordAuditEvent(ctx context.Context, tenantID, sessionID, assetID, eventType, outcome, errorCode string, metadata map[string]any) error {
+	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
+	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, assetID, eventType, outcome, errorCode, metadata); err != nil { return err }
+	return tx.Commit(ctx)
+}
+
+func insertAuditEvent(ctx context.Context, tx pgx.Tx, tenantID, sessionID, assetID, eventType, outcome, errorCode string, metadata map[string]any) error {
+	if metadata == nil { metadata = map[string]any{} }
+	payload, err := json.Marshal(metadata); if err != nil { return err }
+	eventID, err := newUUID(); if err != nil { return err }
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ingestion_audit_events (event_id, tenant_id, session_id, asset_id, event_type, outcome, error_code, metadata, occurred_at)
+		VALUES ($1::text::uuid, $2::text::uuid, nullif($3,'')::uuid, nullif($4,'')::uuid, $5, $6, nullif($7,''), $8::jsonb, now())
+	`, eventID, tenantID, sessionID, assetID, eventType, outcome, errorCode, payload)
+	return err
 }
 
 func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID, jobID string, maxAttempts int, updated map[string]any) (map[string]any, error) {
@@ -103,6 +163,9 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
 	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrNotFound }; if err != nil { return nil, err }
 	current, err := decodePayload(raw); if err != nil { return nil, err }
 	state, _ := current["state"].(string)
+	var uploadActive bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM ingestion_upload_leases WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid AND lease_expires_at > now())", tenantID, sessionID).Scan(&uploadActive); err != nil { return nil, err }
+	if uploadActive { return nil, ErrConflict }
 	if state!="receiving" {
 		if state=="finalizing" || state=="queued" || state=="processing" || state=="completed" {
 			var jobJSON []byte
@@ -134,6 +197,7 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
 	}
 	if err != nil { return nil, err }
 	var job map[string]any; if err := json.Unmarshal(jobJSON,&job); err != nil { return nil, err }
+	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "ingestion.queued", "succeeded", "", nil); err != nil { return nil, err }
 	if err := tx.Commit(ctx); err != nil { return nil, err }; return job,nil
 }
 
@@ -212,5 +276,6 @@ func (s *PostgresStore) Cancel(ctx context.Context, tenantID, sessionID string) 
 	if err!=nil { return "",err }
 	_,err=tx.Exec(ctx,"UPDATE ingestion_jobs SET state='cancelled',lease_owner=NULL,lease_expires_at=NULL,updated_at=now() WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid AND state IN ('pending','leased')",tenantID,sessionID)
 	if err!=nil { return "",err }
+	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "ingestion.cancelled", "succeeded", "", nil); err != nil { return "", err }
 	if err:=tx.Commit(ctx); err!=nil { return "",err }; return state,nil
 }

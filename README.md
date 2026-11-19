@@ -66,7 +66,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── migrations/postgres/
 │   ├── 0001_create_ingestion_tables.sql
 │   ├── 0002_add_tenant_rls_and_updated_at.sql
-│   └── 0003_create_durable_ingestion_jobs.sql
+│   ├── 0003_create_durable_ingestion_jobs.sql
+│   └── 0004_add_upload_leases_and_audit.sql
 ├── planning/WORK_ITEMS.json
 ├── requirements-dev.txt
 ├── requirements-postgres.txt
@@ -74,11 +75,13 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── validate_repo.py
 │   ├── generate_mcp_docs.py
 │   ├── prepare_test_database.py
-│   └── run_ingestion_worker.py
+│   ├── run_ingestion_worker.py
+│   └── reconcile_ingestion.py
 ├── src/voxpipe/
 │   ├── mcp/server.py
 │   ├── media/
 │   ├── storage/
+│   │   └── staging.py
 │   └── ingestion/
 │       ├── repository.py
 │       ├── postgres.py
@@ -95,7 +98,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     ├── test_ingestion_recovery.py
     ├── test_ingestion_worker.py
     ├── test_postgres_repository.py
-    └── test_mcp_server.py
+    ├── test_mcp_server.py
+    └── test_staging_cleanup.py
 ```
 
 ## Quick start
@@ -114,6 +118,8 @@ make go-check
 Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
 
 Run the authenticated MCP stdio adapter with `PYTHONPATH=src python -m voxpipe.mcp.server`; configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`. See [MCP capabilities](docs/architecture/mcp-capabilities.md).
+
+Set VOXPIPE_DEFAULT_RETENTION_DAYS to a positive value for server-assigned asset expiry; 0 (default) disables automatic asset expiry. Run per-tenant cleanup with PYTHONPATH=src python scripts/reconcile_ingestion.py --tenant-id UUID after setting VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, and VOXPIPE_OBJECT_STORE_ROOT.
 
 For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md). The authenticated Go upload API and Python worker topology are described in [Upload API operations](docs/architecture/upload-api.md).
 

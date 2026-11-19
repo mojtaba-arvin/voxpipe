@@ -60,3 +60,15 @@ Autonomous agents may perform bounded repository changes and tests. Production d
 - Will processing be local/self-hosted, managed cloud, or both?
 - What consent and recording-notice workflows are required by target use cases?
 - Which providers may receive raw audio versus transcript-only content?
+
+
+## Retention, deletion, and audit
+
+The API assigns a deployment-default asset expiry using VOXPIPE_DEFAULT_RETENTION_DAYS. The default is 0 (no automatic asset expiry); clients cannot select or extend this policy. Positive values are copied into durable asset metadata and enforced by the tenant-scoped reconciliation process.
+
+Reconciliation expires stale created/receiving sessions only when their session expiry has passed and no upload or worker lease is active. It removes staging files and interrupted parts for completed and terminal sessions. For failed, cancelled, expired, or retention-expired assets, it deletes object data before deleting metadata. Every state transition and cleanup outcome is recorded in the tenant-scoped audit event table. Audit retention and backup deletion remain deployment-specific and must be configured separately.
+
+Run per tenant with:
+PYTHONPATH=src python scripts/reconcile_ingestion.py --tenant-id <UUID>
+
+Required environment: VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, VOXPIPE_OBJECT_STORE_ROOT. API and worker must use the same private staging and object-store volumes. The operation is destructive but idempotent; it should be scheduled only after confirming the deployment's retention setting and backup policy.

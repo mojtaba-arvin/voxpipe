@@ -250,6 +250,13 @@ Output schema:
     "updated_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "retention_policy_id": {
+      "type": "string"
+    },
+    "retention_expires_at": {
+      "type": "string",
+      "format": "date-time"
     }
   }
 }
@@ -301,7 +308,20 @@ Output schema:
     "items": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "retention_policy_id": {
+            "type": "string"
+          },
+          "retention_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "limit": {

@@ -52,3 +52,10 @@ Keep the DSN in a secret manager or environment variable. Never commit credentia
 - Every connection is currently opened per operation. Add a bounded connection pool only after measuring real deployment load.
 
 SQLite remains the zero-service local adapter. PostgreSQL is the intended multi-node metadata backend; the local filesystem object store remains single-node only.
+
+
+## Upload leases and audit events (migration 0004)
+
+Migration 0004 adds tenant-scoped upload leases and immutable audit events. Upload leases fence concurrent upload attempts and prevent finalization or cleanup while a transfer is active. The API reserves a lease before reading the request body and releases it after the transfer handler exits; crashed handlers leave an expiring lease that reconciliation respects.
+
+Audit events record session creation/state transitions, upload start/finish, queueing, cancellation, cleanup, and retention deletion. Events are tenant-scoped with forced RLS and contain only lifecycle metadata, never media bytes, bearer tokens, or private storage references. The application role requires CRUD privileges on both new tables.

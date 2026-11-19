@@ -500,6 +500,8 @@ class IngestionService:
         }
         if session.get("retention_policy_id") is not None:
             asset["retention_policy_id"] = session["retention_policy_id"]
+        if session.get("retention_expires_at") is not None:
+            asset["retention_expires_at"] = session["retention_expires_at"]
         return asset
 
     def _now(self) -> datetime:

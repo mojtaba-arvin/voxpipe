@@ -29,6 +29,8 @@ func main() {
 	if err != nil { log.Fatalf("configure session TTL: %v", err) }
 	maxAttempts, err := envInt("VOXPIPE_JOB_MAX_ATTEMPTS", 5)
 	if err != nil { log.Fatalf("configure job attempts: %v", err) }
+	retentionDays, err := envInt("VOXPIPE_DEFAULT_RETENTION_DAYS", 0)
+	if err != nil { log.Fatalf("configure retention policy: %v", err) }
 
 	store, err := httpapi.NewPostgresStore(ctx, dsn)
 	if err != nil { log.Fatalf("connect database: %v", err) }
@@ -37,6 +39,7 @@ func main() {
 	if err != nil { log.Fatalf("configure private staging: %v", err) }
 	api, err := httpapi.NewServer(store, auth, stager, maxUpload, time.Duration(sessionTTLSeconds)*time.Second, maxAttempts)
 	if err != nil { log.Fatalf("configure HTTP API: %v", err) }
+	if err := api.SetRetentionDays(retentionDays); err != nil { log.Fatalf("configure retention policy: %v", err) }
 
 	server := &http.Server{
 		Addr:              envOr("VOXPIPE_LISTEN_ADDR", ":8080"),

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ type Server struct {
 	maxUpload    int64
 	sessionTTL   time.Duration
 	maxAttempts  int
+	retentionDays int
 	clock        func() time.Time
 }
 
@@ -51,13 +53,19 @@ func NewServer(store Store, auth Authenticator, stager *LocalStager, maxUpload i
 	if store == nil || auth == nil || stager == nil {
 		return nil, fmt.Errorf("store, authenticator, and stager are required")
 	}
-	if maxUpload < 1 || sessionTTL <= 0 || maxAttempts < 1 || maxAttempts > 100 {
+	if maxUpload < 1 || sessionTTL <= 0 || sessionTTL > 365*24*time.Hour || maxAttempts < 1 || maxAttempts > 100 {
 		return nil, fmt.Errorf("invalid upload or session limits")
 	}
 	return &Server{
 		store: store, auth: auth, stager: stager, maxUpload: maxUpload,
 		sessionTTL: sessionTTL, maxAttempts: maxAttempts, clock: time.Now,
 	}, nil
+}
+
+func (s *Server) SetRetentionDays(days int) error {
+	if days < 0 || days > 36500 { return fmt.Errorf("retention days must be between 0 and 36500") }
+	s.retentionDays = days
+	return nil
 }
 
 func (s *Server) Handler() http.Handler {
@@ -134,6 +142,10 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 		"updated_at": timestamp,
 		"expires_at": now.Add(s.sessionTTL).Format(time.RFC3339Nano),
 	}
+	if s.retentionDays > 0 {
+		session["retention_policy_id"] = "deployment-default"
+		session["retention_expires_at"] = now.Add(time.Duration(s.retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
+	}
 
 	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session)
 	if err != nil { writeStoreError(w, err); return }
@@ -173,6 +185,19 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "INVALID_SESSION_STATE", "Session is not accepting upload bytes")
 		return
 	}
+	ownerID, err := newUUID()
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to reserve upload lease"); return }
+	if err := s.store.BeginUpload(r.Context(), principal.TenantID, sessionID, ownerID, min(86400, max(1, int(s.sessionTTL.Seconds())))); err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	uploadOutcome, uploadErrorCode := "failed", ""
+	defer func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = s.store.EndUpload(cleanupCtx, principal.TenantID, sessionID, ownerID, uploadOutcome, uploadErrorCode)
+	}()
+
 	upload, _ := session["upload"].(map[string]any)
 	expectedSize, sizeOK := numberInt64(upload["expected_size_bytes"])
 	expectedDigest, digestOK := upload["expected_sha256"].(string)
@@ -224,6 +249,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
+	uploadOutcome = "succeeded"
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -347,7 +373,7 @@ func (s *Server) searchAssets(w http.ResponseWriter, r *http.Request) {
 // publicAsset deliberately omits tenant identifiers and private storage references.
 func publicAsset(asset map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"asset_id", "media", "integrity", "state", "created_at", "updated_at"} {
+	for _, key := range []string{"asset_id", "media", "integrity", "state", "created_at", "updated_at", "retention_policy_id", "retention_expires_at"} {
 		if value, exists := asset[key]; exists { result[key] = value }
 	}
 	if source, ok := asset["source"].(map[string]any); ok {

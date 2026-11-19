@@ -343,6 +343,11 @@ components:
         updated_at:
           type: string
           format: date-time
+        retention_policy_id:
+          type: string
+        retention_expires_at:
+          type: string
+          format: date-time
     Error:
       type: object
       additionalProperties: false
