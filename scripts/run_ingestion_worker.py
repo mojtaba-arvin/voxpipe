@@ -6,6 +6,7 @@ import logging
 import os
 import signal
 import time
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 from voxpipe.ingestion import (
