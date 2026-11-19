@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import closing
 import os
 import sqlite3
 from pathlib import Path
@@ -74,7 +75,7 @@ class SQLiteIngestionRepository:
 
     def create_or_get_session(self, session: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         payload = self._dump(session)
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
                 connection.execute(
