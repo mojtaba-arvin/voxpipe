@@ -215,6 +215,11 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
+			if latestState == "cancelled" {
+				// Cancellation may have removed staging just before this upload
+				// atomically published its file. Re-check after the failed CAS.
+				_ = s.stager.Remove(principal.TenantID, sessionID)
+			}
 		}
 		writeStoreError(w, err)
 		return
