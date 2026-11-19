@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 var (
@@ -125,6 +126,23 @@ func (s *LocalStager) Write(
 		_ = directoryHandle.Close()
 	}
 	return written, reference, nil
+}
+
+func (s *LocalStager) Remove(tenantID, sessionID string) error {
+	directory, target, _, err := s.paths(tenantID, sessionID)
+	if err != nil { return err }
+	if err := s.rejectSymlinkPath(directory); err != nil {
+		if errors.Is(err, os.ErrNotExist) { return nil }
+		return err
+	}
+	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
+	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
+	tenantDirectory := filepath.Dir(directory)
+	if err := os.Remove(tenantDirectory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Another active session may still use this tenant directory.
+		if !errors.Is(err, syscall.ENOTEMPTY) { return err }
+	}
+	return nil
 }
 
 func (s *LocalStager) Verify(tenantID, sessionID string) (int64, string, error) {
