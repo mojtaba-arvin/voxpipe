@@ -77,3 +77,8 @@ If the active agent client does not support repository skills or subagents, foll
 - A fix is not verified until a new run for the exact resulting head SHA has completed successfully.
 - Keep validation commands read-only. Dependency drift and formatting checks report differences; they do not silently rewrite files.
 - A CI failure creates a durable learning loop: root cause -> regression test -> process/skill update if the failure pattern can recur -> successful exact-SHA rerun.
+
+
+## Commit discipline
+
+One logical commit should represent one bounded task slice and include its implementation, regression tests, and necessary documentation. Do not commit every file or every one-line correction separately. Run focused checks before committing and inspect the full diff. If an integration tool can only create file-scoped commits, keep the branch changes coherent and use squash merge when the PR is approved. CI concurrency should cancel superseded runs; it is not a substitute for batching changes before pushing.
