@@ -46,6 +46,19 @@ class ContractSchemaTests(unittest.TestCase):
         self.asset_validator.validate(self.asset_example)
         self.session_validator.validate(self.session_example)
 
+    def test_stream_session_contract_is_valid(self) -> None:
+        session = dict(self.session_example)
+        session["mode"] = "stream"
+        session["state"] = "receiving"
+        session.pop("asset_id")
+        self.session_validator.validate(session)
+
+    def test_v1_schema_identity_and_required_fields_are_stable(self) -> None:
+        self.assertEqual(self.asset_schema["$id"], "urn:voxpipe:schema:audio-asset:1.0.0")
+        self.assertEqual(self.session_schema["$id"], "urn:voxpipe:schema:ingestion-session:1.0.0")
+        self.assertTrue({"asset_id", "tenant_id", "media", "integrity", "storage"} <= set(self.asset_schema["required"]))
+        self.assertTrue({"session_id", "tenant_id", "mode", "state", "idempotency_key"} <= set(self.session_schema["required"]))
+
     def test_asset_rejects_invalid_checksum(self) -> None:
         asset = dict(self.asset_example)
         asset["integrity"] = {"algorithm": "sha256", "digest": "not-a-sha256"}
