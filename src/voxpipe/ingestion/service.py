@@ -158,6 +158,7 @@ class IngestionService:
                 existing_upload.get("expected_sha256") != digest
                 or existing_upload.get("expected_size_bytes") != size_bytes
                 or current.get("source") != source
+                or current.get("retention_policy_id") != request.retention_policy_id
             ):
                 raise IngestionIdempotencyConflict(
                     "idempotency key was already used for a different request"
