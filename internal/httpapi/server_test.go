@@ -125,11 +125,19 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 	upload.Header.Set("Content-Type","application/octet-stream")
 	uploaded:=httptest.NewRecorder(); handler.ServeHTTP(uploaded,upload)
 	if uploaded.Code!=http.StatusNoContent { t.Fatalf("upload: got %d: %s",uploaded.Code,uploaded.Body.String()) }
+	retryUpload:=httptest.NewRequest(http.MethodPut,"/v1/ingestions/"+sessionID+"/content",bytes.NewReader(content))
+	retryUpload.Header.Set("Authorization","Bearer "+token)
+	retryUpload.Header.Set("Content-Type","application/octet-stream")
+	retried:=httptest.NewRecorder(); handler.ServeHTTP(retried,retryUpload)
+	if retried.Code!=http.StatusNoContent { t.Fatalf("idempotent upload retry: got %d: %s",retried.Code,retried.Body.String()) }
 
 	finalized:=request(handler,http.MethodPost,"/v1/ingestions/"+sessionID+"/finalize",token,nil)
 	if finalized.Code!=http.StatusAccepted { t.Fatalf("finalize: got %d: %s",finalized.Code,finalized.Body.String()) }
 	job:=decodeResponse(t,finalized)
 	if job["state"]!="pending" { t.Fatalf("expected pending job, got %#v",job) }
+	repeatedFinalize:=request(handler,http.MethodPost,"/v1/ingestions/"+sessionID+"/finalize",token,nil)
+	if repeatedFinalize.Code!=http.StatusAccepted { t.Fatalf("idempotent finalize: got %d: %s",repeatedFinalize.Code,repeatedFinalize.Body.String()) }
+	if decodeResponse(t,repeatedFinalize)["job_id"]!=job["job_id"] { t.Fatal("finalize retry returned a different job") }
 
 	status:=request(handler,http.MethodGet,"/v1/ingestions/"+sessionID,token,nil)
 	if status.Code!=http.StatusOK { t.Fatalf("status: got %d: %s",status.Code,status.Body.String()) }
