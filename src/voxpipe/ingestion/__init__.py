@@ -1,5 +1,6 @@
 """Batch ingestion application service, persistence, and recovery."""
 
+from voxpipe.ingestion.jobs import JobLeaseLost, JobNotFound, JobQueueError, PostgresIngestionJobQueue
 from voxpipe.ingestion.postgres import PostgresIngestionRepository, apply_migrations
 from voxpipe.ingestion.recovery import (
     IngestionOrphanReconciler,
@@ -33,6 +34,10 @@ __all__ = [
     "IngestionRecoveryWorker",
     "IngestionRepositoryConflict",
     "IngestionRepositoryPort",
+    "JobLeaseLost",
+    "JobNotFound",
+    "JobQueueError",
+    "PostgresIngestionJobQueue",
     "PostgresIngestionRepository",
     "IngestionRequest",
     "IngestionRequestError",
