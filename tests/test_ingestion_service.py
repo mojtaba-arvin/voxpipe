@@ -21,7 +21,7 @@ from voxpipe.ingestion import (
     SQLiteIngestionRepository,
 )
 from voxpipe.media.probe import MediaInspectionError, MediaMetadata
-from voxpipe.storage import LocalFilesystemObjectStore, ObjectNotFoundError
+from voxpipe.storage import LocalFilesystemObjectStore, ObjectNotFoundError, StorageIOError
 
 
 class FakeMediaInspector:
@@ -58,6 +58,20 @@ class FakeDecodeValidator:
             raise self.error
 
 
+class FailingObjectStore:
+    def put(self, key, source, *, expected_sha256=None, overwrite=False):
+        raise StorageIOError("simulated object storage failure")
+
+    def open(self, key):
+        raise ObjectNotFoundError("object does not exist")
+
+    def head(self, key):
+        raise ObjectNotFoundError("object does not exist")
+
+    def delete(self, key):
+        return False
+
+
 class FailingAssetRepository(SQLiteIngestionRepository):
     def create_asset(self, asset: dict) -> dict:
         raise IngestionRepositoryConflict("simulated metadata write failure")
@@ -91,11 +105,12 @@ class BatchIngestionServiceTests(unittest.TestCase):
         repository: SQLiteIngestionRepository | None = None,
         inspector: FakeMediaInspector | None = None,
         decoder: FakeDecodeValidator | None = None,
+        object_store=None,
     ) -> IngestionService:
         return IngestionService(
             staging_root=self.staging,
             repository=repository or self.repository,
-            object_store=self.object_store,
+            object_store=object_store or self.object_store,
             media_inspector=inspector or self.inspector,
             decode_validator=decoder or self.decoder,
             max_file_size_bytes=1024 * 1024,
@@ -215,6 +230,15 @@ class BatchIngestionServiceTests(unittest.TestCase):
         self.assertEqual(context.exception.code, "MEDIA_DECODE_FAILED")
         session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
         self.assertEqual(session["state"], "failed")
+
+    def test_storage_failure_marks_session_failed(self) -> None:
+        service = self.make_service(object_store=FailingObjectStore())
+        with self.assertRaises(IngestionFailed) as context:
+            service.ingest(self.request())
+        self.assertEqual(context.exception.code, "STORAGE_IO_ERROR")
+        session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
+        self.assertEqual(session["state"], "failed")
+        self.assertTrue(session["failure"]["retryable"])
 
     def test_metadata_failure_compensates_stored_object(self) -> None:
         repository = FailingAssetRepository(self.database)
