@@ -289,6 +289,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         )
         self.assertEqual(dead["state"], "dead")
         self.assertEqual(dead["last_error_code"], "PROVIDER_TEMPORARY_FAILURE")
+        self.assertEqual(self.repository.get_session(session["tenant_id"], session["session_id"])["state"], "failed")
         self.assertIsNone(self.queue.claim_next(session["tenant_id"], worker))
 
     def test_non_retryable_failure_dead_letters_immediately(self) -> None:
@@ -302,6 +303,23 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             "INGESTION_INVALID_MEDIA", retryable=False,
         )
         self.assertEqual(failed["state"], "dead")
+        self.assertEqual(self.repository.get_session(session["tenant_id"], session["session_id"])["state"], "failed")
+
+    def test_expired_final_attempt_dead_letters_job_and_session(self) -> None:
+        session = self.session()
+        session["state"] = "processing"
+        self.repository.create_or_get_session(session)
+        job = self.queue.enqueue(session["tenant_id"], session["session_id"], max_attempts=1)
+        worker = str(uuid4())
+        claimed = self.queue.claim_next(session["tenant_id"], worker, lease_seconds=1)
+        self.assertEqual(claimed["job_id"], job["job_id"])
+        time.sleep(1.1)
+        self.assertIsNone(self.queue.claim_next(session["tenant_id"], str(uuid4())))
+        stored_job = self.queue.get(session["tenant_id"], job["job_id"])
+        stored_session = self.repository.get_session(session["tenant_id"], session["session_id"])
+        self.assertEqual(stored_job["state"], "dead")
+        self.assertEqual(stored_session["state"], "failed")
+        self.assertEqual(stored_session["failure"]["code"], "INGESTION_RETRY_EXHAUSTED")
 
     def test_cancel_atomically_cancels_job_and_session(self) -> None:
         session = self.session()
