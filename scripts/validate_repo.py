@@ -72,33 +72,56 @@ def validate_agent_assets() -> int:
         if len(description_match.group(1).strip()) < 24:
             fail(f"{skill_file.relative_to(ROOT)}: description must explain when the skill triggers")
 
+    try:
+        config = tomllib.loads(CODEX_CONFIG.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        fail(f"invalid Codex project config: {exc}")
+    agents_config = config.get("agents", {})
+    concurrency = agents_config.get("max_concurrent_threads_per_session")
+    if not isinstance(concurrency, int) or not 1 <= concurrency <= 8:
+        fail("Codex agent concurrency must be an integer between 1 and 8")
+    if agents_config.get("enabled") is False:
+        fail("Codex multi-agent tools must remain enabled for project specialist roles")
+
     agent_files = sorted(AGENTS_ROOT.glob("*.toml"))
     if not agent_files:
         fail("at least one project-scoped agent is required under .codex/agents")
     agent_names: set[str] = set()
     for agent_file in agent_files:
+        role_name = agent_file.stem.replace("-", "_")
+        role = agents_config.get(role_name)
+        if not isinstance(role, dict):
+            fail(f"{agent_file.relative_to(ROOT)}: missing [agents.{role_name}] role declaration")
+        if not isinstance(role.get("description"), str) or len(role["description"].strip()) < 24:
+            fail(f"[agents.{role_name}] requires a trigger-specific description")
+        config_file = role.get("config_file")
+        if not isinstance(config_file, str) or not config_file.strip():
+            fail(f"[agents.{role_name}] requires config_file")
+        resolved_config = (CODEX_CONFIG.parent / config_file).resolve()
+        if resolved_config != agent_file.resolve():
+            fail(f"[agents.{role_name}] config_file must point to {agent_file.relative_to(CODEX_CONFIG.parent)}")
         try:
             agent = tomllib.loads(agent_file.read_text(encoding="utf-8"))
         except (OSError, tomllib.TOMLDecodeError) as exc:
             fail(f"invalid custom agent {agent_file.relative_to(ROOT)}: {exc}")
-        for field in ("name", "description", "developer_instructions"):
-            if not isinstance(agent.get(field), str) or not agent[field].strip():
-                fail(f"{agent_file.relative_to(ROOT)}: missing non-empty {field}")
-        if agent["name"] != agent_file.stem.replace("-", "_"):
-            fail(f"{agent_file.relative_to(ROOT)}: agent name must match its filename")
-        if agent["name"] in agent_names:
-            fail(f"duplicate custom agent name: {agent['name']}")
-        agent_names.add(agent["name"])
+        instructions = agent.get("developer_instructions")
+        if not isinstance(instructions, str) or not instructions.strip():
+            fail(f"{agent_file.relative_to(ROOT)}: missing non-empty developer_instructions")
+        if agent.get("sandbox_mode") != "read-only":
+            fail(f"{agent_file.relative_to(ROOT)}: specialist reviewers must use read-only sandbox mode")
+        if role_name in agent_names:
+            fail(f"duplicate custom agent name: {role_name}")
+        agent_names.add(role_name)
 
-    try:
-        config = tomllib.loads(CODEX_CONFIG.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
-        fail(f"invalid Codex project config: {exc}")
-    concurrency = config.get("agents", {}).get("max_concurrent_threads_per_session")
-    if not isinstance(concurrency, int) or not 1 <= concurrency <= 8:
-        fail("Codex agent concurrency must be an integer between 1 and 8")
+    declared_roles = {
+        name for name, value in agents_config.items()
+        if isinstance(value, dict) and "config_file" in value
+    }
+    if declared_roles != agent_names:
+        fail("Codex role declarations and .codex/agents files must match exactly")
 
     return len(skill_files) + len(agent_files)
+
 
 
 def main() -> None:
