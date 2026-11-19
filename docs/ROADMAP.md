@@ -21,7 +21,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 1 — Audio Ingestion Foundation
 
 - [x] Define canonical audio asset and session contracts.
-- [ ] Evaluate media probing and normalization tools before selecting an implementation.
+- [x] Evaluate media probing and normalization tools before selecting an implementation (ffprobe isolated subprocess is the PoC primary; no binary is approved for distribution yet).
 - Support upload and resumable ingestion before real-time streaming.
 - Validate media type, duration, size, sample rate, and channel layout from actual file bytes (not client hints).
 - Add object-storage abstraction and local development implementation.
