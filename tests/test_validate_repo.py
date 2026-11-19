@@ -66,11 +66,13 @@ class ValidateRepoTests(unittest.TestCase):
             agents = root / ".codex" / "agents"
             agents.mkdir(parents=True)
             (agents / "reviewer.toml").write_text(
-                'name = "reviewer"\ndescription = "Read-only fixture reviewer."\ndeveloper_instructions = "Do not edit files."\n',
+                'sandbox_mode = "read-only"\ndeveloper_instructions = "Do not edit files."\n',
                 encoding="utf-8",
             )
             (root / ".codex" / "config.toml").write_text(
-                "[agents]\nmax_concurrent_threads_per_session = 2\n",
+                '[agents]\nenabled = true\nmax_concurrent_threads_per_session = 2\n\n'
+                '[agents.reviewer]\ndescription = "Read-only fixture reviewer role."\n'
+                'config_file = "./agents/reviewer.toml"\n',
                 encoding="utf-8",
             )
             (root / "planning" / "WORK_ITEMS.json").write_text(content, encoding="utf-8")
