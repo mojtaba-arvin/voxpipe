@@ -347,6 +347,34 @@
       ],
       "evidence": [],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0017",
+      "title": "Standardize autonomous agent workflows, skills, and independent CI gates",
+      "phase": 0,
+      "priority": 10,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0001",
+        "VP-0002",
+        "VP-0006"
+      ],
+      "acceptance_criteria": [
+        "Repository skills under .agents/skills define reusable task execution, CI triage, PostgreSQL reliability, and cross-runtime contract workflows with valid discovery metadata.",
+        "Project-scoped read-only specialist agents exist for CI triage, security review, and cross-runtime contract review.",
+        "AGENTS.md and the execution protocol explain skill selection, safe delegation, reviewer independence, and fallback behavior when subagents are unavailable.",
+        "Repository validation checks skill and custom-agent metadata so malformed or missing agent assets fail locally and in CI.",
+        "Python and Go CI gates run independently; superseded feature-branch runs are cancelled rather than duplicated.",
+        "Go validation is read-only and checks module drift, formatting, vet, and race-enabled tests.",
+        "A successful CI run on the exact PR head SHA provides evidence for all required gates."
+      ],
+      "evidence": [
+        ".agents/skills/ — task execution, CI triage, PostgreSQL reliability, and contract evolution skills",
+        ".codex/agents/ — read-only CI triager, security reviewer, and contract reviewer; .codex/config.toml configures bounded parallelism",
+        "AGENTS.md and docs/operations/agent-execution-protocol.md — durable skill/subagent use and evidence loop",
+        "Makefile and .github/workflows/validate.yml — read-only Go checks and independent Python/Go PostgreSQL CI jobs"
+      ],
+      "blocked_reason": null
     }
   ]
 }
