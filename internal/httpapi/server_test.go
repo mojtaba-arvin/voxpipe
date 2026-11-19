@@ -246,6 +246,39 @@ func TestTenantCannotReadAnotherTenantsSession(t *testing.T) {
 	if response.Code != http.StatusNotFound { t.Fatalf("cross-tenant read should be hidden, got %d", response.Code) }
 }
 
+func TestCancelReceivingSessionRemovesStagedBytes(t *testing.T) {
+	server, _, _, token := testServer(t)
+	handler := server.Handler()
+	content := []byte("cancel this staged upload")
+	digest := sha256.Sum256(content)
+	payload, _ := json.Marshal(map[string]any{
+		"expected_size_bytes": len(content),
+		"expected_sha256": hex.EncodeToString(digest[:]),
+		"source": map[string]any{"kind": "file_upload"},
+	})
+	create := httptest.NewRequest(http.MethodPost, "/v1/ingestions", bytes.NewReader(payload))
+	create.Header.Set("Authorization", "Bearer "+token)
+	create.Header.Set("Idempotency-Key", "cancel-receiving-upload-01")
+	created := httptest.NewRecorder()
+	handler.ServeHTTP(created, create)
+	if created.Code != http.StatusCreated { t.Fatalf("create failed: %s", created.Body.String()) }
+	sessionID := decodeResponse(t, created)["session_id"].(string)
+	upload := httptest.NewRequest(http.MethodPut, "/v1/ingestions/"+sessionID+"/content", bytes.NewReader(content))
+	upload.Header.Set("Authorization", "Bearer "+token)
+	upload.Header.Set("Content-Type", "application/octet-stream")
+	uploaded := httptest.NewRecorder()
+	handler.ServeHTTP(uploaded, upload)
+	if uploaded.Code != http.StatusNoContent { t.Fatalf("upload failed: %s", uploaded.Body.String()) }
+	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err != nil {
+		t.Fatalf("staged file should exist before cancellation: %v", err)
+	}
+	cancelled := request(handler, http.MethodDelete, "/v1/ingestions/"+sessionID, token, nil)
+	if cancelled.Code != http.StatusAccepted { t.Fatalf("cancel failed: %s", cancelled.Body.String()) }
+	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err == nil {
+		t.Fatal("staged file remained after pre-processing cancellation")
+	}
+}
+
 func TestStagerRejectsOversizedAndChecksumMismatch(t *testing.T) {
 	stager,err:=NewLocalStager(t.TempDir()); if err!=nil { t.Fatal(err) }
 	tenant:="11111111-1111-4111-8111-111111111111"
