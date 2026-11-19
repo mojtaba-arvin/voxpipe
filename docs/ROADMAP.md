@@ -9,12 +9,12 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Establish repository identity and agent operating rules.
 - [x] Create a machine-readable work ledger.
 - [x] Add dependency/cycle/state validation for the ledger.
-- [ ] Add CI to run repository validation on every pull request.
-- [ ] Define contribution and pull-request templates.
-- [ ] Define versioning, compatibility, and release policy.
+- [x] Add CI to run repository validation on every pull request.
+- [x] Define contribution and pull-request templates.
+- [x] Define versioning, compatibility, and release policy.
 - [ ] Define threat model, data classification, and audio retention defaults.
-- [ ] Compare orchestration approaches for durable agent/task execution.
-- [ ] Create a reproducible local development environment.
+- [x] Compare orchestration approaches for durable agent/task execution (selection deferred to a measured proof of concept).
+- [x] Create a reproducible local development environment and validator test suite.
 
 **Exit gate:** A clean checkout can validate itself; a new agent can identify the next unblocked task, execute it, and leave auditable progress without relying on chat history.
 
