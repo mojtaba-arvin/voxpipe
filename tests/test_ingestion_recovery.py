@@ -140,6 +140,27 @@ class IngestionRecoveryTests(unittest.TestCase):
         self.assertIsNotNone(third)
         self.assertEqual(third["lease"]["attempt"], 2)
 
+
+    def test_recovery_ignores_created_sessions_with_incomplete_uploads(self) -> None:
+        tenant_id = "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10"
+        session_id = str(uuid4())
+        self.repository.create_or_get_session({
+            "session_id": session_id,
+            "tenant_id": tenant_id,
+            "idempotency_key": "unfinished-upload-session-0001",
+            "state": "created",
+            "updated_at": "2026-11-19T00:00:00.000Z",
+            "upload": {
+                "expected_size_bytes": 1024,
+                "received_size_bytes": 0,
+                "expected_sha256": "a" * 64,
+            },
+        })
+        recoverable = self.repository.list_recoverable_sessions(
+            "2026-11-19T01:00:00.000Z", limit=10, tenant_id=tenant_id
+        )
+        self.assertNotIn(session_id, [item["session_id"] for item in recoverable])
+
     def test_expired_session_lease_is_recovered_without_duplicate_asset(self) -> None:
         original = self.service.ingest(self.request())
         stale = self.make_processing_session_with_expired_lease()
