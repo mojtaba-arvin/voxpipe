@@ -9,7 +9,7 @@
 - Has only the required table privileges on `ingestion_sessions` and `audio_assets`.
 - Does not own those tables.
 
-The migration enables and forces row-level security. Every repository operation sets the transaction-local `voxpipe.tenant_id` setting, and every query also includes an explicit tenant predicate. Missing tenant context returns no rows under RLS.
+The migration enables and forces row-level security. Every repository operation sets the transaction-local `voxpipe.tenant_id` setting, and every query also includes an explicit tenant predicate. Missing tenant context returns no rows under RLS. This protects against accidental query omissions; because the application credential can set the custom tenant context, it is not a defense against compromised application code. Strong isolation against a compromised service requires separate database roles/credentials or a trusted tenant-context boundary.
 
 Recovery and reconciliation scans require an explicit `tenant_id`; the application role cannot perform cross-tenant scans. A scheduler should enumerate authorized tenant IDs through a separate tenant-control-plane boundary and invoke recovery per tenant.
 
