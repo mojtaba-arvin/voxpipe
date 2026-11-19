@@ -25,7 +25,7 @@ pending --claim--> leased --complete--> completed
 - Heartbeat, completion, and failure require the current owner and an unexpired lease. This fences stale workers after lease expiry/reclaim.
 - When a job reaches the dead-letter state, the associated non-terminal session is atomically moved to failed with a terminal failure code. This prevents the separate stale-session recovery worker from resurrecting work that the durable queue has exhausted.
 - Retryable service failures retain the session's non-terminal lifecycle state, clear its session lease, and return the job to `pending` only while attempts remain. The next worker reclaims the session and clears the prior failure marker before resuming. Permanent failures and exhausted retries move to `dead`.
-- Cancellation updates the job and non-terminal session in one transaction.
+- Cancellation and terminal failure transitions update the job and session in one transaction. Every cross-runtime transition locks the session before the job, avoiding lock-order deadlocks between Go API and Python workers.
 
 ## Tenant isolation
 
