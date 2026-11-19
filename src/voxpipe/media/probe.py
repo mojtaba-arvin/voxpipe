@@ -136,7 +136,10 @@ class FFprobeMediaInspector:
                 "channel_layout,bits_per_sample,bits_per_raw_sample,duration"
             ),
         )
-        audio_streams = self._streams(audio_payload)
+        audio_streams = [
+            stream for stream in self._streams(audio_payload)
+            if stream.get("codec_type") == "audio"
+        ]
         if not audio_streams:
             raise MediaInspectionError("MEDIA_NO_AUDIO_STREAM", "Media file contains no audio stream")
         audio = audio_streams[0]
@@ -155,7 +158,11 @@ class FFprobeMediaInspector:
             selector="V:0",
             entries="format=format_name:stream=index,codec_type",
         )
-        has_video = bool(self._streams(video_payload))
+        video_streams = [
+            stream for stream in self._streams(video_payload)
+            if stream.get("codec_type") == "video"
+        ]
+        has_video = bool(video_streams)
         container_format, mime_type = self._normalize_container(format_name, has_video)
         if container_format not in self._policy.allowed_container_formats:
             raise MediaInspectionError("MEDIA_UNSUPPORTED_CONTAINER", "Media container is not supported")
