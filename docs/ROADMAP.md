@@ -40,8 +40,8 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 2 — Speech Intelligence
 
-- Define transcript, segment, speaker, timing, and confidence contracts.
-- Implement provider-neutral STT adapter.
+- [ ] Define transcript, segment, speaker, timing, confidence, and provenance contracts (VP-0021).
+- [ ] Implement provider-neutral STT adapter and provider evaluation.
 - Evaluate VAD, diarization, language identification, and enhancement independently.
 - Build multilingual evaluation datasets with consent and provenance.
 - Benchmark local and hosted providers under reproducible conditions.

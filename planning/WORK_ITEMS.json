@@ -466,6 +466,30 @@
         "GitHub Actions run 44525504449 — both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs passed on exact PR head 68e35212d8f94a0c64f7cbb0b3a2659bbd4aa08b."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0021",
+      "title": "Define canonical transcript contract and provider-neutral speech-to-text port",
+      "phase": 2,
+      "priority": 13,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0019",
+        "VP-0020"
+      ],
+      "acceptance_criteria": [
+        "A versioned transcript schema defines asset linkage, language, ordered segments, optional word timestamps, speaker references, confidence, and provider/model/audio-hash provenance.",
+        "A provider-neutral SpeechToTextPort accepts an extracted readable audio stream and explicit language/word-timing/diarization options without filesystem paths, tenant IDs, or vendor SDK types.",
+        "A shared validator enforces timestamp ordering/duration bounds, speaker references, unique IDs, confidence ranges, timezone-aware provenance, and requested asset binding.",
+        "Stable transcription error codes expose retryability and optional retry-after without raw provider payloads or secrets.",
+        "Schema fixtures and offline adapter contract tests run without external providers, model downloads, or paid inference."
+      ],
+      "evidence": [
+        "contracts/schemas/transcript.v1.schema.json and contracts/examples/transcript.valid.json — canonical transcript wire contract and valid fixture.",
+        "src/voxpipe/speech/contracts.py, ports.py, and service.py — immutable provider-neutral request/result types, stable errors, adapter protocol, and output validation.",
+        "tests/test_speech_contracts.py and tests/test_contract_schemas.py — offline validation and adapter boundary tests."
+      ],
+      "blocked_reason": null
     }
   ]
 }

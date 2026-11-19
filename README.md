@@ -8,8 +8,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** VP-0015 through VP-0020 are implemented. The latest hardening work (production OIDC/introspection, tenant quotas, bounded upload streams, worker lease fencing, queue metrics, and graceful shutdown) passed both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 CI jobs on exact head `68e35212`. Local filesystem staging/object storage remain single-node deployment choices; static-token authentication is an explicit bootstrap mode. The next phase is provider-neutral speech transcription contracts and adapters.  
+**Stage:** Phase 2 — Speech Intelligence  
+**Status:** VP-0015 through VP-0020 are implemented. The latest hardening work (production OIDC/introspection, tenant quotas, bounded upload streams, worker lease fencing, queue metrics, and graceful shutdown) passed both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 CI jobs on exact head `68e35212`. Local filesystem staging/object storage remain single-node deployment choices; static-token authentication is an explicit bootstrap mode. VP-0021 canonical transcript schema and provider-neutral STT port are in progress; no hosted provider or paid inference is selected.  
 **Default branch:** `main`
 
 ## Design principles
@@ -97,6 +97,10 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   │   ├── repository.py
 │   │   ├── service.py
 │   │   └── worker.py
+│   ├── speech/
+│   │   ├── contracts.py
+│   │   ├── ports.py
+│   │   └── service.py
 │   ├── mcp/
 │   │   ├── __init__.py
 │   │   └── server.py

@@ -39,3 +39,6 @@ Terminal states are `completed`, `failed`, `cancelled`, and `expired`. A termina
 - Breaking semantic or type changes require a new schema major version.
 - Consumers must reject unsupported major versions and tolerate unknown additive fields only when the schema policy permits them.
 - Every persisted record and processing job must retain the schema version used at creation.
+
+
+- `schemas/transcript.v1.schema.json` — canonical provider-neutral transcript, timing, speaker, confidence, and provenance contract.
