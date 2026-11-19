@@ -176,7 +176,7 @@
       "title": "Implement isolated media inspection and validation adapter",
       "phase": 1,
       "priority": 3,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0009"
       ],
@@ -186,6 +186,49 @@
         "A separate full-file decode gate detects malformed and truncated audio; metadata probing alone is never treated as full decode validation.",
         "Failures use stable error codes and bounded probe/decode time, input size, probe parameters, and output.",
         "Fixtures and tests cover valid media, malformed metadata, unsupported containers, truncated media, and limit-exceeding inputs."
+      ],
+      "evidence": [
+        "src/voxpipe/media/probe.py — FFprobeMediaInspector with a:0/V:0 selectors, local-only protocol, timeouts, probe/analyze limits, output cap, stable errors",
+        "src/voxpipe/media/validation.py — FFmpegDecodeValidator for full-file audio decode with -xerror and err_detect=explode",
+        "tests/test_media_probe.py and tests/test_media_validation.py — mocked failures and real synthetic WAV, malformed bytes, and truncated WAV integration tests",
+        "GitHub Actions run 44441640109 — FFmpeg/ffprobe 8.0.1, repository validation passed, 39/39 tests passed"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0011",
+      "title": "Define object storage port and implement local filesystem adapter",
+      "phase": 1,
+      "priority": 4,
+      "status": "ready",
+      "depends_on": [
+        "VP-0008"
+      ],
+      "acceptance_criteria": [
+        "A provider-neutral object storage port defines put, get/open, head, and delete operations without exposing provider SDK types.",
+        "The local adapter writes atomically, prevents path traversal, verifies content length/checksum, and supports idempotent object keys.",
+        "Tests cover overwrite/conflict policy, missing objects, corrupted checksums, path traversal, interrupted writes, and deletion.",
+        "Storage references remain opaque and compatible with AudioAsset v1."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0012",
+      "title": "Implement batch ingestion application service",
+      "phase": 1,
+      "priority": 5,
+      "status": "planned",
+      "depends_on": [
+        "VP-0010",
+        "VP-0011"
+      ],
+      "acceptance_criteria": [
+        "The service accepts a staged local media file and authenticated tenant context, not a client-controlled filesystem path.",
+        "It creates an idempotent session, probes metadata, performs full decode validation, computes SHA-256, and stores the immutable asset.",
+        "Session and asset lifecycle transitions are explicit and invalid transitions fail closed.",
+        "Failures trigger bounded cleanup/compensation and never leave a completed session without an accepted asset.",
+        "Unit and integration tests cover duplicate requests, storage failures, parser failures, and tenant mismatch."
       ],
       "evidence": [],
       "blocked_reason": null
