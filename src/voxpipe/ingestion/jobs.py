@@ -228,18 +228,20 @@ class PostgresIngestionJobQueue:
         return dict(row)
 
     def cancel(self, tenant_id: str, job_id: str) -> bool:
-        """Atomically cancel a non-terminal session and its pending/leased job."""
+        """Atomically cancel a non-terminal session and its pending/leased job.
+
+        Lock order is session then job, matching the Go API store to avoid
+        deadlocks when cancellation requests race across runtimes.
+        """
         with self._tenant_connection(tenant_id) as connection:
-            job = connection.execute(
+            job_ref = connection.execute(
                 """
                 SELECT session_id FROM ingestion_jobs
                 WHERE tenant_id = %s AND job_id = %s
-                  AND state IN ('pending', 'leased')
-                FOR UPDATE
                 """,
                 (tenant_id, job_id),
             ).fetchone()
-            if job is None:
+            if job_ref is None:
                 return False
 
             session = connection.execute(
@@ -248,11 +250,23 @@ class PostgresIngestionJobQueue:
                 WHERE tenant_id = %s AND session_id = %s
                 FOR UPDATE
                 """,
-                (tenant_id, job["session_id"]),
+                (tenant_id, job_ref["session_id"]),
             ).fetchone()
             if session is None or session["state"] in {
                 "completed", "failed", "cancelled", "expired"
             }:
+                return False
+
+            job = connection.execute(
+                """
+                SELECT state FROM ingestion_jobs
+                WHERE tenant_id = %s AND job_id = %s
+                  AND state IN ('pending', 'leased')
+                FOR UPDATE
+                """,
+                (tenant_id, job_id),
+            ).fetchone()
+            if job is None:
                 return False
 
             connection.execute(
@@ -270,7 +284,7 @@ class PostgresIngestionJobQueue:
                     updated_at = now()
                 WHERE tenant_id = %s AND session_id = %s
                 """,
-                (tenant_id, job["session_id"]),
+                (tenant_id, job_ref["session_id"]),
             )
             connection.execute(
                 """
