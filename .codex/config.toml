@@ -1,2 +1,14 @@
 [agents]
 max_concurrent_threads_per_session = 4
+
+[agents.failure_triager]
+description = "Read-only CI and test failure investigator. Finds the earliest failing gate, extracts root causes from logs, and recommends regression coverage."
+config_file = "./agents/failure-triager.toml"
+
+[agents.security_reviewer]
+description = "Read-only security and privacy reviewer for VoxPipe authentication, tenant isolation, audio handling, upload staging, RLS, and data lifecycle."
+config_file = "./agents/security-reviewer.toml"
+
+[agents.contract_reviewer]
+description = "Read-only cross-runtime reviewer for VoxPipe OpenAPI, JSON Schema, PostgreSQL payloads, Go HTTP API, and Python ingestion workers."
+config_file = "./agents/contract-reviewer.toml"
