@@ -132,7 +132,7 @@
       "title": "Define canonical audio asset and ingestion session contracts",
       "phase": 1,
       "priority": 1,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0007"
       ],
