@@ -208,6 +208,36 @@ func TestAuthenticationAndTenantIsolation(t *testing.T) {
 	_ = token
 }
 
+func TestTenantCannotReadAnotherTenantsSession(t *testing.T) {
+	server, store, tenantA, tokenA := testServer(t)
+	content := []byte("tenant isolated upload")
+	digest := sha256.Sum256(content)
+	payload, _ := json.Marshal(map[string]any{
+		"expected_size_bytes": len(content),
+		"expected_sha256": hex.EncodeToString(digest[:]),
+		"source": map[string]any{"kind": "file_upload"},
+	})
+	create := httptest.NewRequest(http.MethodPost, "/v1/ingestions", bytes.NewReader(payload))
+	create.Header.Set("Authorization", "Bearer "+tokenA)
+	create.Header.Set("Idempotency-Key", "tenant-isolation-upload-001")
+	created := httptest.NewRecorder()
+	server.Handler().ServeHTTP(created, create)
+	if created.Code != http.StatusCreated { t.Fatalf("create failed: %s", created.Body.String()) }
+	sessionID := decodeResponse(t, created)["session_id"].(string)
+
+	tenantB := "33333333-3333-4333-8333-333333333333"
+	tokenB := "other-tenant-read-token"
+	digestB := sha256.Sum256([]byte(tokenB))
+	authB, err := NewStaticTokenAuthenticator([]string{
+		fmt.Sprintf("%x:%s:%s", digestB, tenantB, scopeIngestionRead),
+	})
+	if err != nil { t.Fatal(err) }
+	serverB, err := NewServer(store, authB, server.stager, 1024, time.Hour, 3)
+	if err != nil { t.Fatal(err) }
+	response := request(serverB.Handler(), http.MethodGet, "/v1/ingestions/"+sessionID, tokenB, nil)
+	if response.Code != http.StatusNotFound { t.Fatalf("cross-tenant read should be hidden, got %d", response.Code) }
+}
+
 func TestStagerRejectsOversizedAndChecksumMismatch(t *testing.T) {
 	stager,err:=NewLocalStager(t.TempDir()); if err!=nil { t.Fatal(err) }
 	tenant:="11111111-1111-4111-8111-111111111111"
