@@ -228,6 +228,14 @@ class SQLiteIngestionRepository:
             rows = connection.execute(
                 f"""SELECT payload_json FROM ingestion_sessions
                 WHERE state IN ({placeholders}){tenant_clause}
+                  AND (
+                    state <> 'created'
+                    OR (
+                        CAST(COALESCE(json_extract(payload_json, '$.upload.received_size_bytes'), 0) AS INTEGER) > 0
+                        AND CAST(json_extract(payload_json, '$.upload.received_size_bytes') AS INTEGER)
+                            = CAST(json_extract(payload_json, '$.upload.expected_size_bytes') AS INTEGER)
+                    )
+                  )
                   AND (json_extract(payload_json, '$.lease.expires_at') IS NULL
                        OR json_extract(payload_json, '$.lease.expires_at') <= ?)
                 ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
