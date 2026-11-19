@@ -43,7 +43,9 @@ A worker must:
 5. Classify failures; retry only transient failures and always pass a bounded delay.
 6. Treat lease loss as loss of authority: do not acknowledge or overwrite newer state.
 
-The queue currently provides the durable primitives. The worker loop, upload HTTP surface, and streaming staging lifecycle are the remaining parts of VP-0015.
+`IngestionJobWorker` now provides a single-job execution unit. It renews the queue lease on a background heartbeat, delegates media processing to the existing `IngestionService.resume_session`, classifies retryable session conflicts, applies bounded exponential backoff, and refuses to acknowledge a lost lease. The process supervisor/scheduler must invoke it per authorized tenant.
+
+The authenticated upload HTTP surface and streaming staging lifecycle remain the outstanding parts of VP-0015.
 
 ## Deliberate constraints
 
