@@ -72,3 +72,10 @@ Run per tenant with:
 PYTHONPATH=src python scripts/reconcile_ingestion.py --tenant-id <UUID>
 
 Required environment: VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, VOXPIPE_OBJECT_STORE_ROOT. API and worker must use the same private staging and object-store volumes. The operation is destructive but idempotent; it should be scheduled only after confirming the deployment's retention setting and backup policy.
+
+
+## API identity and abuse controls
+
+The Go API production mode validates RS256 JWT signatures against a trusted HTTPS JWKS endpoint, exact issuer and audience, expiry, not-before, UUID tenant mapping, and allowlisted ingestion scopes. Unknown signing key IDs trigger JWKS refresh. OAuth token introspection is required for every request so revoked/inactive tokens and identity-provider outages fail closed. Static SHA-256 grants require an explicit bootstrap/development mode.
+
+Tenant limits are enforced transactionally in PostgreSQL: reserved staged bytes and new-session rate are checked under a tenant advisory lock, and active upload leases enforce concurrent upload limits. Upload streams have a resettable inactivity deadline and a separate absolute duration ceiling. Defaults are 3 concurrent uploads, 2 GiB reserved staging bytes, 60 new sessions per minute, 60 seconds inactivity, and 30 minutes maximum body-read duration. Configure these against deployment capacity and customer commitments.

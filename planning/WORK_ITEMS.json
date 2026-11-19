@@ -421,7 +421,7 @@
       "title": "Harden production identity and upload abuse controls",
       "phase": 1,
       "priority": 11,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0015"
       ],
@@ -434,7 +434,10 @@
         "Security tests cover expired/revoked tokens, wrong audience/issuer, key rotation, cross-tenant tokens, slow uploads, quota exhaustion, and concurrent abuse."
       ],
       "evidence": [
-        "Production OIDC, tenant quota, and bounded-upload hardening is the next unblocked phase-1 task."
+        "internal/httpapi/oidc.go and oidc_test.go — RS256 JWKS validation, exact issuer/audience and time claims, UUID tenant mapping, allowlisted scopes, active-token introspection/revocation checks, key rotation refresh, and fail-closed provider errors.",
+        "internal/httpapi/store.go — PostgreSQL advisory-lock reservations for staged bytes and rolling ingestion rate, plus concurrent upload lease quotas; terminal staging reservations remain counted until cleanup reconciliation records completion.",
+        "internal/httpapi/upload_limits.go and server.go — resettable inactivity and absolute upload deadlines, stable 408/429 errors, and server-authoritative limits.",
+        "internal/httpapi/store_integration_test.go, upload_limits_test.go, and server_test.go — staged-byte, rate, concurrent-upload, slow-body, OIDC claims/revocation/rotation, and server-authoritative policy coverage."
       ],
       "blocked_reason": null
     },

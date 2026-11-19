@@ -81,14 +81,28 @@ func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, e
 	return auth, nil
 }
 
-// NewAuthenticatorFromEnv reads semicolon-separated digest:tenant:scopes grants.
-// VOXPIPE_API_TOKEN_HASHES must contain SHA-256 digests, not plaintext tokens.
-func NewAuthenticatorFromEnv() (*StaticTokenAuthenticator, error) {
-	value := strings.TrimSpace(os.Getenv("VOXPIPE_API_TOKEN_HASHES"))
-	if value == "" {
-		return nil, fmt.Errorf("VOXPIPE_API_TOKEN_HASHES is required")
+// NewAuthenticatorFromEnv requires an explicit authentication mode. Static
+// digest grants are retained only for controlled development/bootstrap use.
+func NewAuthenticatorFromEnv() (Authenticator, error) {
+	switch strings.TrimSpace(os.Getenv("VOXPIPE_AUTH_MODE")) {
+	case "static":
+		value := strings.TrimSpace(os.Getenv("VOXPIPE_API_TOKEN_HASHES"))
+		if value == "" {
+			return nil, fmt.Errorf("VOXPIPE_API_TOKEN_HASHES is required in static mode")
+		}
+		return NewStaticTokenAuthenticator(strings.Split(value, ";"))
+	case "oidc":
+		return NewOIDCAuthenticator(OIDCConfig{
+			Issuer: os.Getenv("VOXPIPE_OIDC_ISSUER"),
+			Audience: os.Getenv("VOXPIPE_OIDC_AUDIENCE"),
+			JWKSURL: os.Getenv("VOXPIPE_OIDC_JWKS_URL"),
+			IntrospectionURL: os.Getenv("VOXPIPE_OIDC_INTROSPECTION_URL"),
+			ClientID: os.Getenv("VOXPIPE_OIDC_CLIENT_ID"),
+			ClientSecret: os.Getenv("VOXPIPE_OIDC_CLIENT_SECRET"),
+		})
+	default:
+		return nil, fmt.Errorf("VOXPIPE_AUTH_MODE must explicitly be oidc or static")
 	}
-	return NewStaticTokenAuthenticator(strings.Split(value, ";"))
 }
 
 func (a *StaticTokenAuthenticator) Authenticate(token string) (Principal, error) {

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: VoxPipe Ingestion API
   version: 1.0.0
-  description: Authenticated, tenant-scoped batch media ingestion. Audio bytes are streamed separately from JSON metadata.
+  description: Authenticated, tenant-scoped batch media ingestion. Production uses OIDC JWTs with introspection; audio bytes are streamed separately from JSON metadata.
 servers:
   - url: https://api.example.invalid
 security:
@@ -39,6 +39,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/ingestions/{session_id}/content:
     put:
       operationId: uploadIngestionContent
@@ -63,6 +65,10 @@ paths:
           $ref: '#/components/responses/Conflict'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '408':
+          $ref: '#/components/responses/UploadTimeout'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/ingestions/{session_id}/finalize:
     post:
       operationId: finalizeIngestion
@@ -174,7 +180,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: Opaque
+      bearerFormat: JWT
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -384,6 +390,23 @@ components:
             $ref: '#/components/schemas/Error'
     PayloadTooLarge:
       description: Upload exceeds configured or declared byte limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UploadTimeout:
+      description: Upload exceeded the configured inactivity or total duration deadline
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Tenant upload quota or ingestion rate limit was exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
       content:
         application/json:
           schema:

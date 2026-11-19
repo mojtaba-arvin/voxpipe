@@ -31,6 +31,16 @@ func main() {
 	if err != nil { log.Fatalf("configure job attempts: %v", err) }
 	retentionDays, err := envInt("VOXPIPE_DEFAULT_RETENTION_DAYS", 0)
 	if err != nil { log.Fatalf("configure retention policy: %v", err) }
+	maxConcurrentUploads, err := envInt("VOXPIPE_MAX_CONCURRENT_UPLOADS_PER_TENANT", 3)
+	if err != nil { log.Fatalf("configure concurrent upload quota: %v", err) }
+	maxStagedBytes, err := envInt64("VOXPIPE_MAX_STAGED_BYTES_PER_TENANT", 2*1024*1024*1024)
+	if err != nil { log.Fatalf("configure staged byte quota: %v", err) }
+	maxIngestionsPerMinute, err := envInt("VOXPIPE_MAX_INGESTIONS_PER_MINUTE_PER_TENANT", 60)
+	if err != nil { log.Fatalf("configure ingestion rate limit: %v", err) }
+	uploadIdleSeconds, err := envInt64("VOXPIPE_UPLOAD_INACTIVITY_TIMEOUT_SECONDS", 60)
+	if err != nil { log.Fatalf("configure upload inactivity timeout: %v", err) }
+	uploadMaxSeconds, err := envInt64("VOXPIPE_UPLOAD_MAX_DURATION_SECONDS", 1800)
+	if err != nil { log.Fatalf("configure upload maximum duration: %v", err) }
 
 	store, err := httpapi.NewPostgresStore(ctx, dsn)
 	if err != nil { log.Fatalf("connect database: %v", err) }
@@ -40,6 +50,8 @@ func main() {
 	api, err := httpapi.NewServer(store, auth, stager, maxUpload, time.Duration(sessionTTLSeconds)*time.Second, maxAttempts)
 	if err != nil { log.Fatalf("configure HTTP API: %v", err) }
 	if err := api.SetRetentionDays(retentionDays); err != nil { log.Fatalf("configure retention policy: %v", err) }
+	if err := api.SetTenantLimits(httpapi.TenantLimits{MaxConcurrentUploads: maxConcurrentUploads, MaxStagedBytes: maxStagedBytes, MaxIngestionsPerMinute: maxIngestionsPerMinute}); err != nil { log.Fatalf("configure tenant quotas: %v", err) }
+	if err := api.SetUploadTimeouts(time.Duration(uploadIdleSeconds)*time.Second, time.Duration(uploadMaxSeconds)*time.Second); err != nil { log.Fatalf("configure upload deadlines: %v", err) }
 
 	server := &http.Server{
 		Addr:              envOr("VOXPIPE_LISTEN_ADDR", ":8080"),

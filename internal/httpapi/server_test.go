@@ -39,7 +39,7 @@ func cloneMap(input map[string]any) map[string]any {
 }
 func sessionKey(tenant, id string) string { return tenant + "/" + id }
 
-func (m *memoryStore) CreateSession(_ context.Context, tenant, key string, session map[string]any) (map[string]any, bool, error) {
+func (m *memoryStore) CreateSession(_ context.Context, tenant, key string, session map[string]any, limits TenantLimits) (map[string]any, bool, error) {
 	m.mu.Lock(); defer m.mu.Unlock()
 	unique := tenant + "/" + key
 	if id, ok := m.keys[unique]; ok { return cloneMap(m.sessions[sessionKey(tenant,id)]), false, nil }
@@ -77,7 +77,7 @@ func (m *memoryStore) GetAsset(_ context.Context, tenant, id string) (map[string
 func (m *memoryStore) SearchAssets(_ context.Context, tenant, query string, limit int) ([]map[string]any, error) {
 	return []map[string]any{}, nil
 }
-func (m *memoryStore) BeginUpload(_ context.Context, tenant, session, owner string, leaseSeconds int) error { return nil }
+func (m *memoryStore) BeginUpload(_ context.Context, tenant, session, owner string, leaseSeconds, maxConcurrent int) error { return nil }
 func (m *memoryStore) EndUpload(_ context.Context, tenant, session, owner, outcome, errorCode string) error { return nil }
 func (m *memoryStore) RecordAuditEvent(_ context.Context, tenant, session, asset, eventType, outcome, errorCode string, metadata map[string]any) error { return nil }
 func (m *memoryStore) Cancel(_ context.Context,tenant,id string)(string,error){

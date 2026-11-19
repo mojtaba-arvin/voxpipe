@@ -32,7 +32,16 @@ type Server struct {
 	sessionTTL   time.Duration
 	maxAttempts  int
 	retentionDays int
+	tenantLimits TenantLimits
+	uploadIdleTimeout time.Duration
+	uploadMaxDuration time.Duration
 	clock        func() time.Time
+}
+
+type TenantLimits struct {
+	MaxConcurrentUploads int
+	MaxStagedBytes int64
+	MaxIngestionsPerMinute int
 }
 
 type CreateIngestionRequest struct {
@@ -59,7 +68,25 @@ func NewServer(store Store, auth Authenticator, stager *LocalStager, maxUpload i
 	return &Server{
 		store: store, auth: auth, stager: stager, maxUpload: maxUpload,
 		sessionTTL: sessionTTL, maxAttempts: maxAttempts, clock: time.Now,
+		tenantLimits: TenantLimits{MaxConcurrentUploads: 3, MaxStagedBytes: 2 << 30, MaxIngestionsPerMinute: 60},
 	}, nil
+}
+
+func (s *Server) SetTenantLimits(limits TenantLimits) error {
+	if limits.MaxConcurrentUploads < 1 || limits.MaxConcurrentUploads > 100 || limits.MaxStagedBytes < 1 || limits.MaxIngestionsPerMinute < 1 || limits.MaxIngestionsPerMinute > 100000 {
+		return fmt.Errorf("tenant quota limits are invalid")
+	}
+	s.tenantLimits = limits
+	return nil
+}
+
+func (s *Server) SetUploadTimeouts(idleTimeout, maxDuration time.Duration) error {
+	if idleTimeout < time.Second || maxDuration < idleTimeout || maxDuration > 24*time.Hour {
+		return fmt.Errorf("upload timeouts must be positive and max duration must be at least the inactivity timeout")
+	}
+	s.uploadIdleTimeout = idleTimeout
+	s.uploadMaxDuration = maxDuration
+	return nil
 }
 
 func (s *Server) SetRetentionDays(days int) error {
@@ -147,7 +174,7 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 		session["retention_expires_at"] = now.Add(time.Duration(s.retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
 	}
 
-	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session)
+	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session, s.tenantLimits)
 	if err != nil { writeStoreError(w, err); return }
 	savedUpload, _ := saved["upload"].(map[string]any)
 	if !sameCreateRequest(saved, savedUpload, request) {
@@ -187,7 +214,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 	}
 	ownerID, err := newUUID()
 	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to reserve upload lease"); return }
-	if err := s.store.BeginUpload(r.Context(), principal.TenantID, sessionID, ownerID, min(31622400, max(1, int((s.sessionTTL + time.Hour).Seconds())))); err != nil {
+	if err := s.store.BeginUpload(r.Context(), principal.TenantID, sessionID, ownerID, min(31622400, max(1, int((s.sessionTTL + time.Hour).Seconds()))), s.tenantLimits.MaxConcurrentUploads); err != nil {
 		writeStoreError(w, err)
 		return
 	}
@@ -209,7 +236,18 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "UPLOAD_SIZE_MISMATCH", "Content-Length does not match declared upload size")
 		return
 	}
-	written, _, err := s.stager.Write(principal.TenantID, sessionID, r.Body, expectedSize, s.maxUpload, expectedDigest)
+	var uploadReader io.Reader = r.Body
+	var responseController *http.ResponseController
+	if s.uploadIdleTimeout > 0 && s.uploadMaxDuration > 0 {
+		responseController = http.NewResponseController(w)
+		uploadReader = &boundedUploadReader{reader: r.Body, controller: responseController, started: time.Now(), inactivityTimeout: s.uploadIdleTimeout, maxDuration: s.uploadMaxDuration}
+	}
+	written, _, err := s.stager.Write(principal.TenantID, sessionID, uploadReader, expectedSize, s.maxUpload, expectedDigest)
+	if responseController != nil { _ = responseController.SetReadDeadline(time.Time{}) }
+	if errors.Is(err, ErrUploadTimeout) {
+		writeError(w, http.StatusRequestTimeout, "UPLOAD_TIMEOUT", "Upload exceeded its configured duration or inactivity limit")
+		return
+	}
 	if errors.Is(err, ErrUploadTooLarge) {
 		writeError(w, http.StatusRequestEntityTooLarge, "UPLOAD_SIZE_LIMIT", "Upload exceeds configured limits")
 		return
@@ -469,6 +507,11 @@ func writeStoreError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found")
 	case errors.Is(err, ErrConflict):
 		writeError(w, http.StatusConflict, "STATE_CONFLICT", "Ingestion session changed or is not in the required state")
+	case errors.Is(err, ErrQuotaExceeded):
+		writeError(w, http.StatusTooManyRequests, "TENANT_QUOTA_EXCEEDED", "Tenant upload capacity is exhausted")
+	case errors.Is(err, ErrRateLimited):
+		w.Header().Set("Retry-After", "60")
+		writeError(w, http.StatusTooManyRequests, "TENANT_RATE_LIMITED", "Tenant ingestion rate limit is exceeded")
 	default:
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "The request could not be completed")
 	}

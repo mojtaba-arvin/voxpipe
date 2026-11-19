@@ -14,17 +14,19 @@ import (
 var (
 	ErrNotFound = errors.New("resource not found")
 	ErrConflict = errors.New("resource state conflict")
+	ErrQuotaExceeded = errors.New("tenant quota exceeded")
+	ErrRateLimited = errors.New("tenant ingestion rate limit exceeded")
 )
 
 type Store interface {
-	CreateSession(context.Context, string, string, map[string]any) (map[string]any, bool, error)
+	CreateSession(context.Context, string, string, map[string]any, TenantLimits) (map[string]any, bool, error)
 	GetSession(context.Context, string, string) (map[string]any, error)
 	UpdateSession(context.Context, string, string, string, map[string]any) error
 	FinalizeSession(context.Context, string, string, string, int, map[string]any) (map[string]any, error)
 	GetStatus(context.Context, string, string) (map[string]any, map[string]any, error)
 	GetAsset(context.Context, string, string) (map[string]any, error)
 	SearchAssets(context.Context, string, string, int) ([]map[string]any, error)
-	BeginUpload(context.Context, string, string, string, int) error
+	BeginUpload(context.Context, string, string, string, int, int) error
 	EndUpload(context.Context, string, string, string, string, string) error
 	RecordAuditEvent(context.Context, string, string, string, string, string, string, map[string]any) error
 	Cancel(context.Context, string, string) (string, error)
@@ -56,26 +58,51 @@ func decodePayload(payload []byte) (map[string]any, error) {
 	return result, nil
 }
 
-func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string, session map[string]any) (map[string]any, bool, error) {
-	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return nil, false, err }; defer tx.Rollback(ctx)
-	payload, err := json.Marshal(session); if err != nil { return nil, false, err }
+func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string, session map[string]any, limits TenantLimits) (map[string]any, bool, error) {
+	tx, err := s.beginTenant(ctx, tenantID)
+	if err != nil { return nil, false, err }
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", tenantID); err != nil { return nil, false, err }
 	var result []byte
-	err = tx.QueryRow(ctx, `
-        INSERT INTO ingestion_sessions (session_id, tenant_id, idempotency_key, state, payload, updated_at)
-        VALUES ($1::text::uuid, $2::text::uuid, $3, $4, $5::jsonb, $6::text::timestamptz)
-        ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING payload
-    `, session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
+	err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::text::uuid AND idempotency_key=$2", tenantID, key).Scan(&result)
+	if err == nil {
+		if err := tx.Commit(ctx); err != nil { return nil, false, err }
+		value, decodeErr := decodePayload(result)
+		return value, false, decodeErr
+	}
+	if !errors.Is(err, pgx.ErrNoRows) { return nil, false, err }
+	upload, ok := session["upload"].(map[string]any)
+	if !ok { return nil, false, ErrConflict }
+	expectedBytes, ok := numberInt64(upload["expected_size_bytes"])
+	if !ok || expectedBytes < 1 { return nil, false, ErrConflict }
+	if limits.MaxIngestionsPerMinute > 0 {
+		var recent int
+		err = tx.QueryRow(ctx, "SELECT count(*) FROM ingestion_audit_events WHERE tenant_id=$1::text::uuid AND event_type='ingestion.created' AND occurred_at > now() - interval '1 minute'", tenantID).Scan(&recent)
+		if err != nil { return nil, false, err }
+		if recent >= limits.MaxIngestionsPerMinute { return nil, false, ErrRateLimited }
+	}
+	if limits.MaxStagedBytes > 0 {
+		var reserved int64
+		err = tx.QueryRow(ctx, "SELECT COALESCE(sum(CASE WHEN payload #>> '{upload,expected_size_bytes}' ~ '^[0-9]+$' THEN (payload #>> '{upload,expected_size_bytes}')::bigint ELSE 0 END),0) FROM ingestion_sessions WHERE tenant_id=$1::text::uuid AND payload ? 'staging_reference' AND NOT (payload ? 'staging_cleanup_completed_at')", tenantID).Scan(&reserved)
+		if err != nil { return nil, false, err }
+		if reserved > limits.MaxStagedBytes || expectedBytes > limits.MaxStagedBytes-reserved { return nil, false, ErrQuotaExceeded }
+	}
+	payload, err := json.Marshal(session)
+	if err != nil { return nil, false, err }
+	err = tx.QueryRow(ctx, "INSERT INTO ingestion_sessions (session_id, tenant_id, idempotency_key, state, payload, updated_at) VALUES ($1::text::uuid, $2::text::uuid, $3, $4, $5::jsonb, $6::text::timestamptz) ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING payload", session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
 	if err == nil {
 		if err := insertAuditEvent(ctx, tx, tenantID, session["session_id"].(string), "", "ingestion.created", "succeeded", "", nil); err != nil { return nil, false, err }
 		if err := tx.Commit(ctx); err != nil { return nil, false, err }
-		value, err := decodePayload(result); return value, true, err
+		value, decodeErr := decodePayload(result)
+		return value, true, decodeErr
 	}
 	if !errors.Is(err, pgx.ErrNoRows) { return nil, false, err }
 	err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::text::uuid AND idempotency_key=$2", tenantID, key).Scan(&result)
 	if errors.Is(err, pgx.ErrNoRows) { return nil, false, ErrConflict }
 	if err != nil { return nil, false, err }
 	if err := tx.Commit(ctx); err != nil { return nil, false, err }
-	value, err := decodePayload(result); return value, false, err
+	value, decodeErr := decodePayload(result)
+	return value, false, decodeErr
 }
 
 func (s *PostgresStore) GetSession(ctx context.Context, tenantID, sessionID string) (map[string]any, error) {
@@ -102,7 +129,7 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
 	return tx.Commit(ctx)
 }
 
-func (s *PostgresStore) BeginUpload(ctx context.Context, tenantID, sessionID, ownerID string, leaseSeconds int) error {
+func (s *PostgresStore) BeginUpload(ctx context.Context, tenantID, sessionID, ownerID string, leaseSeconds, maxConcurrent int) error {
 	if leaseSeconds < 1 || leaseSeconds > 31622400 { return fmt.Errorf("upload lease must be between 1 and 31622400 seconds") }
 	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
 	var raw []byte
@@ -115,6 +142,15 @@ func (s *PostgresStore) BeginUpload(ctx context.Context, tenantID, sessionID, ow
 	if !ok { return ErrConflict }
 	expiry, parseErr := time.Parse(time.RFC3339Nano, expiresAt)
 	if parseErr != nil || !expiry.After(time.Now().UTC()) { return ErrConflict }
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", tenantID); err != nil { return err }
+	var sameSessionActive bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM ingestion_upload_leases WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid AND lease_expires_at > now())", tenantID, sessionID).Scan(&sameSessionActive); err != nil { return err }
+	if sameSessionActive { return ErrConflict }
+	if maxConcurrent > 0 {
+		var active int
+		if err := tx.QueryRow(ctx, "SELECT count(*) FROM ingestion_upload_leases WHERE tenant_id=$1::text::uuid AND lease_expires_at > now()", tenantID).Scan(&active); err != nil { return err }
+		if active >= maxConcurrent { return ErrQuotaExceeded }
+	}
 	var claimed string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO ingestion_upload_leases (tenant_id, session_id, owner_id, lease_expires_at, created_at, updated_at)
