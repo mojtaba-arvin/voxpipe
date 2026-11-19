@@ -317,9 +317,12 @@
         "Integration tests cover duplicate upload requests, interrupted transfers, worker restart, cancellation races, tenant isolation, and retry exhaustion."
       ],
       "evidence": [
-        "migrations/postgres/0003_create_durable_ingestion_jobs.sql — tenant-scoped queue schema, session foreign key, lease invariants, claim index, and forced RLS",
+        "migrations/postgres/0003_create_durable_ingestion_jobs.sql — tenant-scoped queue schema, composite tenant/session foreign key, lease invariants, claim index, and forced RLS",
         "src/voxpipe/ingestion/jobs.py — idempotent enqueue, atomic SKIP LOCKED claims, expiring leases, heartbeat, stale-owner fencing, bounded retry/dead-letter, and atomic session/job cancellation",
-        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS tests (CI verification pending)"
+        "src/voxpipe/ingestion/worker.py — per-tenant job execution, background lease heartbeat, session resume integration, bounded exponential retry, and stale-lease acknowledgement fencing",
+        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS tests (CI verification pending)",
+        "tests/test_ingestion_worker.py — worker success, retry classification, dead-letter, stale lease, and tenant/worker identity tests (CI verification pending)",
+        "docs/architecture/durable-ingestion-queue.md — queue state machine, RLS boundary, worker contract, and operational constraints"
       ],
       "blocked_reason": null
     },
