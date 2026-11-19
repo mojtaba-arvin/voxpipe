@@ -31,6 +31,10 @@ CREATE TABLE ingestion_jobs (
 CREATE INDEX idx_ingestion_jobs_claim
     ON ingestion_jobs (tenant_id, state, available_at, created_at);
 
+CREATE INDEX idx_ingestion_jobs_expired_lease
+    ON ingestion_jobs (tenant_id, lease_expires_at)
+    WHERE state = 'leased';
+
 ALTER TABLE ingestion_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingestion_jobs FORCE ROW LEVEL SECURITY;
 
