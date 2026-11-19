@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -278,6 +279,88 @@ func TestCancelReceivingSessionRemovesStagedBytes(t *testing.T) {
 	if cancelled.Code != http.StatusAccepted { t.Fatalf("cancel failed: %s", cancelled.Body.String()) }
 	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err == nil {
 		t.Fatal("staged file remained after pre-processing cancellation")
+	}
+}
+
+type gatedUploadReader struct {
+	data []byte
+	started chan struct{}
+	release chan struct{}
+	read bool
+}
+
+func (reader *gatedUploadReader) Read(buffer []byte) (int, error) {
+	if reader.read {
+		return 0, io.EOF
+	}
+	reader.read = true
+	close(reader.started)
+	<-reader.release
+	return copy(buffer, reader.data), nil
+}
+
+func TestCancellationRacingWithUploadDoesNotLeaveStagedBytes(t *testing.T) {
+	server, _, tenantID, token := testServer(t)
+	handler := server.Handler()
+	content := []byte("upload racing with cancellation")
+	digest := sha256.Sum256(content)
+	payload, _ := json.Marshal(map[string]any{
+		"expected_size_bytes": len(content),
+		"expected_sha256": hex.EncodeToString(digest[:]),
+		"source": map[string]any{"kind": "file_upload"},
+	})
+	create := httptest.NewRequest(http.MethodPost, "/v1/ingestions", bytes.NewReader(payload))
+	create.Header.Set("Authorization", "Bearer "+token)
+	create.Header.Set("Idempotency-Key", "cancel-race-upload-0001")
+	created := httptest.NewRecorder()
+	handler.ServeHTTP(created, create)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create failed: %s", created.Body.String())
+	}
+	sessionID := decodeResponse(t, created)["session_id"].(string)
+
+	reader := &gatedUploadReader{
+		data: content,
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	upload := httptest.NewRequest(
+		http.MethodPut,
+		"/v1/ingestions/"+sessionID+"/content",
+		reader,
+	)
+	upload.Header.Set("Authorization", "Bearer "+token)
+	upload.Header.Set("Content-Type", "application/octet-stream")
+	uploadResult := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, upload)
+		uploadResult <- recorder
+	}()
+
+	<-reader.started
+	cancelled := request(handler, http.MethodDelete, "/v1/ingestions/"+sessionID, token, nil)
+	if cancelled.Code != http.StatusAccepted {
+		close(reader.release)
+		t.Fatalf("cancel failed: %s", cancelled.Body.String())
+	}
+	close(reader.release)
+
+	var uploaded *httptest.ResponseRecorder
+	select {
+	case uploaded = <-uploadResult:
+	case <-time.After(3 * time.Second):
+		t.Fatal("upload handler did not finish after cancellation")
+	}
+	if uploaded.Code != http.StatusConflict {
+		t.Fatalf("racing upload should lose the session state transition, got %d: %s", uploaded.Code, uploaded.Body.String())
+	}
+	status := request(handler, http.MethodGet, "/v1/ingestions/"+sessionID, token, nil)
+	if status.Code != http.StatusOK || decodeResponse(t, status)["state"] != "cancelled" {
+		t.Fatalf("session did not remain cancelled: %d %s", status.Code, status.Body.String())
+	}
+	if _, _, err := server.stager.Verify(tenantID, sessionID); err == nil {
+		t.Fatal("upload racing with cancellation left published staged bytes")
 	}
 }
 
