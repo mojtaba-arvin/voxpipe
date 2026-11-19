@@ -24,6 +24,9 @@ path + tenant + request validation
 SHA-256 fingerprint / idempotency lookup
     |
     v
+claim expiring worker lease
+    |
+    v
 created -> receiving -> finalizing
     |
     v
@@ -62,7 +65,7 @@ The object store verifies that the bytes it stores match the digest computed bef
 
 - Media, decode, storage, and repository errors map to stable error codes.
 - A failed operation attempts to remove any newly stored object and asset metadata.
-- Cleanup failure is surfaced as `INGESTION_CLEANUP_FAILED`; an orphan reconciler is still required for failures that cannot be compensated synchronously.
+- Cleanup failure is surfaced as `INGESTION_CLEANUP_FAILED`; the orphan reconciler retries cleanup for artifacts associated with failed sessions.
 - A completed session is returned only after the asset metadata commit succeeds.
 - A recovery worker scans sessions with absent/expired leases and resumes them using the same asset ID and object key.
 - Asset timestamps are derived from the session creation time so a restart after object/asset persistence can safely replay idempotent writes.
