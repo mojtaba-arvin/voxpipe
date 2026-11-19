@@ -281,7 +281,7 @@ class FFprobeMediaInspector:
 
     @staticmethod
     def _duration_ms(format_duration: Any, stream_duration: Any) -> int | None:
-        for value in (format_duration, stream_duration):
+        for value in (stream_duration, format_duration):
             try:
                 seconds = float(value)
             except (TypeError, ValueError, OverflowError):
