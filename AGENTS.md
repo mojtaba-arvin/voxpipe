@@ -41,6 +41,7 @@ Use explicit states: `planned`, `ready`, `in_progress`, `blocked`, `review`, `do
 ## 4. Engineering rules
 
 - Prefer small, reversible changes over broad rewrites.
+- Commit by coherent task slice: bundle implementation, tests, and required docs into one logical commit; never create a commit per file or per tiny correction. Run focused checks before committing and inspect the complete diff. If a tool forces file-scoped commits, keep the slice coherent and squash the PR when approved.
 - Do not introduce a dependency without a concrete use case and a recorded reason.
 - Do not hardcode provider credentials, tokens, personal data, or production endpoints.
 - Use least-privilege credentials and keep secrets out of logs, traces, fixtures, and commits.
