@@ -27,6 +27,10 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ```text
 .
 ├── .github/workflows/validate.yml
+├── AGENTS.md
+├── Makefile
+├── README.md
+├── go.mod
 ├── cmd/voxpipe-api/main.go
 ├── internal/httpapi/
 │   ├── auth.go
@@ -36,32 +40,20 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── uuid.go
 │   ├── server_test.go
 │   └── store_integration_test.go
-├── go.mod
-├── AGENTS.md
-├── Makefile
-├── README.md
 ├── contracts/
-│   ├── openapi/
-│   │   └── ingestion.v1.yaml
+│   ├── openapi/ingestion.v1.yaml
 │   ├── examples/
 │   └── schemas/
 ├── docs/
 │   ├── ROADMAP.md
 │   ├── architecture/
-│   │   ├── overview.md
-│   │   ├── upload-api.md
-│   │   ├── storage.md
-│   │   ├── ingestion.md
-│   │   └── postgres.md
 │   ├── decisions/
-│   │   └── ADR-0004-go-http-surface-python-worker.md
 │   └── operations/
-├── migrations/
-│   └── postgres/
-│       ├── 0001_create_ingestion_tables.sql
-│       └── 0002_add_tenant_rls_and_updated_at.sql
-├── planning/
-│   └── WORK_ITEMS.json
+├── migrations/postgres/
+│   ├── 0001_create_ingestion_tables.sql
+│   ├── 0002_add_tenant_rls_and_updated_at.sql
+│   └── 0003_create_durable_ingestion_jobs.sql
+├── planning/WORK_ITEMS.json
 ├── requirements-dev.txt
 ├── requirements-postgres.txt
 ├── scripts/
@@ -69,11 +61,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   └── run_ingestion_worker.py
 ├── src/voxpipe/
 │   ├── media/
-│   │   ├── probe.py
-│   │   └── validation.py
 │   ├── storage/
-│   │   ├── ports.py
-│   │   └── local.py
 │   └── ingestion/
 │       ├── repository.py
 │       ├── postgres.py
@@ -82,17 +70,14 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │       ├── service.py
 │       └── recovery.py
 └── tests/
-    ├── test_ingestion_worker.py
     ├── test_contract_schemas.py
     ├── test_media_probe.py
     ├── test_media_validation.py
     ├── test_local_storage.py
     ├── test_ingestion_service.py
     ├── test_ingestion_recovery.py
-    ├── test_postgres_repository.py
-    └── internal/httpapi (Go API and PostgreSQL integration tests)
-```
-
+    ├── test_ingestion_worker.py
+    └── test_postgres_repository.py
 ## Quick start
 
 Requirements: Python 3.11+ and Make. The repository pins Python 3.12 in `.python-version`.
