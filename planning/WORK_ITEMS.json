@@ -23,13 +23,16 @@
       "title": "Define contribution and pull request templates",
       "phase": 0,
       "priority": 2,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Contribution guidance explains setup, checks, branch and commit expectations.",
         "Pull request template requires scope, verification evidence, risks, and linked work item."
       ],
-      "evidence": [],
+      "evidence": [
+        "CONTRIBUTING.md",
+        "/.github/pull_request_template.md"
+      ],
       "blocked_reason": null
     },
     {
@@ -37,14 +40,16 @@
       "title": "Define security, privacy, and audio data lifecycle baseline",
       "phase": 0,
       "priority": 3,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Threat boundaries, sensitive data classes, and trust assumptions are documented.",
         "Retention, deletion propagation, access control, and audit requirements are specified.",
         "Audio/transcript prompt-injection and tenant-isolation risks are addressed."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/operations/security-and-data-lifecycle.md"
+      ],
       "blocked_reason": null
     },
     {
@@ -52,14 +57,16 @@
       "title": "Compare durable workflow and agent orchestration options",
       "phase": 0,
       "priority": 4,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "At least three viable approaches are compared using current official documentation.",
         "Comparison covers durability, retries, human/agent task handoff, language support, operations, and licensing.",
         "Recommendation and unresolved assumptions are recorded in an ADR or research note."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/research/durable-orchestration-options.md (Temporal, DBOS, Restate; official docs, agent handoff patterns, and upstream licenses checked 2026-11-19)"
+      ],
       "blocked_reason": null
     },
     {
@@ -67,13 +74,15 @@
       "title": "Define versioning, compatibility, and release policy",
       "phase": 0,
       "priority": 5,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Public API and event compatibility expectations are documented.",
         "Versioning, deprecation, release, and rollback rules are documented."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/operations/versioning-and-release-policy.md"
+      ],
       "blocked_reason": null
     },
     {
@@ -82,7 +91,9 @@
       "phase": 0,
       "priority": 6,
       "status": "planned",
-      "depends_on": ["VP-0001"],
+      "depends_on": [
+        "VP-0001"
+      ],
       "acceptance_criteria": [
         "A clean checkout has documented commands for setup and validation.",
         "Local checks do not require paid services or production credentials."
