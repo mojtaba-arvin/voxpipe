@@ -161,7 +161,8 @@ func (s *LocalStager) paths(tenantID, sessionID string) (string, string, string,
 	}
 	directory := filepath.Join(s.root, tenantID, sessionID)
 	target := filepath.Join(directory, "source")
-	if !strings.HasPrefix(target, s.root+string(os.PathSeparator)) {
+	relative, relErr := filepath.Rel(s.root, target)
+	if relErr != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
 		return "", "", "", fmt.Errorf("staging path escaped configured root")
 	}
 	return directory, target, reference, nil
