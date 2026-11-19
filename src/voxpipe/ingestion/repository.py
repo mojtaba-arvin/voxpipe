@@ -27,8 +27,8 @@ class IngestionRepositoryPort(Protocol):
     def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None: ...
     def delete_asset(self, tenant_id: str, asset_id: str) -> bool: ...
     def claim_session(self, tenant_id: str, session_id: str, worker_id: str, now: str, lease_expires_at: str) -> dict[str, Any] | None: ...
-    def list_recoverable_sessions(self, now: str, limit: int) -> list[dict[str, Any]]: ...
-    def list_sessions_by_state(self, state: str, limit: int) -> list[dict[str, Any]]: ...
+    def list_recoverable_sessions(self, now: str, limit: int, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
+    def list_sessions_by_state(self, state: str, limit: int, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
 
 
 class SQLiteIngestionRepository:
@@ -205,30 +205,49 @@ class SQLiteIngestionRepository:
             connection.commit()
             return session
 
-    def list_recoverable_sessions(self, now: str, limit: int = 100) -> list[dict[str, Any]]:
+    def list_recoverable_sessions(
+        self,
+        now: str,
+        limit: int = 100,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
         states = ("created", "receiving", "finalizing", "queued", "processing")
         placeholders = ",".join("?" for _ in states)
+        tenant_clause = " AND tenant_id = ?" if tenant_id is not None else ""
+        parameters: tuple[Any, ...] = (*states, now, limit)
+        if tenant_id is not None:
+            parameters = (*states, tenant_id, now, limit)
         with closing(self._connect()) as connection:
             rows = connection.execute(
                 f"""SELECT payload_json FROM ingestion_sessions
-                WHERE state IN ({placeholders})
+                WHERE state IN ({placeholders}){tenant_clause}
                   AND (json_extract(payload_json, '$.lease.expires_at') IS NULL
                        OR json_extract(payload_json, '$.lease.expires_at') <= ?)
                 ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
-                (*states, now, limit),
+                parameters,
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
 
-    def list_sessions_by_state(self, state: str, limit: int = 100) -> list[dict[str, Any]]:
+    def list_sessions_by_state(
+        self,
+        state: str,
+        limit: int = 100,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
+        tenant_clause = " AND tenant_id = ?" if tenant_id is not None else ""
+        parameters: tuple[Any, ...] = (state, limit)
+        if tenant_id is not None:
+            parameters = (state, tenant_id, limit)
         with closing(self._connect()) as connection:
             rows = connection.execute(
-                """SELECT payload_json FROM ingestion_sessions
-                WHERE state = ? ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
-                (state, limit),
+                f"""SELECT payload_json FROM ingestion_sessions
+                WHERE state = ?{tenant_clause}
+                ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
+                parameters,
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
 
