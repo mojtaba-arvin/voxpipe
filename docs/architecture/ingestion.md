@@ -65,7 +65,7 @@ The object store verifies that the bytes it stores match the digest computed bef
 
 - Media, decode, storage, and repository errors map to stable error codes.
 - A failed operation attempts to remove any newly stored object and asset metadata.
-- Cleanup failure is surfaced as `INGESTION_CLEANUP_FAILED`; the orphan reconciler retries cleanup for artifacts associated with failed sessions.
+- Cleanup failure is surfaced as `INGESTION_CLEANUP_FAILED`; the orphan reconciler retries cleanup for artifacts associated with failed or expired sessions.
 - A completed session is returned only after the asset metadata commit succeeds.
 - A recovery worker scans sessions with absent/expired leases and resumes them using the same asset ID and object key.
 - Asset timestamps are derived from the session creation time so a restart after object/asset persistence can safely replay idempotent writes.
@@ -83,6 +83,6 @@ It is not a multi-node production database. A PostgreSQL adapter and migrations 
 - Processing is synchronous inside the application service; no queue or durable workflow engine is wired yet.
 - An identical request arriving while a session has a live lease receives `INGESTION_IN_PROGRESS`; it does not start a second worker.
 - Lease heartbeats are refreshed at state transitions. The lease TTL must exceed the longest blocking operation; a remote object-store adapter will need periodic heartbeats during long uploads.
-- The reconciler is scoped to failed-session artifacts; global object-store orphan discovery requires a future list-capable storage adapter and inventory policy.
+- The reconciler is scoped to failed/expired-session artifacts; global object-store orphan discovery requires a future list-capable storage adapter and inventory policy.
 - The service does not delete the staged source file; staging cleanup belongs to the upload boundary and retention workflow.
 - The local storage adapter is suitable for development/single-node use only.
