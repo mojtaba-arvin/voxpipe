@@ -19,6 +19,9 @@ def main() -> None:
     from voxpipe.ingestion import apply_migrations
 
     with psycopg.connect(admin_dsn, autocommit=True) as connection:
+        database_name = connection.execute("SELECT current_database()").fetchone()[0]
+        if database_name != "voxpipe_test":
+            raise SystemExit("refusing to prepare a database other than the disposable voxpipe_test database")
         role_exists = connection.execute(
             "SELECT 1 FROM pg_roles WHERE rolname = 'voxpipe_app'"
         ).fetchone()
