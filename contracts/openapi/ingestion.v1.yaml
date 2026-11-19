@@ -145,10 +145,6 @@ components:
         content_type_hint:
           type: string
           maxLength: 128
-        retention_policy_id:
-          type: string
-          minLength: 1
-          maxLength: 128
         source:
           type: object
           additionalProperties: false
