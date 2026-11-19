@@ -282,6 +282,14 @@ class PostgresIngestionRepository:
                 WHERE tenant_id = %s
                   AND state = ANY(%s)
                   AND (
+                    state <> 'created'
+                    OR (
+                        COALESCE((payload #>> '{upload,received_size_bytes}')::bigint, 0) > 0
+                        AND (payload #>> '{upload,received_size_bytes}')::bigint =
+                            (payload #>> '{upload,expected_size_bytes}')::bigint
+                    )
+                  )
+                  AND (
                     payload #>> '{lease,expires_at}' IS NULL
                     OR (payload #>> '{lease,expires_at}')::timestamptz <= %s::timestamptz
                   )
