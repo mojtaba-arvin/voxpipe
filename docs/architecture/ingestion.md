@@ -51,6 +51,8 @@ The object store verifies that the bytes it stores match the digest computed bef
 
 - The repository enforces a unique `(tenant_id, idempotency_key)` constraint.
 - A repeated request with the same tenant, key, content digest, source metadata, and retention policy returns the completed result without reprocessing.
+- Active sessions carry an expiring worker lease; a second worker cannot claim a live lease.
+- The session stores only a relative private staging reference, never an absolute filesystem path.
 - Reusing a key for different content or metadata fails with `INGESTION_IDEMPOTENCY_CONFLICT`.
 - The same key in a different tenant is independent.
 - Every repository lookup/update includes tenant scope.
@@ -62,6 +64,9 @@ The object store verifies that the bytes it stores match the digest computed bef
 - A failed operation attempts to remove any newly stored object and asset metadata.
 - Cleanup failure is surfaced as `INGESTION_CLEANUP_FAILED`; an orphan reconciler is still required for failures that cannot be compensated synchronously.
 - A completed session is returned only after the asset metadata commit succeeds.
+- A recovery worker scans sessions with absent/expired leases and resumes them using the same asset ID and object key.
+- Asset timestamps are derived from the session creation time so a restart after object/asset persistence can safely replay idempotent writes.
+- The orphan reconciler cleans artifacts associated with failed sessions and returns a structured report; it does not perform broad object-store prefix deletion.
 - Raw parser stderr, local paths, and audio bytes are not included in session failure details.
 
 ## Persistence adapter status
@@ -73,7 +78,8 @@ It is not a multi-node production database. A PostgreSQL adapter and migrations 
 ## Deliberate limitations
 
 - Processing is synchronous inside the application service; no queue or durable workflow engine is wired yet.
-- An identical request arriving while a session is active receives `INGESTION_IN_PROGRESS`; it does not start a second worker.
-- If a process dies mid-session, the durable record remains active. A lease/recovery/reconciliation worker is a follow-up requirement before unattended production operation.
+- An identical request arriving while a session has a live lease receives `INGESTION_IN_PROGRESS`; it does not start a second worker.
+- Lease heartbeats are refreshed at state transitions. The lease TTL must exceed the longest blocking operation; a remote object-store adapter will need periodic heartbeats during long uploads.
+- The reconciler is scoped to failed-session artifacts; global object-store orphan discovery requires a future list-capable storage adapter and inventory policy.
 - The service does not delete the staged source file; staging cleanup belongs to the upload boundary and retention workflow.
 - The local storage adapter is suitable for development/single-node use only.
