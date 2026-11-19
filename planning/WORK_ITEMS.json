@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "project": "voxpipe",
+  "updated_at": "2026-11-19",
+  "items": [
+    {
+      "id": "VP-0001",
+      "title": "Add continuous repository validation workflow",
+      "phase": 0,
+      "priority": 1,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "A GitHub Actions workflow runs the repository validator on pull requests and pushes to main.",
+        "The workflow uses a supported Python version and does not require secrets.",
+        "Workflow syntax and local validation are checked before completion."
+      ],
+      "evidence": [
+        ".github/workflows/validate.yml",
+        "GitHub Actions run 44440385449 — validate job succeeded on commit 3fff789f834ffa06b3b5ce90ddfa092a28e8353f"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0002",
+      "title": "Define contribution and pull request templates",
+      "phase": 0,
+      "priority": 2,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Contribution guidance explains setup, checks, branch and commit expectations.",
+        "Pull request template requires scope, verification evidence, risks, and linked work item."
+      ],
+      "evidence": [
+        "CONTRIBUTING.md",
+        "/.github/pull_request_template.md"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0003",
+      "title": "Define security, privacy, and audio data lifecycle baseline",
+      "phase": 0,
+      "priority": 3,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Threat boundaries, sensitive data classes, and trust assumptions are documented.",
+        "Retention, deletion propagation, access control, and audit requirements are specified.",
+        "Audio/transcript prompt-injection and tenant-isolation risks are addressed."
+      ],
+      "evidence": [
+        "docs/operations/security-and-data-lifecycle.md"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0004",
+      "title": "Compare durable workflow and agent orchestration options",
+      "phase": 0,
+      "priority": 4,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "At least three viable approaches are compared using current official documentation.",
+        "Comparison covers durability, retries, human/agent task handoff, language support, operations, and licensing.",
+        "Recommendation and unresolved assumptions are recorded in an ADR or research note."
+      ],
+      "evidence": [
+        "docs/research/durable-orchestration-options.md (Temporal, DBOS, Restate; official docs, agent handoff patterns, and upstream licenses checked 2026-11-19)"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0005",
+      "title": "Define versioning, compatibility, and release policy",
+      "phase": 0,
+      "priority": 5,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Public API and event compatibility expectations are documented.",
+        "Versioning, deprecation, release, and rollback rules are documented."
+      ],
+      "evidence": [
+        "docs/operations/versioning-and-release-policy.md"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0006",
+      "title": "Create reproducible local development environment",
+      "phase": 0,
+      "priority": 6,
+      "status": "done",
+      "depends_on": [
+        "VP-0001"
+      ],
+      "acceptance_criteria": [
+        "A clean checkout has documented commands for setup and validation.",
+        "Local checks do not require paid services or production credentials."
+      ],
+      "evidence": [
+        ".python-version",
+        "Makefile (bootstrap/check/validate/test targets)",
+        "tests/test_validate_repo.py (7 black-box tests)",
+        "GitHub Actions run 44440466616 — make check passed; validator passed and all 7 unit tests passed on Python 3.12.16"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0007",
+      "title": "Complete detailed threat model and security controls matrix",
+      "phase": 0,
+      "priority": 7,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Assets, actors, trust boundaries, entry points, and abuse cases are enumerated.",
+        "Threats include tenant escape, malicious audio/transcript instructions, parser exploitation, provider leakage, credential compromise, replay/duplicate side effects, and deletion failures.",
+        "Each material threat has a mitigation, verification method, and residual-risk note.",
+        "The threat model is linked to tests and operational controls."
+      ],
+      "evidence": [
+        "docs/security/threat-model.md — 16 threats, trust boundaries, security invariants, mitigations, verification methods, residual risks, and reassessment triggers"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0008",
+      "title": "Define canonical audio asset and ingestion session contracts",
+      "phase": 1,
+      "priority": 1,
+      "status": "ready",
+      "depends_on": [
+        "VP-0007"
+      ],
+      "acceptance_criteria": [
+        "Versioned schemas define audio assets, ingestion sessions, source metadata, media properties, and lifecycle states.",
+        "Contracts support batch ingestion and leave room for streaming without requiring a streaming implementation.",
+        "Validation rules cover media type, duration, size, channels, sample rate, and integrity metadata.",
+        "Contract fixtures and compatibility tests are included."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    }
+  ]
+}
