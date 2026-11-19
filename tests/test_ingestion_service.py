@@ -327,6 +327,12 @@ class BatchIngestionServiceTests(unittest.TestCase):
         active["session_id"] = str(uuid4())
         active["asset_id"] = str(uuid4())
         active["idempotency_key"] = "ingestion-request-000002"
+        active["lease"] = {
+            "owner_id": str(uuid4()),
+            "expires_at": "2099-01-01T00:00:00.000Z",
+            "heartbeat_at": "2026-11-19T00:00:00.000Z",
+            "attempt": 1,
+        }
         self.repository.create_or_get_session(active)
         request = self.request(key="ingestion-request-000002")
         with self.assertRaises(IngestionInProgress):
