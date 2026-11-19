@@ -42,7 +42,7 @@ type StaticTokenAuthenticator struct {
 func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, error) {
 	auth := &StaticTokenAuthenticator{}
 	for _, entry := range entries {
-		parts := strings.Split(entry, ":")
+		parts := strings.SplitN(entry, ":", 3)
 		if len(parts) != 3 || len(parts[0]) != sha256.Size*2 {
 			return nil, fmt.Errorf("invalid token grant entry")
 		}
