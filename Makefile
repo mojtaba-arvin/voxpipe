@@ -12,4 +12,4 @@ validate:
 	$(PYTHON) scripts/validate_repo.py
 
 test:
-	$(PYTHON) -m unittest discover -s tests -v
+	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
