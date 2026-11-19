@@ -309,7 +309,7 @@ class PostgresIngestionJobQueue:
                             jsonb_build_object(
                                 'state', 'failed',
                                 'failure', jsonb_build_object(
-                                    'code', %s,
+                                    'code', %s::text,
                                     'retryable', false,
                                     'detail', 'The durable job reached a terminal failure state.'
                                 ),
