@@ -15,6 +15,7 @@ from voxpipe.ingestion.repository import (
     IngestionRepositoryPort,
     SQLiteIngestionRepository,
 )
+from voxpipe.ingestion.worker import IngestionJobWorker, JobExecutionResult
 from voxpipe.ingestion.service import (
     IngestionFailed,
     IngestionIdempotencyConflict,
@@ -30,6 +31,8 @@ __all__ = [
     "IngestionFailed",
     "IngestionIdempotencyConflict",
     "IngestionInProgress",
+    "IngestionJobWorker",
+    "JobExecutionResult",
     "IngestionOrphanReconciler",
     "IngestionRecoveryWorker",
     "IngestionRepositoryConflict",
