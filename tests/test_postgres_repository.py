@@ -196,6 +196,30 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         )
         self.assertEqual(saved["state"], "receiving")
 
+    def test_recovery_scan_ignores_incomplete_upload_sessions(self) -> None:
+        tenant_id = str(uuid4())
+        incomplete = self.session(tenant_id=tenant_id, key="postgres-incomplete-upload-0001")
+        incomplete["upload"] = {
+            "expected_size_bytes": 4096,
+            "received_size_bytes": 0,
+            "expected_sha256": "a" * 64,
+        }
+        self.repository.create_or_get_session(incomplete)
+        complete = self.session(tenant_id=tenant_id, key="postgres-complete-upload-0001")
+        complete["upload"] = {
+            "expected_size_bytes": 4096,
+            "received_size_bytes": 4096,
+            "expected_sha256": "b" * 64,
+        }
+        self.repository.create_or_get_session(complete)
+        recoverable = self.repository.list_recoverable_sessions(
+            self.now(), 10, tenant_id=tenant_id
+        )
+        recovered_ids = {item["session_id"] for item in recoverable}
+        self.assertNotIn(incomplete["session_id"], recovered_ids)
+        self.assertIn(complete["session_id"], recovered_ids)
+
+
     def test_recovery_scans_require_and_enforce_tenant_scope(self) -> None:
         tenant_a, tenant_b = str(uuid4()), str(uuid4())
         session_a = self.session(tenant_id=tenant_a, key="postgres-tenant-a-0001")
