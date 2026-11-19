@@ -105,21 +105,16 @@ class IngestionRepositoryPort(Protocol):
                 f"""
                 SELECT payload_json FROM ingestion_sessions
                 WHERE state IN ({placeholders})
+                  AND (
+                    json_extract(payload_json, '$.lease.expires_at') IS NULL
+                    OR json_extract(payload_json, '$.lease.expires_at') <= ?
+                  )
                 ORDER BY updated_at ASC
                 LIMIT ?
                 """,
-                (*active_states, limit * 4),
+                (*active_states, now, limit),
             ).fetchall()
-        recoverable: list[dict[str, Any]] = []
-        for row in rows:
-            session = json.loads(row["payload_json"])
-            lease = session.get("lease") or {}
-            lease_expiry = lease.get("expires_at")
-            if not lease_expiry or lease_expiry <= now:
-                recoverable.append(session)
-                if len(recoverable) >= limit:
-                    break
-        return recoverable
+        return [json.loads(row["payload_json"]) for row in rows]
 
     def list_sessions_by_state(self, state: str, limit: int = 100) -> list[dict[str, Any]]:
         if limit < 1:
