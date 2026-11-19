@@ -23,5 +23,6 @@ class SpeechToTextService:
             result,
             expected_asset_id=request.asset_id,
             duration_ms=request.duration_ms,
+            expected_audio_sha256=request.audio_sha256,
         )
         return result

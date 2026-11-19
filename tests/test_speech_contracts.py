@@ -81,6 +81,7 @@ class SpeechContractTests(unittest.TestCase):
             asset_id=ASSET_ID,
             audio_stream=BytesIO(b"audio"),
             content_type="audio/wav",
+            audio_sha256="a" * 64,
             language_hint="fa-IR",
             word_timestamps=True,
             diarization=True,
@@ -91,17 +92,17 @@ class SpeechContractTests(unittest.TestCase):
 
     def test_request_rejects_path_like_or_non_audio_inputs(self) -> None:
         with self.assertRaises(ValueError):
-            TranscriptionRequest(ASSET_ID, "private/path.wav", "audio/wav")  # type: ignore[arg-type]
+            TranscriptionRequest(ASSET_ID, "private/path.wav", "audio/wav", "a" * 64)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
-            TranscriptionRequest(ASSET_ID, BytesIO(b"x"), "application/octet-stream")
+            TranscriptionRequest(ASSET_ID, BytesIO(b"x"), "application/octet-stream", "a" * 64)
         with self.assertRaises(ValueError):
-            TranscriptionRequest(ASSET_ID, StringIO("text"), "audio/wav")
+            TranscriptionRequest(ASSET_ID, StringIO("text"), "audio/wav", "a" * 64)
 
     def test_service_validates_adapter_asset_binding_and_duration(self) -> None:
         adapter = FakeSpeechToTextAdapter(valid_transcript())
         service = SpeechToTextService(adapter)
         request = TranscriptionRequest(
-            ASSET_ID, BytesIO(b"audio"), "audio/wav", duration_ms=2000
+            ASSET_ID, BytesIO(b"audio"), "audio/wav", "a" * 64, duration_ms=2000
         )
         self.assertEqual(service.transcribe(request), adapter.result)
         self.assertEqual(adapter.requests, [request])
@@ -112,8 +113,8 @@ class SpeechContractTests(unittest.TestCase):
         transcript = valid_transcript()
         with self.assertRaises(TranscriptValidationError):
             validate_transcript(transcript, duration_ms=1000)
-        later = replace(transcript.segments[0], start_ms=400, end_ms=600)
-        earlier = replace(transcript.segments[0], segment_id="c2f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0102", start_ms=100, end_ms=300)
+        later = replace(transcript.segments[0], start_ms=400, end_ms=600, words=(), speaker_id=None)
+        earlier = replace(transcript.segments[0], segment_id="c2f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0102", start_ms=100, end_ms=300, words=(), speaker_id=None)
         with self.assertRaises(TranscriptValidationError):
             validate_transcript(replace(transcript, segments=(later, earlier)))
 
@@ -140,7 +141,15 @@ class SpeechContractTests(unittest.TestCase):
         result = valid_transcript()
         bad = replace(result, provenance=replace(result.provenance, provider="other-provider"))
         service = SpeechToTextService(FakeSpeechToTextAdapter(bad))
-        request = TranscriptionRequest(ASSET_ID, BytesIO(b"audio"), "audio/wav")
+        request = TranscriptionRequest(ASSET_ID, BytesIO(b"audio"), "audio/wav", "a" * 64)
+        with self.assertRaises(TranscriptValidationError):
+            service.transcribe(request)
+
+    def test_service_binds_transcript_to_source_audio_digest(self) -> None:
+        service = SpeechToTextService(FakeSpeechToTextAdapter(valid_transcript()))
+        request = TranscriptionRequest(
+            ASSET_ID, BytesIO(b"audio"), "audio/wav", "b" * 64
+        )
         with self.assertRaises(TranscriptValidationError):
             service.transcribe(request)
 

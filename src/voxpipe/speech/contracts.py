@@ -51,6 +51,7 @@ class TranscriptionRequest:
     asset_id: str
     audio_stream: BinaryIO
     content_type: str
+    audio_sha256: str
     language_hint: str | None = None
     word_timestamps: bool = True
     diarization: bool = False
@@ -70,6 +71,8 @@ class TranscriptionRequest:
             raise ValueError("audio_stream is not readable")
         if not self.content_type.lower().split(";", 1)[0].strip().startswith("audio/"):
             raise ValueError("content_type must identify an extracted audio stream")
+        if not isinstance(self.audio_sha256, str) or not _SHA256.fullmatch(self.audio_sha256):
+            raise ValueError("audio_sha256 must be a lowercase SHA-256 digest")
         if self.language_hint is not None and (not isinstance(self.language_hint, str) or not _LANGUAGE_TAG.fullmatch(self.language_hint)):
             raise ValueError("language_hint must be a BCP-47 language tag")
         if self.duration_ms is not None and (not isinstance(self.duration_ms, int) or isinstance(self.duration_ms, bool) or self.duration_ms < 1):
@@ -152,6 +155,7 @@ def validate_transcript(
     *,
     expected_asset_id: str | None = None,
     duration_ms: int | None = None,
+    expected_audio_sha256: str | None = None,
 ) -> None:
     """Validate cross-field invariants that JSON Schema cannot express."""
     if transcript.schema_version != "1.0.0":
@@ -174,8 +178,15 @@ def validate_transcript(
         raise TranscriptValidationError("provenance provider and model are required")
     if not isinstance(provenance.audio_sha256, str) or not _SHA256.fullmatch(provenance.audio_sha256):
         raise TranscriptValidationError("provenance audio_sha256 must be a lowercase SHA-256 digest")
+    if expected_audio_sha256 is not None:
+        if not _SHA256.fullmatch(expected_audio_sha256):
+            raise TranscriptValidationError("expected_audio_sha256 must be a lowercase SHA-256 digest")
+        if provenance.audio_sha256 != expected_audio_sha256:
+            raise TranscriptValidationError("transcript provenance does not match the source audio digest")
     _require_aware(provenance.generated_at, "provenance.generated_at")
     _require_aware(transcript.created_at, "created_at")
+    if transcript.created_at < provenance.generated_at:
+        raise TranscriptValidationError("created_at cannot precede provenance.generated_at")
 
     speaker_ids: set[str] = set()
     for speaker in transcript.speakers:
