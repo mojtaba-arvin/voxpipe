@@ -337,7 +337,7 @@
       "title": "Expose ingestion and search capabilities through MCP and agent skill contracts",
       "phase": 1,
       "priority": 9,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0015"
       ],
@@ -347,7 +347,16 @@
         "Contract tests exercise an external agent client against the MCP surface.",
         "The same capability contracts can generate CLI/SDK documentation without duplicating business logic."
       ],
-      "evidence": [],
+      "evidence": [
+        "contracts/mcp/capabilities.v1.json — versioned MCP tool contracts with input/output schemas, required scopes, HTTP mappings, stable errors, and retry semantics.",
+        "src/voxpipe/mcp/server.py — MCP stdio adapter for create_ingestion, get_ingestion_status, get_asset, and search_assets; delegates to the authenticated Go API and does not accept tenant IDs or access PostgreSQL directly.",
+        "internal/httpapi/server.go and internal/httpapi/store.go — tenant-scoped asset lookup and bounded metadata search under forced RLS; public projection omits tenant identifiers, external references, declared_by, and private storage keys.",
+        "contracts/openapi/ingestion.v1.yaml — documented asset lookup and metadata-search endpoints.",
+        ".agents/skills/voxpipe-ingestion and .agents/skills/voxpipe-asset-discovery — agent-facing usage and least-privilege guidance.",
+        "tests/test_mcp_server.py, internal/httpapi/server_test.go, and internal/httpapi/store_integration_test.go — external JSON-RPC client, tool discovery/calls, invalid arguments, authorization, response redaction, and tenant-scoped PostgreSQL lookup/search coverage.",
+        "scripts/generate_mcp_docs.py and docs/architecture/mcp-capabilities.md — deterministic capability documentation generation; make check rejects documentation drift.",
+        "GitHub Actions run 44466238591 — Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs both passed on exact head 45cb773640fb9f2901f36129a8141a6a82264c85."
+      ],
       "blocked_reason": null
     },
     {

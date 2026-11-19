@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are in progress; CI verification is pending. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
+**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are implemented; Python and Go/PostgreSQL CI passed on exact head 45cb7736. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
 **Default branch:** `main`
 
 ## Design principles
