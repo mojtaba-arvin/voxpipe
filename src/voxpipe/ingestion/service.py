@@ -190,6 +190,11 @@ class IngestionService:
             current = self._transition(current, "finalizing")
 
             metadata = self._media_inspector.inspect(staged_path)
+            if metadata.size_bytes != size_bytes:
+                raise MediaInspectionError(
+                    "MEDIA_FILE_CHANGED_DURING_INGESTION",
+                    "Staged media changed during inspection",
+                )
             self._decode_validator.validate(staged_path)
 
             current = self._transition(current, "queued")
