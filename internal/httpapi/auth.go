@@ -1,0 +1,122 @@
+package httpapi
+
+import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+)
+
+var ErrUnauthenticated = errors.New("unauthenticated")
+
+type Principal struct {
+	TenantID string
+	Scopes   map[string]struct{}
+}
+
+func (p Principal) Allows(scope string) bool {
+	_, ok := p.Scopes[scope]
+	return ok
+}
+
+type Authenticator interface {
+	Authenticate(bearerToken string) (Principal, error)
+}
+
+type tokenGrant struct {
+	digest  [sha256.Size]byte
+	tenant  string
+	scopes  map[string]struct{}
+}
+
+type StaticTokenAuthenticator struct {
+	grants []tokenGrant
+}
+
+// NewStaticTokenAuthenticator accepts SHA-256 token digests, never raw tokens.
+// It is intended for controlled deployments and tests; production identity
+// providers should implement Authenticator and return the same principal shape.
+func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, error) {
+	auth := &StaticTokenAuthenticator{}
+	for _, entry := range entries {
+		parts := strings.Split(entry, ":")
+		if len(parts) != 3 || len(parts[0]) != sha256.Size*2 {
+			return nil, fmt.Errorf("invalid token grant entry")
+		}
+		rawDigest, err := hex.DecodeString(parts[0])
+		if err != nil || len(rawDigest) != sha256.Size {
+			return nil, fmt.Errorf("invalid token digest")
+		}
+		if !isUUID(parts[1]) {
+			return nil, fmt.Errorf("token grant tenant must be a UUID")
+		}
+		scopes := make(map[string]struct{})
+		for _, scope := range strings.Split(parts[2], ",") {
+			scope = strings.TrimSpace(scope)
+			if scope != "" {
+				scopes[scope] = struct{}{}
+			}
+		}
+		if len(scopes) == 0 {
+			return nil, fmt.Errorf("token grant must include at least one scope")
+		}
+		var digest [sha256.Size]byte
+		copy(digest[:], rawDigest)
+		auth.grants = append(auth.grants, tokenGrant{
+			digest: digest,
+			tenant: strings.ToLower(parts[1]),
+			scopes: scopes,
+		})
+	}
+	if len(auth.grants) == 0 {
+		return nil, fmt.Errorf("at least one API token grant is required")
+	}
+	return auth, nil
+}
+
+// NewAuthenticatorFromEnv reads semicolon-separated digest:tenant:scopes grants.
+// VOXPIPE_API_TOKEN_HASHES must contain SHA-256 digests, not plaintext tokens.
+func NewAuthenticatorFromEnv() (*StaticTokenAuthenticator, error) {
+	value := strings.TrimSpace(os.Getenv("VOXPIPE_API_TOKEN_HASHES"))
+	if value == "" {
+		return nil, fmt.Errorf("VOXPIPE_API_TOKEN_HASHES is required")
+	}
+	return NewStaticTokenAuthenticator(strings.Split(value, ";"))
+}
+
+func (a *StaticTokenAuthenticator) Authenticate(token string) (Principal, error) {
+	if token == "" {
+		return Principal{}, ErrUnauthenticated
+	}
+	candidate := sha256.Sum256([]byte(token))
+	for _, grant := range a.grants {
+		if subtle.ConstantTimeCompare(candidate[:], grant.digest[:]) == 1 {
+			return Principal{TenantID: grant.tenant, Scopes: grant.scopes}, nil
+		}
+	}
+	return Principal{}, ErrUnauthenticated
+}
+
+func isUUID(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for i, character := range value {
+		switch i {
+		case 8, 13, 18, 23:
+			if character != '-' {
+				return false
+			}
+		default:
+			if !((character >= '0' && character <= '9') ||
+				(character >= 'a' && character <= 'f') ||
+				(character >= 'A' && character <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
+}
