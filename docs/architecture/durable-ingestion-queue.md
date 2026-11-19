@@ -48,7 +48,7 @@ A worker must:
 
 `IngestionJobWorker` now provides a single-job execution unit. It renews the queue lease on a background heartbeat, delegates media processing to the existing `IngestionService.resume_session`, classifies retryable session conflicts, applies bounded exponential backoff, and refuses to acknowledge a lost lease. The process supervisor/scheduler must invoke it per authorized tenant.
 
-The authenticated upload HTTP surface and streaming staging lifecycle remain the outstanding parts of VP-0015.
+The authenticated Go upload HTTP surface, streaming staging lifecycle, and Python queue worker are implemented on the VP-0015 branch. Their completion remains gated on independent Python/Go PostgreSQL CI, operational staging reconciliation, and production identity integration.
 
 ## Deliberate constraints
 
