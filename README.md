@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are implemented; Python and Go/PostgreSQL CI passed on exact head 45cb7736. VP-0018 lease-fenced cleanup, configurable retention, and tenant audit events are implemented and CI-accepted on run 44469883406. Local filesystem staging and static-token authentication remain single-node/bootstrap choices; OIDC, quotas, and rate limiting are tracked in VP-0019, and worker supervision/observability in VP-0020.  
+**Status:** VP-0015 through VP-0020 are implemented. The latest hardening work (production OIDC/introspection, tenant quotas, bounded upload streams, worker lease fencing, queue metrics, and graceful shutdown) passed both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 CI jobs on exact head `68e35212`. Local filesystem staging/object storage remain single-node deployment choices; static-token authentication is an explicit bootstrap mode. The next phase is provider-neutral speech transcription contracts and adapters.  
 **Default branch:** `main`
 
 ## Design principles
@@ -47,11 +47,15 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── cmd/voxpipe-api/main.go
 ├── internal/httpapi/
 │   ├── auth.go
+│   ├── oidc.go
+│   ├── upload_limits.go
 │   ├── server.go
 │   ├── staging.go
 │   ├── store.go
 │   ├── uuid.go
 │   ├── server_test.go
+│   ├── oidc_test.go
+│   ├── upload_limits_test.go
 │   └── store_integration_test.go
 ├── contracts/
 │   ├── README.md
@@ -78,6 +82,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── requirements-postgres.txt
 ├── scripts/
 │   ├── generate_mcp_docs.py
+│   ├── inspect_ingestion_queue.py
 │   ├── prepare_test_database.py
 │   ├── reconcile_ingestion.py
 │   ├── run_ingestion_worker.py
