@@ -84,7 +84,8 @@ For tool/provider decisions:
 
 - Repository skills live in `.agents/skills/<skill-name>/SKILL.md`; each must have YAML frontmatter with a unique `name` and a trigger-specific `description`.
 - Keep `AGENTS.md` for always-on repository rules. Put repeatable task procedures and domain checklists in skills.
-- Project-scoped read-only specialist agents live in `.codex/agents/*.toml`; each requires `name`, `description`, and `developer_instructions`.
+- Register each project-scoped specialist under `[agents.<role>]` in `.codex/config.toml`, with a human-facing `description` and a `config_file` path relative to `.codex/config.toml`.
+- The referenced `.codex/agents/*.toml` role file must include `developer_instructions`; review-only roles must set `sandbox_mode = "read-only"`.
 - Use parallel agents for independent research/review, not concurrent edits to the same files. The orchestrator owns integration and final verification.
 - Skills and custom subagents are Codex-discoverable configuration; other clients must follow the repository protocol even if they do not support these features.
 
