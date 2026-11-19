@@ -308,14 +308,15 @@ class BatchIngestionServiceTests(unittest.TestCase):
         session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
         self.assertEqual(session["state"], "failed")
 
-    def test_storage_failure_marks_session_failed(self) -> None:
+    def test_retryable_storage_failure_leaves_session_recoverable(self) -> None:
         service = self.make_service(object_store=FailingObjectStore())
         with self.assertRaises(IngestionFailed) as context:
             service.ingest(self.request())
         self.assertEqual(context.exception.code, "STORAGE_IO_ERROR")
         session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
-        self.assertEqual(session["state"], "failed")
+        self.assertEqual(session["state"], "processing")
         self.assertTrue(session["failure"]["retryable"])
+        self.assertNotIn("lease", session)
 
     def test_stored_object_fingerprint_mismatch_is_compensated(self) -> None:
         service = self.make_service(object_store=CorruptObjectStore(self.object_store))
