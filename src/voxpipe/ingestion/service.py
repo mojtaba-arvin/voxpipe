@@ -122,6 +122,12 @@ class IngestionService:
         tenant_id = self._tenant_id(request.tenant_id)
         idempotency_key = self._idempotency_key(request.idempotency_key)
         source = self._source(request.source)
+        if request.retention_policy_id is not None and (
+            not isinstance(request.retention_policy_id, str)
+            or not request.retention_policy_id
+            or len(request.retention_policy_id) > 128
+        ):
+            raise IngestionRequestError("retention_policy_id is invalid")
         staged_path, size_bytes = self._staged_file(request.staged_path)
         try:
             digest = self._sha256_file(staged_path)
@@ -150,6 +156,8 @@ class IngestionService:
             "updated_at": timestamp,
             "expires_at": self._format_time(now + self._session_ttl),
         }
+        if request.retention_policy_id is not None:
+            session["retention_policy_id"] = request.retention_policy_id
 
         current, created = self._repository.create_or_get_session(session)
         if not created:
