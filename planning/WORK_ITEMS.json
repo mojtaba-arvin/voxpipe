@@ -200,7 +200,7 @@
       "title": "Define object storage port and implement local filesystem adapter",
       "phase": 1,
       "priority": 4,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0008"
       ],
