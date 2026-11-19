@@ -216,7 +216,7 @@ class SQLiteIngestionRepository:
                 WHERE state IN ({placeholders})
                   AND (json_extract(payload_json, '$.lease.expires_at') IS NULL
                        OR json_extract(payload_json, '$.lease.expires_at') <= ?)
-                ORDER BY updated_at ASC LIMIT ?""",
+                ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
                 (*states, now, limit),
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
