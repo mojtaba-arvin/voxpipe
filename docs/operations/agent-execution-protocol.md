@@ -59,3 +59,21 @@ Record reproducible commands, versions, environment assumptions, pass/fail outpu
 ## External side effects
 
 Use synthetic or consented test data. Do not deploy, incur paid usage, alter access controls, delete data, or perform irreversible operations without a policy explicitly authorizing that operation.
+
+
+## Skills and specialist agents
+
+VoxPipe stores reusable procedures in `.agents/skills/<name>/SKILL.md`. Skills use progressive disclosure: metadata (name and trigger description) supports discovery; the full instructions are loaded only when selected. Keep one skill focused on one repeatable workflow. Do not duplicate always-on rules from `AGENTS.md` in every skill.
+
+Project-scoped Codex specialists are defined in `.codex/agents/*.toml`. Use them as read-only reviewers for independent lanes such as CI triage, security, and cross-runtime contracts. They inherit the parent session's permissions and tools. The orchestrator remains responsible for deciding which findings are valid, making changes, and running final checks.
+
+If the active agent client does not support repository skills or subagents, follow the same procedures manually using `AGENTS.md` and this protocol. Do not claim that a configured agent or skill ran unless its execution actually occurred.
+
+## CI feedback loop
+
+- Python and Go validation run as independent jobs. A failure in one language must not skip the other language's checks.
+- Pull-request CI is the authoritative gate for feature branches; main-branch push CI protects the integration branch. Avoid duplicate push and pull-request runs for the same feature-branch commit.
+- Use workflow concurrency to cancel superseded runs for the same PR/ref.
+- A fix is not verified until a new run for the exact resulting head SHA has completed successfully.
+- Keep validation commands read-only. Dependency drift and formatting checks report differences; they do not silently rewrite files.
+- A CI failure creates a durable learning loop: root cause -> regression test -> process/skill update if the failure pattern can recur -> successful exact-SHA rerun.
