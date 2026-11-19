@@ -136,7 +136,6 @@ func (s *LocalStager) Remove(tenantID, sessionID string) error {
 	}
 	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
 	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
-	tenantDirectory := filepath.Dir(directory)
 	return nil
 }
 
