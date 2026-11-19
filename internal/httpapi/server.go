@@ -282,11 +282,25 @@ func (s *Server) getIngestion(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 	principal, ok := s.principal(w, r, scopeIngestionWrite)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	sessionID := r.PathValue("session_id")
-	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
-	if _, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID); err != nil {
-		writeStoreError(w, err); return
+	if !isUUID(sessionID) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found")
+		return
+	}
+	// The store returns the state observed while holding the session row lock.
+	// This prevents deleting a staging file if finalization won the race.
+	priorState, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	if priorState == "created" || priorState == "receiving" {
+		// Cancellation is already durable. Cleanup failure is left for the
+		// staging-retention reconciler rather than reversing the state change.
+		_ = s.stager.Remove(principal.TenantID, sessionID)
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
