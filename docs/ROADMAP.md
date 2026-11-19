@@ -28,7 +28,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add object-storage abstraction and local filesystem development implementation.
 - [x] Add lease-based stale-session recovery and failed/expired-session orphan reconciliation.
 - [x] Add PostgreSQL metadata repository, versioned migrations, and forced tenant RLS.
-- Implement authenticated batch upload API and PostgreSQL-backed durable job queue.
+- [ ] Complete authenticated batch upload API and PostgreSQL-backed durable job queue (VP-0015 in progress: Go API, streaming staging, queue, and worker implemented; CI verification and operational cleanup remain).
 - Add cancellation, bounded retry/dead-letter policy, retention, deletion, and audit events.
 
 **Exit gate:** An audio asset can be ingested, validated, stored, processed asynchronously, and traced end-to-end with deterministic tests.
