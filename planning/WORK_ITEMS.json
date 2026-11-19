@@ -251,7 +251,7 @@
       "title": "Add stale ingestion recovery, leases, and orphan reconciliation",
       "phase": 1,
       "priority": 6,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0012"
       ],
@@ -262,7 +262,14 @@
         "A failed-session reconciler retries cleanup of associated object bytes and asset metadata and returns a structured audit report.",
         "Fault-injection tests cover live lease contention, expired lease recovery, missing staged files, session expiry, and orphan cleanup."
       ],
-      "evidence": [],
+      "evidence": [
+        "src/voxpipe/ingestion/repository.py — atomic expiring lease claims, per-attempt ownership, recoverable-session scans, and state-scoped reconciliation queries",
+        "src/voxpipe/ingestion/service.py — relative private staging references, lease refresh at transitions, resumable processing with stable asset IDs/timestamps, expiry handling, and idempotent storage/metadata replay",
+        "src/voxpipe/ingestion/recovery.py — recovery worker and structured failed/expired-session orphan reconciliation report",
+        "contracts/schemas/ingestion-session.v1.schema.json — validated staging_reference and lease contracts",
+        "tests/test_ingestion_recovery.py — exclusive claim, lease expiry, live lease, recovery at finalizing/processing/object/asset boundaries, missing staging, expiry, and orphan cleanup",
+        "GitHub Actions run 44443854990 — repository validation passed (14 work items); 75/75 tests passed"
+      ],
       "blocked_reason": null
     },
     {
