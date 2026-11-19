@@ -303,7 +303,7 @@
       "title": "Expose authenticated batch upload API and durable ingestion job queue",
       "phase": 1,
       "priority": 8,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0012",
         "VP-0013",
@@ -316,7 +316,11 @@
         "API requests return durable session/job identifiers and do not hold HTTP connections open for media processing.",
         "Integration tests cover duplicate upload requests, interrupted transfers, worker restart, cancellation races, tenant isolation, and retry exhaustion."
       ],
-      "evidence": [],
+      "evidence": [
+        "migrations/postgres/0003_create_durable_ingestion_jobs.sql — tenant-scoped queue schema, session foreign key, lease invariants, claim index, and forced RLS",
+        "src/voxpipe/ingestion/jobs.py — idempotent enqueue, atomic SKIP LOCKED claims, expiring leases, heartbeat, stale-owner fencing, bounded retry/dead-letter, and atomic session/job cancellation",
+        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS tests (CI verification pending)"
+      ],
       "blocked_reason": null
     },
     {
