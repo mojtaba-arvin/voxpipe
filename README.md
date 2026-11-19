@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** Active development — batch ingestion and PostgreSQL RLS persistence are CI-verified. The durable queue, Python worker, and authenticated Go upload API are implemented on PR #21; final acceptance is gated on independent Python/Go PostgreSQL CI and operational hardening.  
+**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met; independent Python and Go/PostgreSQL CI passed on the implementation head. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
 **Default branch:** `main`
 
 ## Design principles
