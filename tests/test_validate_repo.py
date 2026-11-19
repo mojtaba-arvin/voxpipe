@@ -38,7 +38,7 @@ def valid_ledger() -> dict:
 
 class ValidateRepoTests(unittest.TestCase):
     def run_validator(
-        self, ledger: dict | str, *, skill_content: str | None = None
+        self, ledger: dict | str, *, skill_content: str | None = None, agent_content: str | None = None
     ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -66,7 +66,7 @@ class ValidateRepoTests(unittest.TestCase):
             agents = root / ".codex" / "agents"
             agents.mkdir(parents=True)
             (agents / "reviewer.toml").write_text(
-                'sandbox_mode = "read-only"\ndeveloper_instructions = "Do not edit files."\n',
+                agent_content\n                or 'sandbox_mode = "read-only"\\ndeveloper_instructions = "Do not edit files."\\n',
                 encoding="utf-8",
             )
             (root / ".codex" / "config.toml").write_text(
@@ -88,6 +88,14 @@ class ValidateRepoTests(unittest.TestCase):
         result = self.run_validator(valid_ledger())
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("validation passed", result.stdout)
+
+    def test_rejects_custom_agent_with_write_access(self) -> None:
+        result = self.run_validator(
+            valid_ledger(),
+            agent_content='sandbox_mode = "workspace-write"\\ndeveloper_instructions = "Do not edit files."\\n',
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must use read-only sandbox mode", result.stderr)
 
     def test_rejects_skill_without_discovery_description(self) -> None:
         result = self.run_validator(
