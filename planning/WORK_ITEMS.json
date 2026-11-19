@@ -303,7 +303,7 @@
       "title": "Expose authenticated batch upload API and durable ingestion job queue",
       "phase": 1,
       "priority": 8,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0012",
         "VP-0013",
@@ -326,7 +326,9 @@
         "tests/test_ingestion_worker.py — worker success, retry classification, dead-letter, stale lease, and tenant/worker identity tests",
         "internal/httpapi/server_test.go and store_integration_test.go — API lifecycle, idempotent retries, interrupted upload, checksum failure, authorization scopes, tenant isolation, cancellation cleanup, and PostgreSQL transaction tests",
         "docs/architecture/durable-ingestion-queue.md, docs/architecture/upload-api.md, and ADR-0004 — queue semantics, Go/Python boundary, auth model, single-node staging constraints, and deployment guidance",
-        "GitHub Actions Go 1.25 validation and PostgreSQL integration run — pending"
+        "tests/test_postgres_repository.py and tests/test_ingestion_worker.py — PostgreSQL 16 integration coverage for idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner fencing, retry exhaustion, cancellation, RLS, worker recovery, and failure classification",
+        "internal/httpapi/server_test.go — duplicate upload, interrupted transfer, client-controlled retention rejection, upload/cancellation race with no orphaned staged bytes, authorization, and API lifecycle tests",
+        "GitHub Actions run 44457381351 — both independent jobs passed on exact head 53d91d1a: Python/PostgreSQL 16 suite; Go module drift, gofmt, go vet, race-enabled tests, and Go/PostgreSQL integration"
       ],
       "blocked_reason": null
     },
@@ -335,7 +337,7 @@
       "title": "Expose ingestion and search capabilities through MCP and agent skill contracts",
       "phase": 1,
       "priority": 9,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0015"
       ],
@@ -353,7 +355,7 @@
       "title": "Standardize autonomous agent workflows, skills, and independent CI gates",
       "phase": 0,
       "priority": 10,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0001",
         "VP-0002",
@@ -372,7 +374,75 @@
         ".agents/skills/ — task execution, CI triage, PostgreSQL reliability, and contract evolution skills",
         ".codex/agents/ — read-only CI triager, security reviewer, and contract reviewer; .codex/config.toml configures bounded parallelism",
         "AGENTS.md and docs/operations/agent-execution-protocol.md — durable skill/subagent use and evidence loop",
-        "Makefile and .github/workflows/validate.yml — read-only Go checks and independent Python/Go PostgreSQL CI jobs"
+        "Makefile and .github/workflows/validate.yml — read-only Go checks and independent Python/Go PostgreSQL CI jobs",
+        ".codex/config.toml — registered three project roles with descriptions/config_file references; each role file uses sandbox_mode=read-only and developer_instructions",
+        "scripts/validate_repo.py and tests/test_validate_repo.py — validate skill discovery metadata, registered Codex roles, config-file paths, read-only sandbox settings, and negative cases",
+        "GitHub Actions run 44457381351 — Python and Go/PostgreSQL jobs both passed on exact head 53d91d1a"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0018",
+      "title": "Reconcile staged uploads and enforce retention and deletion",
+      "phase": 1,
+      "priority": 10,
+      "status": "planned",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "A bounded, tenant-scoped reconciler identifies abandoned temporary uploads and staged sources using database state and explicit retention policy.",
+        "The reconciler never deletes bytes for a session with an active upload or valid worker lease; row locking and state checks make cleanup race-safe.",
+        "Terminal cancellation, expiry, permanent failure, and successful object publication have explicit staging cleanup rules.",
+        "Retention and deletion propagate across staging, object storage, metadata, and derived artifacts with idempotent retries.",
+        "Every cleanup/deletion outcome emits an auditable event without logging transcript or audio contents.",
+        "PostgreSQL integration tests cover process crashes, concurrent upload/finalize/cancel, expired sessions, partial files, repeated cleanup, and deletion failures."
+      ],
+      "evidence": [
+        "Roadmap follow-up after VP-0015: local staging currently has no dedicated expiry/reconciliation service; deletion and audit propagation remain operational gates."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0019",
+      "title": "Harden production identity and upload abuse controls",
+      "phase": 1,
+      "priority": 11,
+      "status": "planned",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "Production authentication validates trusted issuer, audience, expiry, not-before, signing-key rotation, tenant mapping, and scopes; invalid or unavailable identity metadata fails closed.",
+        "Per-tenant quotas bound concurrent uploads, total staged bytes, and ingestion rate.",
+        "Upload body reads have explicit duration/inactivity bounds without breaking legitimate large streaming transfers.",
+        "Rate limits and resource limits are enforced before expensive media processing and return stable retryable error codes.",
+        "Retention policy, storage keys, and filesystem paths remain server-authoritative.",
+        "Security tests cover expired/revoked tokens, wrong audience/issuer, key rotation, cross-tenant tokens, slow uploads, quota exhaustion, and concurrent abuse."
+      ],
+      "evidence": [
+        "Current static SHA-256 bearer-token mapping is a bootstrap authenticator only; upload server intentionally avoids global ReadTimeout because it supports streaming bodies."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0020",
+      "title": "Harden worker supervision and queue observability",
+      "phase": 1,
+      "priority": 12,
+      "status": "planned",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "Transient database/network failures during claim, heartbeat, failure recording, and completion do not silently terminate the worker process; retries use bounded backoff and jitter.",
+        "Heartbeat failure tracking stops processing or fences acknowledgement when the worker can no longer prove lease ownership.",
+        "Queue depth, oldest pending age, active leases, retry counts, dead-letter counts, and processing duration are observable per tenant without exposing audio or transcript content.",
+        "Worker shutdown is graceful and leaves jobs recoverable after process termination.",
+        "Failure-injection tests cover database outages, heartbeat loss, lease expiry during processing, worker restart, and graceful shutdown."
+      ],
+      "evidence": [
+        "Current worker retries ingestion failures but queue database errors and heartbeat outages need explicit supervisor policy and observable SLOs."
       ],
       "blocked_reason": null
     }
