@@ -281,6 +281,11 @@ class PostgresIngestionRepository:
                 SELECT payload FROM ingestion_sessions
                 WHERE tenant_id = %s
                   AND state = ANY(%s)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM ingestion_jobs AS job
+                    WHERE job.tenant_id = ingestion_sessions.tenant_id
+                      AND job.session_id = ingestion_sessions.session_id
+                  )
                   AND (
                     state <> 'created'
                     OR (
