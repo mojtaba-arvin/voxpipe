@@ -65,7 +65,7 @@ Use synthetic or consented test data. Do not deploy, incur paid usage, alter acc
 
 VoxPipe stores reusable procedures in `.agents/skills/<name>/SKILL.md`. Skills use progressive disclosure: metadata (name and trigger description) supports discovery; the full instructions are loaded only when selected. Keep one skill focused on one repeatable workflow. Do not duplicate always-on rules from `AGENTS.md` in every skill.
 
-Project-scoped Codex specialists are defined in `.codex/agents/*.toml`. Use them as read-only reviewers for independent lanes such as CI triage, security, and cross-runtime contracts. They inherit the parent session's permissions and tools. The orchestrator remains responsible for deciding which findings are valid, making changes, and running final checks.
+Project-scoped Codex specialists are registered in `.codex/config.toml` under `[agents.<role>]`, with a human-facing description and a `config_file` path relative to that file. Each referenced `.codex/agents/*.toml` role file contains its developer instructions and explicit `sandbox_mode = "read-only"`. Use them for independent lanes such as CI triage, security, and cross-runtime contracts. The orchestrator remains responsible for deciding which findings are valid, making changes, and running final checks.
 
 If the active agent client does not support repository skills or subagents, follow the same procedures manually using `AGENTS.md` and this protocol. Do not claim that a configured agent or skill ran unless its execution actually occurred.
 
