@@ -6,7 +6,7 @@
 
 - Is not a superuser.
 - Does not have `BYPASSRLS`.
-- Has only the required table privileges on `ingestion_sessions` and `audio_assets`.
+- Has only the required table privileges on `ingestion_sessions`, `audio_assets`, and `ingestion_jobs`.
 - Does not own those tables.
 
 The migration enables and forces row-level security. Every repository operation sets the transaction-local `voxpipe.tenant_id` setting, and every query also includes an explicit tenant predicate. Missing tenant context returns no rows under RLS. This protects against accidental query omissions; because the application credential can set the custom tenant context, it is not a defense against compromised application code. Strong isolation against a compromised service requires separate database roles/credentials or a trusted tenant-context boundary.
@@ -19,6 +19,7 @@ Versioned SQL migrations live in `migrations/postgres/`:
 
 1. `0001_create_ingestion_tables.sql` creates the session and asset tables with tenant-scoped uniqueness.
 2. `0002_add_tenant_rls_and_updated_at.sql` adds update timestamps, recovery indexes, and forced RLS policies.
+3. `0003_create_durable_ingestion_jobs.sql` adds the tenant-scoped durable job queue, composite tenant/session foreign key, lease invariants, claim/recovery indexes, and forced job-table RLS.
 
 Apply them explicitly with:
 
@@ -35,7 +36,7 @@ Migrations are recorded in `voxpipe_schema_migrations`, applied in version order
 After migrations, grant the non-owner application role:
 
 - `USAGE` on the application schema.
-- `SELECT, INSERT, UPDATE, DELETE` on the two ingestion tables.
+- `SELECT, INSERT, UPDATE, DELETE` on the session, asset, and job tables.
 
 Keep the DSN in a secret manager or environment variable. Never commit credentials. The CI workflow provisions a disposable PostgreSQL 16 service and uses a separate non-superuser role to test RLS.
 
@@ -44,7 +45,9 @@ Keep the DSN in a secret manager or environment variable. Never commit credentia
 - Idempotency is enforced by a unique `(tenant_id, idempotency_key)` constraint.
 - Session transitions use state compare-and-swap.
 - Lease claims use `SELECT ... FOR UPDATE` and an expiring owner token.
-- Asset writes are idempotent for identical JSON payloads.
+- Asset writes are idempotent for identical JSON payloads, including concurrent duplicate submissions.
+- Durable jobs use atomic `SKIP LOCKED` claims, expiring leases, stale-owner fencing, bounded retries, and dead-letter terminalization.
+- Go API and Python worker transitions use the same session-first row-lock order; queue-owned sessions are excluded from legacy recovery scans.
 - Recovery and reconciliation list methods require a tenant ID and remain under RLS.
 - Every connection is currently opened per operation. Add a bounded connection pool only after measuring real deployment load.
 
