@@ -277,7 +277,7 @@
       "title": "Implement PostgreSQL ingestion repository and schema migrations",
       "phase": 1,
       "priority": 7,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0012"
       ],
@@ -286,6 +286,53 @@
         "Migrations are versioned and tested from an empty database and previous schema version.",
         "Concurrent duplicate submissions produce one session and one asset.",
         "Tenant isolation and transaction rollback behavior have integration tests."
+      ],
+      "evidence": [
+        "src/voxpipe/ingestion/postgres.py — PostgreSQL repository with transaction-local tenant context, forced-RLS-compatible queries, idempotency, CAS, lease claims, and tenant-scoped scans",
+        "migrations/postgres/0001_create_ingestion_tables.sql — initial session/asset tables and tenant-scoped uniqueness",
+        "migrations/postgres/0002_add_tenant_rls_and_updated_at.sql — update timestamps, indexes, enabled/forced RLS policies",
+        "tests/test_postgres_repository.py — v1-to-v2 upgrade, migration idempotency, forced RLS, tenant isolation, concurrent session/asset writes, lease contention, CAS rollback, and scoped recovery scans",
+        "requirements-postgres.txt — optional runtime driver; CI uses a separate non-superuser NOBYPASSRLS role against PostgreSQL 16",
+        "docs/architecture/postgres.md — migration and deployment role model",
+        "GitHub Actions run 44444627546 — repository validation passed (14 work items); 84/84 tests passed including PostgreSQL 16 integration tests"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0015",
+      "title": "Expose authenticated batch upload API and durable ingestion job queue",
+      "phase": 1,
+      "priority": 8,
+      "status": "ready",
+      "depends_on": [
+        "VP-0012",
+        "VP-0013",
+        "VP-0014"
+      ],
+      "acceptance_criteria": [
+        "Upload initiation, streamed byte transfer, finalization, status, and cancellation have versioned API contracts.",
+        "Tenant identity is derived only from authenticated context; arbitrary client filesystem paths and storage keys are never accepted.",
+        "A PostgreSQL-backed queue uses atomic claims, expiring leases, bounded retries, and a dead-letter state.",
+        "API requests return durable session/job identifiers and do not hold HTTP connections open for media processing.",
+        "Integration tests cover duplicate upload requests, interrupted transfers, worker restart, cancellation races, tenant isolation, and retry exhaustion."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0016",
+      "title": "Expose ingestion and search capabilities through MCP and agent skill contracts",
+      "phase": 1,
+      "priority": 9,
+      "status": "planned",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "MCP tools expose upload initiation, ingestion status, asset lookup, and search without bypassing authorization.",
+        "Agent skill manifests define inputs, outputs, error codes, retry semantics, and least-privilege scopes.",
+        "Contract tests exercise an external agent client against the MCP surface.",
+        "The same capability contracts can generate CLI/SDK documentation without duplicating business logic."
       ],
       "evidence": [],
       "blocked_reason": null
