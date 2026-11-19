@@ -15,6 +15,6 @@ test:
 	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
 
 go-check:
-	gofmt -w ./cmd ./internal
+	gofmt -w $(find cmd internal -name '*.go' -type f)
 	go mod tidy
 	go test ./...
