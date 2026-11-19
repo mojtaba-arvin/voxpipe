@@ -182,9 +182,10 @@
       ],
       "acceptance_criteria": [
         "The adapter derives authoritative media metadata from file bytes rather than client hints.",
-        "Validation covers format, duration, byte size, sample rate, channels, and audio-track presence.",
-        "Malformed and unsupported media fail with stable error codes and bounded resource use.",
-        "Contract fixtures and tests cover valid, malformed, truncated, and limit-exceeding media."
+        "Metadata validation covers container, duration, byte size, sample rate, channels, and audio-track presence.",
+        "A separate full-file decode gate detects malformed and truncated audio; metadata probing alone is never treated as full decode validation.",
+        "Failures use stable error codes and bounded probe/decode time, input size, probe parameters, and output.",
+        "Fixtures and tests cover valid media, malformed metadata, unsupported containers, truncated media, and limit-exceeding inputs."
       ],
       "evidence": [],
       "blocked_reason": null
