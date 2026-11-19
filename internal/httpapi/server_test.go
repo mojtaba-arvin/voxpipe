@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -184,14 +185,26 @@ func TestUploadIntegrityFailureDoesNotFinalize(t *testing.T) {
 }
 
 func TestAuthenticationAndTenantIsolation(t *testing.T) {
-	server,_,_,token:=testServer(t); handler:=server.Handler()
-	unauthorized:=request(handler,http.MethodPost,"/v1/ingestions","",[]byte("{}"))
-	if unauthorized.Code!=http.StatusUnauthorized { t.Fatalf("expected 401, got %d",unauthorized.Code) }
-	forbiddenAuth,err:=NewStaticTokenAuthenticator([]string{
-		fmt.Sprintf("%x:%s:%s",sha256.Sum256([]byte("read-only")), "11111111-1111-4111-8111-111111111111", scopeIngestionRead),
+	server, store, tenant, token := testServer(t)
+	handler := server.Handler()
+	unauthorized := request(handler, http.MethodPost, "/v1/ingestions", "", []byte("{}"))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", unauthorized.Code)
+	}
+
+	readOnlyToken := "read-only-token"
+	digest := sha256.Sum256([]byte(readOnlyToken))
+	auth, err := NewStaticTokenAuthenticator([]string{
+		fmt.Sprintf("%x:%s:%s", digest, tenant, scopeIngestionRead),
 	})
-	if err!=nil { t.Fatal(err) }
-	_ = forbiddenAuth
+	if err != nil { t.Fatal(err) }
+	readOnlyServer, err := NewServer(store, auth, server.stager, 1024, time.Hour, 3)
+	if err != nil { t.Fatal(err) }
+	forbidden := request(readOnlyServer.Handler(), http.MethodPost, "/v1/ingestions", readOnlyToken, []byte("{}"))
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for missing write scope, got %d", forbidden.Code)
+	}
+
 	_ = token
 }
 
