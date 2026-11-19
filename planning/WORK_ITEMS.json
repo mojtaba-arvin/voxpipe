@@ -132,7 +132,7 @@
       "title": "Define canonical audio asset and ingestion session contracts",
       "phase": 1,
       "priority": 1,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0007"
       ],
@@ -141,6 +141,48 @@
         "Contracts support batch ingestion and leave room for streaming without requiring a streaming implementation.",
         "Validation rules cover media type, duration, size, channels, sample rate, and integrity metadata.",
         "Contract fixtures and compatibility tests are included."
+      ],
+      "evidence": [
+        "contracts/schemas/audio-asset.v1.schema.json",
+        "contracts/schemas/ingestion-session.v1.schema.json",
+        "contracts/examples/*.valid.json and contracts/README.md",
+        "tests/test_contract_schemas.py — batch/stream, format, tenant, checksum, lifecycle, and schema identity tests",
+        "GitHub Actions run 44440826071 — make check passed; 17/17 tests passed on Python 3.12"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0009",
+      "title": "Evaluate media probing and normalization tools",
+      "phase": 1,
+      "priority": 2,
+      "status": "ready",
+      "depends_on": [
+        "VP-0008"
+      ],
+      "acceptance_criteria": [
+        "At least three viable approaches are compared using current official documentation.",
+        "Comparison covers supported containers/codecs, metadata accuracy, malformed-input exposure, sandboxability, deployment footprint, performance, and license implications.",
+        "Recommendation distinguishes metadata inspection from transcoding/normalization.",
+        "A reproducible proof-of-concept plan and known limitations are documented."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0010",
+      "title": "Implement isolated media inspection and validation adapter",
+      "phase": 1,
+      "priority": 3,
+      "status": "planned",
+      "depends_on": [
+        "VP-0009"
+      ],
+      "acceptance_criteria": [
+        "The adapter derives authoritative media metadata from file bytes rather than client hints.",
+        "Validation covers format, duration, byte size, sample rate, channels, and audio-track presence.",
+        "Malformed and unsupported media fail with stable error codes and bounded resource use.",
+        "Contract fixtures and tests cover valid, malformed, truncated, and limit-exceeding media."
       ],
       "evidence": [],
       "blocked_reason": null
