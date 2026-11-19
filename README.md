@@ -27,6 +27,14 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ```text
 .
 ├── .github/workflows/validate.yml
+├── cmd/voxpipe-api/main.go
+├── internal/httpapi/
+│   ├── auth.go
+│   ├── server.go
+│   ├── staging.go
+│   ├── store.go
+│   └── worker.go
+├── go.mod
 ├── AGENTS.md
 ├── Makefile
 ├── README.md
@@ -37,10 +45,12 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── ROADMAP.md
 │   ├── architecture/
 │   │   ├── overview.md
+│   │   ├── upload-api.md
 │   │   ├── storage.md
 │   │   ├── ingestion.md
 │   │   └── postgres.md
 │   ├── decisions/
+│   │   └── ADR-0004-go-http-surface-python-worker.md
 │   └── operations/
 ├── migrations/
 │   └── postgres/
@@ -51,7 +61,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── requirements-dev.txt
 ├── requirements-postgres.txt
 ├── scripts/
-│   └── validate_repo.py
+│   ├── validate_repo.py
+│   └── run_ingestion_worker.py
 ├── src/voxpipe/
 │   ├── media/
 │   │   ├── probe.py
@@ -65,6 +76,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │       ├── service.py
 │       └── recovery.py
 └── tests/
+    ├── test_ingestion_worker.py
     ├── test_contract_schemas.py
     ├── test_media_probe.py
     ├── test_media_validation.py
@@ -88,7 +100,7 @@ make check
 
 Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
 
-For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md).
+For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md). The authenticated Go upload API and Python worker topology are described in [Upload API operations](docs/architecture/upload-api.md).
 
 ## Development workflow
 
