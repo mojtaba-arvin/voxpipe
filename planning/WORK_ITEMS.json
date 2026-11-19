@@ -238,6 +238,42 @@
       ],
       "evidence": [],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0013",
+      "title": "Add stale ingestion recovery, leases, and orphan reconciliation",
+      "phase": 1,
+      "priority": 6,
+      "status": "planned",
+      "depends_on": [
+        "VP-0012"
+      ],
+      "acceptance_criteria": [
+        "Workers claim active sessions with expiring leases and compare-and-swap ownership.",
+        "Expired leases can be safely resumed without duplicate assets or external side effects.",
+        "A reconciler detects and cleans orphaned objects and metadata with an auditable result.",
+        "Fault-injection tests cover process termination at each persistence/storage boundary."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0014",
+      "title": "Implement PostgreSQL ingestion repository and schema migrations",
+      "phase": 1,
+      "priority": 7,
+      "status": "planned",
+      "depends_on": [
+        "VP-0012"
+      ],
+      "acceptance_criteria": [
+        "PostgreSQL schema preserves tenant-scoped idempotency and compare-and-swap session transitions.",
+        "Migrations are versioned and tested from an empty database and previous schema version.",
+        "Concurrent duplicate submissions produce one session and one asset.",
+        "Tenant isolation and transaction rollback behavior have integration tests."
+      ],
+      "evidence": [],
+      "blocked_reason": null
     }
   ]
 }
