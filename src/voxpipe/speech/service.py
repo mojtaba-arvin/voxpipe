@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from voxpipe.speech.contracts import Transcript, TranscriptionRequest, validate_transcript
+from voxpipe.speech.contracts import (
+    Transcript,
+    TranscriptValidationError,
+    TranscriptionRequest,
+    validate_transcript,
+)
 from voxpipe.speech.ports import SpeechToTextPort
 
 

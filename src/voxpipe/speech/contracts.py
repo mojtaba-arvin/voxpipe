@@ -35,7 +35,7 @@ class TranscriptionError(Exception):
         retryable: bool,
         retry_after_seconds: int | None = None,
     ) -> None:
-        if not provider or len(provider) > 128:
+        if not isinstance(provider, str) or not provider.strip() or len(provider) > 128:
             raise ValueError("provider identifier is required and must be bounded")
         if retry_after_seconds is not None and retry_after_seconds < 0:
             raise ValueError("retry_after_seconds cannot be negative")
@@ -68,9 +68,9 @@ class TranscriptionRequest:
             raise ValueError("audio_stream is not readable")
         if not self.content_type.lower().split(";", 1)[0].strip().startswith("audio/"):
             raise ValueError("content_type must identify an extracted audio stream")
-        if self.language_hint is not None and not _LANGUAGE_TAG.fullmatch(self.language_hint):
+        if self.language_hint is not None and (not isinstance(self.language_hint, str) or not _LANGUAGE_TAG.fullmatch(self.language_hint)):
             raise ValueError("language_hint must be a BCP-47 language tag")
-        if self.duration_ms is not None and self.duration_ms < 1:
+        if self.duration_ms is not None and (not isinstance(self.duration_ms, int) or isinstance(self.duration_ms, bool) or self.duration_ms < 1):
             raise ValueError("duration_ms must be positive when supplied")
 
 
@@ -141,7 +141,7 @@ def _require_confidence(value: float | None, field: str) -> None:
 
 
 def _require_aware(value: datetime, field: str) -> None:
-    if value.tzinfo is None or value.utcoffset() is None:
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise TranscriptValidationError(f"{field} must include a timezone")
 
 
@@ -158,17 +158,17 @@ def validate_transcript(
     _require_uuid(transcript.asset_id, "asset_id")
     if expected_asset_id is not None and UUID(transcript.asset_id) != UUID(expected_asset_id):
         raise TranscriptValidationError("transcript asset_id does not match the requested asset")
-    if not _LANGUAGE_TAG.fullmatch(transcript.language):
+    if not isinstance(transcript.language, str) or not _LANGUAGE_TAG.fullmatch(transcript.language):
         raise TranscriptValidationError("language must be a BCP-47 language tag")
     if not isinstance(transcript.text, str):
         raise TranscriptValidationError("transcript text must be a string")
-    if duration_ms is not None and duration_ms < 1:
+    if duration_ms is not None and (not isinstance(duration_ms, int) or isinstance(duration_ms, bool) or duration_ms < 1):
         raise TranscriptValidationError("duration_ms must be positive")
 
     provenance = transcript.provenance
     if not provenance.provider or not provenance.model:
         raise TranscriptValidationError("provenance provider and model are required")
-    if not _SHA256.fullmatch(provenance.audio_sha256):
+    if not isinstance(provenance.audio_sha256, str) or not _SHA256.fullmatch(provenance.audio_sha256):
         raise TranscriptValidationError("provenance audio_sha256 must be a lowercase SHA-256 digest")
     _require_aware(provenance.generated_at, "provenance.generated_at")
     _require_aware(transcript.created_at, "created_at")
@@ -188,13 +188,13 @@ def validate_transcript(
         if segment.segment_id in segment_ids:
             raise TranscriptValidationError("segment_id values must be unique")
         segment_ids.add(segment.segment_id)
-        if segment.start_ms < 0 or segment.end_ms <= segment.start_ms:
+        if not isinstance(segment.start_ms, int) or isinstance(segment.start_ms, bool) or not isinstance(segment.end_ms, int) or isinstance(segment.end_ms, bool) or segment.start_ms < 0 or segment.end_ms <= segment.start_ms:
             raise TranscriptValidationError("segment time range is invalid")
         if segment.start_ms < previous_start:
             raise TranscriptValidationError("segments must be ordered by start_ms")
         if duration_ms is not None and segment.end_ms > duration_ms:
             raise TranscriptValidationError("segment exceeds source audio duration")
-        if not segment.text.strip():
+        if not isinstance(segment.text, str) or not segment.text.strip():
             raise TranscriptValidationError("segment text cannot be empty")
         previous_start = segment.start_ms
         _require_confidence(segment.confidence, "segment confidence")
@@ -205,11 +205,11 @@ def validate_transcript(
 
         previous_word_start = segment.start_ms
         for word in segment.words:
-            if word.start_ms < segment.start_ms or word.end_ms > segment.end_ms:
+            if not isinstance(word.start_ms, int) or isinstance(word.start_ms, bool) or not isinstance(word.end_ms, int) or isinstance(word.end_ms, bool) or word.start_ms < segment.start_ms or word.end_ms > segment.end_ms:
                 raise TranscriptValidationError("word time range must stay within its segment")
-            if word.end_ms <= word.start_ms or word.start_ms < previous_word_start:
+            if not isinstance(word.start_ms, int) or isinstance(word.start_ms, bool) or not isinstance(word.end_ms, int) or isinstance(word.end_ms, bool) or word.end_ms <= word.start_ms or word.start_ms < previous_word_start:
                 raise TranscriptValidationError("word time ranges must be valid and ordered")
-            if not word.text.strip():
+            if not isinstance(word.text, str) or not word.text.strip():
                 raise TranscriptValidationError("word text cannot be empty")
             previous_word_start = word.start_ms
             _require_confidence(word.confidence, "word confidence")

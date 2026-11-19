@@ -61,12 +61,14 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── README.md
 │   ├── examples/
 │   │   ├── audio-asset.valid.json
-│   │   └── ingestion-session.valid.json
+│   │   ├── ingestion-session.valid.json
+│   │   └── transcript.valid.json
 │   ├── mcp/capabilities.v1.json
 │   ├── openapi/ingestion.v1.yaml
 │   └── schemas/
 │       ├── audio-asset.v1.schema.json
-│       └── ingestion-session.v1.schema.json
+│       ├── ingestion-session.v1.schema.json
+│       └── transcript.v1.schema.json
 ├── docs/
 │   ├── ROADMAP.md
 │   ├── architecture/
@@ -76,7 +78,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── 0001_create_ingestion_tables.sql
 │   ├── 0002_add_tenant_rls_and_updated_at.sql
 │   ├── 0003_create_durable_ingestion_jobs.sql
-│   └── 0004_add_upload_leases_and_audit.sql
+│   ├── 0004_add_upload_leases_and_audit.sql
+│   └── 0005_add_job_started_at.sql
 ├── planning/WORK_ITEMS.json
 ├── requirements-dev.txt
 ├── requirements-postgres.txt
@@ -98,6 +101,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   │   ├── service.py
 │   │   └── worker.py
 │   ├── speech/
+│   │   ├── __init__.py
 │   │   ├── contracts.py
 │   │   ├── ports.py
 │   │   └── service.py
@@ -124,6 +128,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     ├── test_media_validation.py
     ├── test_postgres_repository.py
     ├── test_staging_cleanup.py
+    ├── test_speech_contracts.py
     └── test_validate_repo.py
 ```
 
