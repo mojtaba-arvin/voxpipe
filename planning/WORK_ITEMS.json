@@ -434,7 +434,7 @@
         "Security tests cover expired/revoked tokens, wrong audience/issuer, key rotation, cross-tenant tokens, slow uploads, quota exhaustion, and concurrent abuse."
       ],
       "evidence": [
-        "Current static SHA-256 bearer-token mapping is a bootstrap authenticator only; upload server intentionally avoids global ReadTimeout because it supports streaming bodies."
+        "Production OIDC, tenant quota, and bounded-upload hardening is the next unblocked phase-1 task."
       ],
       "blocked_reason": null
     },
@@ -443,7 +443,7 @@
       "title": "Harden worker supervision and queue observability",
       "phase": 1,
       "priority": 12,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0015"
       ],
@@ -455,7 +455,10 @@
         "Failure-injection tests cover database outages, heartbeat loss, lease expiry during processing, worker restart, and graceful shutdown."
       ],
       "evidence": [
-        "Current worker retries ingestion failures but queue database errors and heartbeat outages need explicit supervisor policy and observable SLOs."
+        "src/voxpipe/ingestion/worker.py — heartbeat safety-window fencing, bounded exponential retry with jitter, tenant-scoped counters, and supervised polling across transient claim/failure/completion outages.",
+        "src/voxpipe/ingestion/jobs.py and migration 0005 — durable tenant-scoped queue health metrics and per-attempt started_at timestamps for processing-duration measurement.",
+        "scripts/run_ingestion_worker.py — signal-driven graceful stop; scripts/inspect_ingestion_queue.py — tenant-scoped operator CLI for queue depth, age, active leases, retries, dead letters, and processing duration.",
+        "tests/test_ingestion_worker.py and tests/test_postgres_repository.py — heartbeat loss, claim/failure/completion outages, shutdown, lease reclaim, tenant metrics, retries, and dead-letter coverage."
       ],
       "blocked_reason": null
     }

@@ -1,17 +1,22 @@
-"""Unit tests for durable ingestion job worker orchestration."""
+"""Unit tests for durable ingestion worker orchestration and supervision."""
 
 from __future__ import annotations
 
+import logging
+import time
 import unittest
 from uuid import uuid4
 
 from voxpipe.ingestion.jobs import JobLeaseLost
 from voxpipe.ingestion.service import IngestionFailed, IngestionInProgress
-from voxpipe.ingestion.worker import IngestionJobWorker
+from voxpipe.ingestion.worker import IngestionJobWorker, run_forever
 
 
 class FakeQueue:
-    def __init__(self, *, state: str = "leased", lose_on_complete: bool = False) -> None:
+    def __init__(
+        self, *, state: str = "leased", lose_on_complete: bool = False,
+        heartbeat_error: Exception | None = None,
+    ) -> None:
         self.job = {
             "job_id": str(uuid4()),
             "session_id": str(uuid4()),
@@ -23,12 +28,15 @@ class FakeQueue:
         self.failure = None
         self.heartbeats = 0
         self.lose_on_complete = lose_on_complete
+        self.heartbeat_error = heartbeat_error
 
     def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict:
         return self.job
 
     def heartbeat(self, tenant_id: str, job_id: str, worker_id: str, *, lease_seconds: int) -> dict:
         self.heartbeats += 1
+        if self.heartbeat_error:
+            raise self.heartbeat_error
         return self.job
 
     def complete(self, tenant_id: str, job_id: str, worker_id: str) -> dict:
@@ -50,14 +58,34 @@ class FakeQueue:
 
 
 class FakeService:
-    def __init__(self, error: Exception | None = None) -> None:
+    def __init__(self, error: Exception | None = None, delay: float = 0) -> None:
         self.error = error
+        self.delay = delay
         self.calls: list[tuple[str, str]] = []
 
     def resume_session(self, tenant_id: str, session_id: str) -> None:
         self.calls.append((tenant_id, session_id))
+        if self.delay:
+            time.sleep(self.delay)
         if self.error:
             raise self.error
+
+
+class StopAfterWait:
+    def __init__(self) -> None:
+        self.waited = False
+
+    def is_set(self) -> bool:
+        return self.waited
+
+    def wait(self, timeout: float | None = None) -> bool:
+        self.waited = True
+        return True
+
+
+class FailingClaimQueue(FakeQueue):
+    def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict:
+        raise OSError("simulated database outage")
 
 
 class IngestionJobWorkerTests(unittest.TestCase):
@@ -92,14 +120,10 @@ class IngestionJobWorkerTests(unittest.TestCase):
         self.assertTrue(queue.failure["retryable"])
         self.assertEqual(queue.failure["retry_delay_seconds"], 8)
 
-
     def test_retryable_service_failure_schedules_bounded_retry(self) -> None:
         queue = FakeQueue()
         service = FakeService(
-            IngestionFailed(
-                "MEDIA_PROBE_TIMEOUT",
-                {"failure": {"retryable": True}},
-            )
+            IngestionFailed("MEDIA_PROBE_TIMEOUT", {"failure": {"retryable": True}})
         )
         result = self.worker(queue, service).run_once(self.tenant_id)
         self.assertEqual(result.outcome, "retry_scheduled")
@@ -109,10 +133,7 @@ class IngestionJobWorkerTests(unittest.TestCase):
     def test_permanent_session_failure_is_dead_lettered(self) -> None:
         queue = FakeQueue()
         service = FakeService(
-            IngestionFailed(
-                "INGESTION_INVALID_MEDIA",
-                {"failure": {"retryable": False}},
-            )
+            IngestionFailed("INGESTION_INVALID_MEDIA", {"failure": {"retryable": False}})
         )
         result = self.worker(queue, service).run_once(self.tenant_id)
         self.assertEqual(result.outcome, "dead")
@@ -120,17 +141,37 @@ class IngestionJobWorkerTests(unittest.TestCase):
 
     def test_stale_worker_does_not_acknowledge_job(self) -> None:
         queue = FakeQueue(lose_on_complete=True)
-        service = FakeService()
-        result = self.worker(queue, service).run_once(self.tenant_id)
+        result = self.worker(queue, FakeService()).run_once(self.tenant_id)
         self.assertEqual(result.outcome, "lease_lost")
         self.assertFalse(queue.completed)
+
+    def test_repeated_heartbeat_outage_fences_job_acknowledgement(self) -> None:
+        queue = FakeQueue(heartbeat_error=OSError("database unavailable"))
+        result = self.worker(queue, FakeService(delay=3.2)).run_once(self.tenant_id)
+        self.assertEqual(result.outcome, "lease_lost")
+        self.assertFalse(queue.completed)
+        self.assertGreaterEqual(queue.heartbeats, 2)
+
+    def test_metrics_are_partitioned_by_tenant_and_outcome(self) -> None:
+        worker = self.worker(FakeQueue(), FakeService())
+        worker.run_once(self.tenant_id)
+        snapshot = worker.metrics.snapshot()
+        self.assertEqual(snapshot[self.tenant_id]["outcomes"]["completed"], 1)
+        self.assertEqual(snapshot[self.tenant_id]["execution_count"], 1)
+
+    def test_supervisor_retries_database_failure_instead_of_exiting(self) -> None:
+        worker = self.worker(FailingClaimQueue(), FakeService())
+        stop = StopAfterWait()
+        run_forever(
+            worker, [self.tenant_id], stop, poll_seconds=0.01,
+            logger=logging.getLogger("test.worker"),
+        )
+        self.assertTrue(stop.waited)
 
     def test_invalid_tenant_and_worker_ids_fail_closed(self) -> None:
         with self.assertRaises(ValueError):
             IngestionJobWorker(
-                queue=FakeQueue(),
-                service=FakeService(),
-                worker_id="not-a-uuid",
+                queue=FakeQueue(), service=FakeService(), worker_id="not-a-uuid"
             )
         with self.assertRaises(ValueError):
             self.worker(FakeQueue(), FakeService()).run_once("not-a-tenant")

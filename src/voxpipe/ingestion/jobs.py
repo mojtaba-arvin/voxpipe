@@ -171,6 +171,7 @@ class PostgresIngestionJobQueue:
                 )
                 UPDATE ingestion_jobs AS job
                 SET state = 'leased',
+                    started_at = now(),
                     attempts = job.attempts + 1,
                     lease_owner = %s,
                     lease_expires_at = now() + make_interval(secs => %s),
@@ -418,3 +419,45 @@ class PostgresIngestionJobQueue:
             raise ValueError("max_attempts must be between 1 and 100")
         if not 0 <= seconds <= 86400:
             raise ValueError("time interval must be between 0 and 86400 seconds")
+
+    def metrics(self, tenant_id: str) -> dict[str, int | float]:
+        """Return tenant-scoped queue health without job payloads or media data."""
+        with self._tenant_connection(tenant_id) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    count(*) FILTER (WHERE state = 'pending') AS pending_depth,
+                    COALESCE(
+                        extract(epoch FROM (
+                            now() - (min(created_at) FILTER (WHERE state = 'pending'))
+                        )),
+                        0
+                    ) AS oldest_pending_age_seconds,
+                    count(*) FILTER (
+                        WHERE state = 'leased' AND lease_expires_at > now()
+                    ) AS active_leases,
+                    COALESCE(
+                        sum(GREATEST(attempts - 1, 0)),
+                        0
+                    ) AS retry_count,
+                    count(*) FILTER (WHERE state = 'dead') AS dead_letter_count,
+                    COALESCE(
+                        avg(extract(epoch FROM (updated_at - started_at)))
+                            FILTER (WHERE state = 'completed' AND started_at IS NOT NULL),
+                        0
+                    ) AS completed_processing_seconds_avg
+                FROM ingestion_jobs
+                WHERE tenant_id = %s
+                """,
+                (tenant_id,),
+            ).fetchone()
+        return {
+            "pending_depth": int(row["pending_depth"]),
+            "oldest_pending_age_seconds": round(float(row["oldest_pending_age_seconds"]), 3),
+            "active_leases": int(row["active_leases"]),
+            "retry_count": int(row["retry_count"]),
+            "dead_letter_count": int(row["dead_letter_count"]),
+            "completed_processing_seconds_avg": round(
+                float(row["completed_processing_seconds_avg"]), 3
+            ),
+        }
