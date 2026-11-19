@@ -319,10 +319,14 @@
       "evidence": [
         "migrations/postgres/0003_create_durable_ingestion_jobs.sql — tenant-scoped queue schema, composite tenant/session foreign key, lease invariants, claim index, and forced RLS",
         "src/voxpipe/ingestion/jobs.py — idempotent enqueue, atomic SKIP LOCKED claims, expiring leases, heartbeat, stale-owner fencing, bounded retry/dead-letter, and atomic session/job cancellation",
-        "src/voxpipe/ingestion/worker.py — per-tenant job execution, background lease heartbeat, session resume integration, bounded exponential retry, and stale-lease acknowledgement fencing",
-        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS tests (CI verification pending)",
-        "tests/test_ingestion_worker.py — worker success, retry classification, dead-letter, stale lease, and tenant/worker identity tests (CI verification pending)",
-        "docs/architecture/durable-ingestion-queue.md — queue state machine, RLS boundary, worker contract, and operational constraints"
+        "src/voxpipe/ingestion/worker.py and scripts/run_ingestion_worker.py — per-tenant execution, background lease heartbeat, session resume integration, bounded exponential retry, stale-lease acknowledgement fencing, and explicit tenant allowlist",
+        "contracts/openapi/ingestion.v1.yaml — versioned upload initiation, streamed content, finalization, status, cancellation, and error contracts",
+        "cmd/voxpipe-api/main.go and internal/httpapi/*.go — Go HTTP API, hashed bearer-token authentication with tenant/scopes, PostgreSQL RLS store, streamed checksum-verified atomic staging, idempotency, and transactionally enqueued jobs",
+        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS coverage",
+        "tests/test_ingestion_worker.py — worker success, retry classification, dead-letter, stale lease, and tenant/worker identity tests",
+        "internal/httpapi/server_test.go and store_integration_test.go — API lifecycle, idempotent retries, interrupted upload, checksum failure, authorization scopes, tenant isolation, cancellation cleanup, and PostgreSQL transaction tests",
+        "docs/architecture/durable-ingestion-queue.md, docs/architecture/upload-api.md, and ADR-0004 — queue semantics, Go/Python boundary, auth model, single-node staging constraints, and deployment guidance",
+        "GitHub Actions Go 1.25 validation and PostgreSQL integration run — pending"
       ],
       "blocked_reason": null
     },
