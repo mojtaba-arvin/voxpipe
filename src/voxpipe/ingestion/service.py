@@ -96,7 +96,6 @@ class IngestionService:
         max_file_size_bytes: int = 512 * 1024 * 1024,
         session_ttl: timedelta = timedelta(hours=24),
         lease_ttl: timedelta = timedelta(minutes=5),
-        worker_id: str | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         if storage_provider not in _STORAGE_PROVIDERS:
@@ -120,7 +119,6 @@ class IngestionService:
         self._max_file_size_bytes = max_file_size_bytes
         self._session_ttl = session_ttl
         self._lease_ttl = lease_ttl
-        self._worker_id = worker_id or str(uuid4())
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     def ingest(self, request: IngestionRequest) -> IngestionResult:
@@ -197,7 +195,7 @@ class IngestionService:
         claimed = self._repository.claim_session(
             tenant_id,
             session_id,
-            self._worker_id,
+            str(uuid4()),
             self._format_time(now),
             self._format_time(now + self._lease_ttl),
         )
@@ -314,7 +312,7 @@ class IngestionService:
         else:
             lease = dict(updated.get("lease") or {})
             lease.update({
-                "owner_id": self._worker_id,
+                "owner_id": lease.get("owner_id"),
                 "expires_at": self._format_time(now + self._lease_ttl),
                 "heartbeat_at": self._format_time(now),
                 "attempt": max(1, int(lease.get("attempt", 1))),
