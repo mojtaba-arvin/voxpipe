@@ -256,10 +256,11 @@
         "VP-0012"
       ],
       "acceptance_criteria": [
-        "Workers claim active sessions with expiring leases and compare-and-swap ownership.",
-        "Expired leases can be safely resumed without duplicate assets or external side effects.",
-        "A reconciler detects and cleans orphaned objects and metadata with an auditable result.",
-        "Fault-injection tests cover process termination at each persistence/storage boundary."
+        "Workers claim active sessions with unique expiring lease owners; concurrent claims fail closed and state updates use compare-and-swap.",
+        "Sessions persist only a relative private staging reference; expired leases can resume the same asset ID/object key without duplicate assets.",
+        "Recovery handles restart points before storage, after object write, and after asset metadata commit.",
+        "A failed-session reconciler retries cleanup of associated object bytes and asset metadata and returns a structured audit report.",
+        "Fault-injection tests cover live lease contention, expired lease recovery, missing staged files, session expiry, and orphan cleanup."
       ],
       "evidence": [],
       "blocked_reason": null
