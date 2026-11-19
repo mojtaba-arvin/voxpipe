@@ -131,7 +131,6 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 		"updated_at": timestamp,
 		"expires_at": now.Add(s.sessionTTL).Format(time.RFC3339Nano),
 	}
-	if request.RetentionPolicyID != "" { session["retention_policy_id"] = request.RetentionPolicyID }
 
 	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session)
 	if err != nil { writeStoreError(w, err); return }
