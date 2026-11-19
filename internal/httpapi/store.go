@@ -57,7 +57,7 @@ func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string,
     var result []byte
     err = tx.QueryRow(ctx, `
         INSERT INTO ingestion_sessions (session_id, tenant_id, idempotency_key, state, payload, updated_at)
-        VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+        VALUES ($1::uuid, $2::uuid, $3, $4, $5::jsonb, $6::timestamptz)
         ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING payload
     `, session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
     if err == nil {
@@ -75,7 +75,7 @@ func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string,
 func (s *PostgresStore) GetSession(ctx context.Context, tenantID, sessionID string) (map[string]any, error) {
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return nil, err }; defer tx.Rollback(ctx)
     var payload []byte
-    err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1 AND session_id=$2", tenantID, sessionID).Scan(&payload)
+    err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::uuid AND session_id=$2::uuid", tenantID, sessionID).Scan(&payload)
     if errors.Is(err, pgx.ErrNoRows) { return nil, ErrNotFound }; if err != nil { return nil, err }
     if err := tx.Commit(ctx); err != nil { return nil, err }
     return decodePayload(payload)
@@ -87,7 +87,7 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
     tag, err := tx.Exec(ctx, `
         UPDATE ingestion_sessions SET state=$1, payload=$2::jsonb, updated_at=$3
-        WHERE tenant_id=$4 AND session_id=$5 AND state=$6
+        WHERE tenant_id=$4::uuid AND session_id=$5::uuid AND state=$6
     `, updated["state"], payload, updated["updated_at"], tenantID, sessionID, expectedState)
     if err != nil { return err }; if tag.RowsAffected()!=1 { return ErrConflict }
     return tx.Commit(ctx)
@@ -97,7 +97,7 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
     if maxAttempts<1 || maxAttempts>100 { return nil, fmt.Errorf("max_attempts must be between 1 and 100") }
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return nil, err }; defer tx.Rollback(ctx)
     var raw []byte
-    err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1 AND session_id=$2 FOR UPDATE", tenantID, sessionID).Scan(&raw)
+    err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::uuid AND session_id=$2::uuid FOR UPDATE", tenantID, sessionID).Scan(&raw)
     if errors.Is(err, pgx.ErrNoRows) { return nil, ErrNotFound }; if err != nil { return nil, err }
     current, err := decodePayload(raw); if err != nil { return nil, err }
     state, _ := current["state"].(string)
@@ -120,7 +120,7 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
     var jobJSON []byte
     err = tx.QueryRow(ctx, `
         INSERT INTO ingestion_jobs (job_id,tenant_id,session_id,state,max_attempts,available_at,created_at,updated_at)
-        VALUES ($1,$2,$3,'pending',$4,now(),now(),now())
+        VALUES ($1::uuid,$2::uuid,$3::uuid,'pending',$4,now(),now(),now())
         ON CONFLICT (tenant_id,session_id) DO NOTHING
         RETURNING jsonb_build_object('job_id',job_id,'state',state,'attempts',attempts,'max_attempts',max_attempts,'last_error_code',last_error_code)
     `, jobID, tenantID, sessionID, maxAttempts).Scan(&jobJSON)
@@ -162,9 +162,9 @@ func (s *PostgresStore) Cancel(ctx context.Context, tenantID, sessionID string) 
     session["state"]="cancelled"; delete(session,"lease")
     session["updated_at"]=time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
     payload,err:=json.Marshal(session); if err!=nil { return false,err }
-    _,err=tx.Exec(ctx,"UPDATE ingestion_sessions SET state='cancelled',payload=$1::jsonb,updated_at=now() WHERE tenant_id=$2 AND session_id=$3",payload,tenantID,sessionID)
+    _,err=tx.Exec(ctx,"UPDATE ingestion_sessions SET state='cancelled',payload=$1::jsonb,updated_at=now() WHERE tenant_id=$2::uuid AND session_id=$3::uuid",payload,tenantID,sessionID)
     if err!=nil { return false,err }
-    _,err=tx.Exec(ctx,"UPDATE ingestion_jobs SET state='cancelled',lease_owner=NULL,lease_expires_at=NULL,updated_at=now() WHERE tenant_id=$1 AND session_id=$2 AND state IN ('pending','leased')",tenantID,sessionID)
+    _,err=tx.Exec(ctx,"UPDATE ingestion_jobs SET state='cancelled',lease_owner=NULL,lease_expires_at=NULL,updated_at=now() WHERE tenant_id=$1::uuid AND session_id=$2::uuid AND state IN ('pending','leased')",tenantID,sessionID)
     if err!=nil { return false,err }
     if err:=tx.Commit(ctx); err!=nil { return false,err }; return true,nil
 }
