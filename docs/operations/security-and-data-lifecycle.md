@@ -1,6 +1,6 @@
 # Security, Privacy, and Audio Data Lifecycle Baseline
 
-**Status:** Initial requirements; detailed threat model remains an open Phase 0 task.
+**Status:** Initial requirements baseline; the detailed threat register is maintained in [the threat model](../security/threat-model.md). Implementation controls still require feature-specific verification.
 
 ## Data classification
 
