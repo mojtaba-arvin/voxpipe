@@ -27,8 +27,9 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add a separate full-file decode integrity gate; metadata probing alone does not prove that all audio packets decode.
 - [x] Add object-storage abstraction and local filesystem development implementation.
 - [x] Add lease-based stale-session recovery and failed/expired-session orphan reconciliation.
-- Add cancellation, API-level access control, retention, deletion, and durable retry policy.
-- Add access control, retention, deletion, and audit events.
+- [x] Add PostgreSQL metadata repository, versioned migrations, and forced tenant RLS.
+- Implement authenticated batch upload API and PostgreSQL-backed durable job queue.
+- Add cancellation, bounded retry/dead-letter policy, retention, deletion, and audit events.
 
 **Exit gate:** An audio asset can be ingested, validated, stored, processed asynchronously, and traced end-to-end with deterministic tests.
 

@@ -9,11 +9,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** Active development  
-**Default branch:** `main`  
-**Active foundation branch:** `bootstrap/phase-0-foundation`
-
-This repository is intentionally starting with engineering governance, executable validation, and architecture contracts before committing to a large runtime stack.
+**Status:** Active development — batch ingestion, media validation, local storage, SQLite persistence, and lease recovery are implemented; PostgreSQL adapter is under validation.  
+**Default branch:** `main`
 
 ## Design principles
 
@@ -29,33 +26,59 @@ This repository is intentionally starting with engineering governance, executabl
 
 ```text
 .
+├── .github/workflows/validate.yml
 ├── AGENTS.md
-├── README.md
 ├── Makefile
+├── README.md
 ├── contracts/
-│   ├── schemas/
-│   └── examples/
-├── planning/
-│   └── WORK_ITEMS.json
+│   ├── examples/
+│   └── schemas/
 ├── docs/
 │   ├── ROADMAP.md
 │   ├── architecture/
 │   │   ├── overview.md
 │   │   ├── storage.md
-│   │   └── ingestion.md
+│   │   ├── ingestion.md
+│   │   └── postgres.md
 │   ├── decisions/
-│   │   └── 0001-agent-native-foundation.md
 │   └── operations/
-│       └── agent-execution-protocol.md
-└── scripts/
-    └── validate_repo.py
+├── migrations/
+│   └── postgres/
+│       ├── 0001_create_ingestion_tables.sql
+│       └── 0002_add_tenant_rls_and_updated_at.sql
+├── planning/
+│   └── WORK_ITEMS.json
+├── requirements-dev.txt
+├── requirements-postgres.txt
+├── scripts/
+│   └── validate_repo.py
+├── src/voxpipe/
+│   ├── media/
+│   │   ├── probe.py
+│   │   └── validation.py
+│   ├── storage/
+│   │   ├── ports.py
+│   │   └── local.py
+│   └── ingestion/
+│       ├── repository.py
+│       ├── postgres.py
+│       ├── service.py
+│       └── recovery.py
+└── tests/
+    ├── test_contract_schemas.py
+    ├── test_media_probe.py
+    ├── test_media_validation.py
+    ├── test_local_storage.py
+    ├── test_ingestion_service.py
+    ├── test_ingestion_recovery.py
+    └── test_postgres_repository.py
 ```
 
 ## Quick start
 
 Requirements: Python 3.11+ and Make. The repository pins Python 3.12 in `.python-version`.
 
-Create an isolated environment and install the development/test dependencies:
+Create an isolated environment and install development/test dependencies:
 
 ```bash
 make bootstrap
@@ -63,7 +86,9 @@ make bootstrap
 make check
 ```
 
-The work-ledger validator uses the Python standard library. Contract tests use `jsonschema`; media inspection uses system FFmpeg/ffprobe binaries. Runtime services and additional providers will be introduced only when a phase has a concrete, testable requirement.
+Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
+
+For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md).
 
 ## Development workflow
 

@@ -53,14 +53,14 @@ class IngestionRecoveryWorker:
         self._service = service
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def run(self, *, limit: int = 100) -> RecoveryReport:
+    def run(self, *, tenant_id: str | None = None, limit: int = 100) -> RecoveryReport:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
         now = self._clock()
         if now.tzinfo is None:
             raise ValueError("clock must return a timezone-aware datetime")
         now_text = now.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-        sessions = self._repository.list_recoverable_sessions(now_text, limit)
+        sessions = self._repository.list_recoverable_sessions(now_text, limit, tenant_id=tenant_id)
         items: list[RecoveryItem] = []
 
         for session in sessions:
@@ -116,12 +116,12 @@ class IngestionOrphanReconciler:
         self._repository = repository
         self._object_store = object_store
 
-    def run(self, *, limit: int = 100) -> ReconciliationReport:
+    def run(self, *, tenant_id: str | None = None, limit: int = 100) -> ReconciliationReport:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
-        failed_sessions = self._repository.list_sessions_by_state("failed", limit)
+        failed_sessions = self._repository.list_sessions_by_state("failed", limit, tenant_id=tenant_id)
         remaining = max(0, limit - len(failed_sessions))
-        expired_sessions = self._repository.list_sessions_by_state("expired", remaining) if remaining else []
+        expired_sessions = self._repository.list_sessions_by_state("expired", remaining, tenant_id=tenant_id) if remaining else []
         sessions = failed_sessions + expired_sessions
         items: list[ReconciliationItem] = []
 
