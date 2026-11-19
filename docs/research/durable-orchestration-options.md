@@ -17,7 +17,7 @@ VoxPipe needs durable audio-processing jobs and, separately, durable multi-agent
 | TypeScript | Official SDK | Official SDK | Official SDK |
 | Durable jobs | Workflows and, as of Sep 2026, GA Standalone Activities | Workflows, steps, queues, scheduling | Durable functions, workflows, async tasks |
 | Operational footprint | Separate Temporal service/Cloud plus workers | PostgreSQL plus application processes; optional Conductor | Restate runtime/server plus services |
-| Agent relevance | Durable long-running agent workflows and tool activities | Official agent integrations and durable agent examples | Explicit durable-agent and stateful-service positioning |
+| Agent relevance | Durable workflows and activities; workflow messages via Signals, Queries, and Updates | Official durable-agent examples; inbox/receive pattern for long-lived approvals | Durable agent integrations, multi-agent calls, and human approvals via awakeables/promises |
 | License observed in upstream repository | MIT (Temporal server repository) | MIT (DBOS Python repository) | Business Source License 1.1; Additional Use Grant permits own/internal deployments but restricts offering a Public Restate Platform Service |
 | Key evaluation risk | Workflow determinism, service operations, history/versioning and cost | Postgres coupling, transaction boundaries, concurrency and operational scaling | BSL restrictions, runtime adoption, SDK maturity for our exact use cases, state/version evolution |
 
@@ -28,6 +28,7 @@ VoxPipe needs durable audio-processing jobs and, separately, durable multi-agent
 - Python client supports starting workflows, signaling, querying, and retrieving results: https://docs.temporal.io/develop/python/client/temporal-client
 - Standalone Activities became generally available across Python, Go, TypeScript, and other SDKs on 2026-09-15. The documented feature set includes durable jobs, retries, timeouts, heartbeats, priority/fairness, start delay, and lifecycle controls: https://temporal.io/changelog/standalone-activities-durable-job-processing-ga
 - Temporal's standalone activity model may cover a durable job queue without forcing every task into a multi-step workflow.
+- Workflow Signals, Queries, and Updates provide asynchronous and synchronous message-passing patterns: https://docs.temporal.io/encyclopedia/workflow-message-passing
 - The upstream Temporal server repository declares MIT: https://github.com/temporalio/temporal/blob/main/LICENSE
 
 **Interpretation:** Strong candidate when workflow history, long-running orchestration, cross-service coordination, and independent orchestration operations justify a dedicated system.
@@ -38,6 +39,7 @@ VoxPipe needs durable audio-processing jobs and, separately, durable multi-agent
 - Python workflow documentation describes recovery from the last completed step and explains the distinction between retried steps and committed transactions: https://docs.dbos.dev/python/tutorials/workflow-tutorial
 - DBOS supports multiple languages and documents cross-language interaction between separately deployed applications through clients/shared system databases: https://docs.dbos.dev/architecture
 - Official material includes AI-agent integrations and examples: https://www.dbos.dev/
+- The official Python agent-inbox example demonstrates durable workflows waiting hours or days for human input and resuming after process restarts: https://docs.dbos.dev/python/examples/agent-inbox
 - The DBOS Python repository declares MIT: https://github.com/dbos-inc/dbos-transact-py/blob/main/LICENSE
 
 **Interpretation:** Strong candidate for an initial Python-centric modular system if PostgreSQL is already a foundational dependency and we want to avoid operating a separate workflow cluster. Exactly-once guarantees must be understood at the transaction boundary; external side effects still require idempotency and careful step design.
@@ -46,6 +48,7 @@ VoxPipe needs durable audio-processing jobs and, separately, durable multi-agent
 
 - Official documentation positions Restate for durable agents, workflows, microservice orchestration, and event processing: https://restate.dev/
 - The official project lists SDKs for Python, Go, TypeScript, Java/Kotlin, and Rust: https://github.com/restatedev/restate
+- Restate's durable promises/awakeables support external callbacks and human approvals, while its agent integrations document durable multi-agent communication: https://github.com/restatedev/docs-restate/blob/main/docs/tour/microservice-orchestration.mdx
 - The current upstream server repository uses Business Source License 1.1. Its Additional Use Grant permits production and internal deployments of the licensee's own services, while restricting a Public Restate Platform Service. Review the exact license text and intended VoxPipe distribution model before adoption: https://github.com/restatedev/restate/blob/main/LICENSE
 
 **Interpretation:** Strong candidate for low-latency durable service interactions and stateful orchestration. The BSL 1.1 terms are a material product/distribution consideration; a self-hosted VoxPipe deployment appears distinct from offering Restate itself as a public platform, but the exact planned use must be checked against the full license and legal advice. Validate SDK behavior, deployment topology, operational requirements, and versioning semantics in a small proof of concept before adoption.
