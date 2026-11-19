@@ -43,6 +43,18 @@
     "idempotency_key": { "type": "string", "minLength": 16, "maxLength": 128, "pattern": "^[A-Za-z0-9._:-]+$" },
     "asset_id": { "type": "string", "format": "uuid" },
     "retention_policy_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "staging_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_id", "expires_at", "heartbeat_at", "attempt"],
+      "properties": {
+        "owner_id": { "type": "string", "format": "uuid" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "heartbeat_at": { "type": "string", "format": "date-time" },
+        "attempt": { "type": "integer", "minimum": 1 }
+      }
+    },
     "upload": {
       "type": "object",
       "additionalProperties": false,
