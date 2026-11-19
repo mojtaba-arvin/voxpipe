@@ -41,7 +41,8 @@ This repository is intentionally starting with engineering governance, executabl
 │   ├── ROADMAP.md
 │   ├── architecture/
 │   │   ├── overview.md
-│   │   └── storage.md
+│   │   ├── storage.md
+│   │   └── ingestion.md
 │   ├── decisions/
 │   │   └── 0001-agent-native-foundation.md
 │   └── operations/

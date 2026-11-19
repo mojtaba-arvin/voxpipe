@@ -200,7 +200,7 @@
       "title": "Define object storage port and implement local filesystem adapter",
       "phase": 1,
       "priority": 4,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0008"
       ],
@@ -210,7 +210,13 @@
         "Tests cover overwrite/conflict policy, missing objects, corrupted checksums, path traversal, interrupted writes, and deletion.",
         "Storage references remain opaque and compatible with AudioAsset v1."
       ],
-      "evidence": [],
+      "evidence": [
+        "src/voxpipe/storage/ports.py — provider-neutral ObjectStoragePort",
+        "src/voxpipe/storage/local.py — atomic local filesystem adapter with SHA-256, size limits, idempotency, conflict and path/symlink protection",
+        "tests/test_local_storage.py — 12 storage tests covering round-trip, atomicity, interrupted writes, checksum, traversal, symlink escape, and conflicts",
+        "docs/architecture/storage.md — boundary and deployment limitations",
+        "GitHub Actions run 44442217659 — 51/51 tests passed"
+      ],
       "blocked_reason": null
     },
     {
@@ -218,7 +224,7 @@
       "title": "Implement batch ingestion application service",
       "phase": 1,
       "priority": 5,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0010",
         "VP-0011"
@@ -229,6 +235,49 @@
         "Session and asset lifecycle transitions are explicit and invalid transitions fail closed.",
         "Failures trigger bounded cleanup/compensation and never leave a completed session without an accepted asset.",
         "Unit and integration tests cover duplicate requests, storage failures, parser failures, and tenant mismatch."
+      ],
+      "evidence": [
+        "src/voxpipe/ingestion/service.py — batch orchestration, staging-root enforcement, SHA-256 request fingerprint, state transitions, idempotency, tenant scoping, asset creation, and compensation",
+        "src/voxpipe/ingestion/repository.py — SQLite WAL repository with FULL synchronous commits, unique tenant/idempotency constraint, tenant-scoped lookups, and compare-and-swap state updates",
+        "contracts/schemas/ingestion-session.v1.schema.json — retention policy and allowlisted declared_by source metadata",
+        "tests/test_ingestion_service.py — schema validation, idempotent replay/conflict, tenant isolation, path protection, probe/decode/storage failures, staged mutation, cleanup, and repository reopen",
+        "docs/architecture/ingestion.md — processing flow, persistence boundary, failure semantics, and known recovery limitations",
+        "GitHub Actions run 44442849625 — repository validation passed (14 work items); 67/67 tests passed, including real FFmpeg/ffprobe integration tests"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0013",
+      "title": "Add stale ingestion recovery, leases, and orphan reconciliation",
+      "phase": 1,
+      "priority": 6,
+      "status": "ready",
+      "depends_on": [
+        "VP-0012"
+      ],
+      "acceptance_criteria": [
+        "Workers claim active sessions with expiring leases and compare-and-swap ownership.",
+        "Expired leases can be safely resumed without duplicate assets or external side effects.",
+        "A reconciler detects and cleans orphaned objects and metadata with an auditable result.",
+        "Fault-injection tests cover process termination at each persistence/storage boundary."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0014",
+      "title": "Implement PostgreSQL ingestion repository and schema migrations",
+      "phase": 1,
+      "priority": 7,
+      "status": "ready",
+      "depends_on": [
+        "VP-0012"
+      ],
+      "acceptance_criteria": [
+        "PostgreSQL schema preserves tenant-scoped idempotency and compare-and-swap session transitions.",
+        "Migrations are versioned and tested from an empty database and previous schema version.",
+        "Concurrent duplicate submissions produce one session and one asset.",
+        "Tenant isolation and transaction rollback behavior have integration tests."
       ],
       "evidence": [],
       "blocked_reason": null

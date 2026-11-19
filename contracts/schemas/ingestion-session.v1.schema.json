@@ -32,7 +32,8 @@
           "enum": ["file_upload", "device_capture", "telephony", "live_stream", "import"]
         },
         "external_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
-        "recorded_at": { "type": "string", "format": "date-time" }
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "declared_by": { "type": "string", "maxLength": 256 }
       }
     },
     "state": {
@@ -41,6 +42,7 @@
     },
     "idempotency_key": { "type": "string", "minLength": 16, "maxLength": 128, "pattern": "^[A-Za-z0-9._:-]+$" },
     "asset_id": { "type": "string", "format": "uuid" },
+    "retention_policy_id": { "type": "string", "minLength": 1, "maxLength": 128 },
     "upload": {
       "type": "object",
       "additionalProperties": false,
