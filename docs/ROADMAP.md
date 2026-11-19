@@ -22,11 +22,12 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 - [x] Define canonical audio asset and session contracts.
 - [x] Evaluate media probing and normalization tools before selecting an implementation (ffprobe isolated subprocess is the PoC primary; no binary is approved for distribution yet).
-- [x] Implement batch ingestion orchestration with durable session metadata; upload API and resumable recovery remain separate work.
+- [x] Implement batch ingestion orchestration with durable session metadata and lease-based resumable recovery; upload API remains separate.
 - [x] Validate media type, duration, size, sample rate, and channel layout from actual file bytes (not client hints).
 - [x] Add a separate full-file decode integrity gate; metadata probing alone does not prove that all audio packets decode.
 - [x] Add object-storage abstraction and local filesystem development implementation.
-- Add lease-based stale-session recovery, orphan reconciliation, cancellation, and retry policy.
+- [x] Add lease-based stale-session recovery and failed/expired-session orphan reconciliation.
+- Add cancellation, API-level access control, retention, deletion, and durable retry policy.
 - Add access control, retention, deletion, and audit events.
 
 **Exit gate:** An audio asset can be ingested, validated, stored, processed asynchronously, and traced end-to-end with deterministic tests.

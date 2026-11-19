@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from contextlib import closing
 import os
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -19,40 +19,20 @@ class IngestionRepositoryConflict(IngestionRepositoryError):
 
 
 class IngestionRepositoryPort(Protocol):
-    def create_or_get_session(self, session: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-        ...
-
-    def get_session_by_idempotency(self, tenant_id: str, idempotency_key: str) -> dict[str, Any] | None:
-        ...
-
-    def get_session(self, tenant_id: str, session_id: str) -> dict[str, Any] | None:
-        ...
-
-    def update_session(
-        self,
-        tenant_id: str,
-        session_id: str,
-        expected_state: str,
-        updated_session: dict[str, Any],
-    ) -> dict[str, Any]:
-        ...
-
-    def create_asset(self, asset: dict[str, Any]) -> dict[str, Any]:
-        ...
-
-    def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None:
-        ...
-
-    def delete_asset(self, tenant_id: str, asset_id: str) -> bool:
-        ...
+    def create_or_get_session(self, session: dict[str, Any]) -> tuple[dict[str, Any], bool]: ...
+    def get_session_by_idempotency(self, tenant_id: str, idempotency_key: str) -> dict[str, Any] | None: ...
+    def get_session(self, tenant_id: str, session_id: str) -> dict[str, Any] | None: ...
+    def update_session(self, tenant_id: str, session_id: str, expected_state: str, updated_session: dict[str, Any]) -> dict[str, Any]: ...
+    def create_asset(self, asset: dict[str, Any]) -> dict[str, Any]: ...
+    def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None: ...
+    def delete_asset(self, tenant_id: str, asset_id: str) -> bool: ...
+    def claim_session(self, tenant_id: str, session_id: str, worker_id: str, now: str, lease_expires_at: str) -> dict[str, Any] | None: ...
+    def list_recoverable_sessions(self, now: str, limit: int) -> list[dict[str, Any]]: ...
+    def list_sessions_by_state(self, state: str, limit: int) -> list[dict[str, Any]]: ...
 
 
 class SQLiteIngestionRepository:
-    """Single-node durable repository using SQLite and tenant-scoped queries.
-
-    This is a local/single-node adapter. Multi-node production deployments
-    should use a transactional database adapter with equivalent constraints.
-    """
+    """Single-node durable repository using SQLite and tenant-scoped queries."""
 
     def __init__(self, database_path: str | Path) -> None:
         self._path = Path(database_path).expanduser()
@@ -69,8 +49,6 @@ class SQLiteIngestionRepository:
         try:
             self._path.chmod(0o600)
         except OSError:
-            # Filesystem permission semantics vary; deployment must keep the
-            # database directory private even when chmod is unsupported.
             pass
 
     def create_or_get_session(self, session: dict[str, Any]) -> tuple[dict[str, Any], bool]:
@@ -79,28 +57,19 @@ class SQLiteIngestionRepository:
             connection.execute("BEGIN IMMEDIATE")
             try:
                 connection.execute(
-                    """
-                    INSERT INTO ingestion_sessions
-                        (session_id, tenant_id, idempotency_key, state, payload_json)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        session["session_id"],
-                        session["tenant_id"],
-                        session["idempotency_key"],
-                        session["state"],
-                        payload,
-                    ),
+                    """INSERT INTO ingestion_sessions
+                    (session_id, tenant_id, idempotency_key, state, payload_json)
+                    VALUES (?, ?, ?, ?, ?)""",
+                    (session["session_id"], session["tenant_id"], session["idempotency_key"], session["state"], payload),
                 )
             except sqlite3.IntegrityError:
                 row = connection.execute(
-                    """
-                    SELECT payload_json FROM ingestion_sessions
-                    WHERE tenant_id = ? AND idempotency_key = ?
-                    """,
+                    """SELECT payload_json FROM ingestion_sessions
+                    WHERE tenant_id = ? AND idempotency_key = ?""",
                     (session["tenant_id"], session["idempotency_key"]),
                 ).fetchone()
                 if row is None:
+                    connection.rollback()
                     raise IngestionRepositoryConflict("session identifier already exists") from None
                 existing = json.loads(row["payload_json"])
                 connection.commit()
@@ -108,28 +77,20 @@ class SQLiteIngestionRepository:
             connection.commit()
             return session, True
 
-    def get_session_by_idempotency(
-        self,
-        tenant_id: str,
-        idempotency_key: str,
-    ) -> dict[str, Any] | None:
-        with self._connect() as connection:
+    def get_session_by_idempotency(self, tenant_id: str, idempotency_key: str) -> dict[str, Any] | None:
+        with closing(self._connect()) as connection:
             row = connection.execute(
-                """
-                SELECT payload_json FROM ingestion_sessions
-                WHERE tenant_id = ? AND idempotency_key = ?
-                """,
+                """SELECT payload_json FROM ingestion_sessions
+                WHERE tenant_id = ? AND idempotency_key = ?""",
                 (tenant_id, idempotency_key),
             ).fetchone()
         return json.loads(row["payload_json"]) if row else None
 
     def get_session(self, tenant_id: str, session_id: str) -> dict[str, Any] | None:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             row = connection.execute(
-                """
-                SELECT payload_json FROM ingestion_sessions
-                WHERE tenant_id = ? AND session_id = ?
-                """,
+                """SELECT payload_json FROM ingestion_sessions
+                WHERE tenant_id = ? AND session_id = ?""",
                 (tenant_id, session_id),
             ).fetchone()
         return json.loads(row["payload_json"]) if row else None
@@ -141,21 +102,12 @@ class SQLiteIngestionRepository:
         expected_state: str,
         updated_session: dict[str, Any],
     ) -> dict[str, Any]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             cursor = connection.execute(
-                """
-                UPDATE ingestion_sessions
-                SET state = ?, payload_json = ?
-                WHERE tenant_id = ? AND session_id = ? AND state = ?
-                """,
-                (
-                    updated_session["state"],
-                    self._dump(updated_session),
-                    tenant_id,
-                    session_id,
-                    expected_state,
-                ),
+                """UPDATE ingestion_sessions SET state = ?, payload_json = ?
+                WHERE tenant_id = ? AND session_id = ? AND state = ?""",
+                (updated_session["state"], self._dump(updated_session), tenant_id, session_id, expected_state),
             )
             if cursor.rowcount != 1:
                 connection.rollback()
@@ -165,45 +117,40 @@ class SQLiteIngestionRepository:
 
     def create_asset(self, asset: dict[str, Any]) -> dict[str, Any]:
         payload = self._dump(asset)
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
                 connection.execute(
-                    """
-                    INSERT INTO audio_assets (asset_id, tenant_id, payload_json)
-                    VALUES (?, ?, ?)
-                    """,
+                    "INSERT INTO audio_assets (asset_id, tenant_id, payload_json) VALUES (?, ?, ?)",
                     (asset["asset_id"], asset["tenant_id"], payload),
                 )
             except sqlite3.IntegrityError:
                 row = connection.execute(
-                    """
-                    SELECT payload_json FROM audio_assets
-                    WHERE tenant_id = ? AND asset_id = ?
-                    """,
+                    """SELECT payload_json FROM audio_assets
+                    WHERE tenant_id = ? AND asset_id = ?""",
                     (asset["tenant_id"], asset["asset_id"]),
                 ).fetchone()
                 if row is None or row["payload_json"] != payload:
                     connection.rollback()
-                    raise IngestionRepositoryConflict("asset identifier already exists with different content") from None
+                    raise IngestionRepositoryConflict(
+                        "asset identifier already exists with different content"
+                    ) from None
                 connection.commit()
                 return json.loads(row["payload_json"])
             connection.commit()
         return asset
 
     def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             row = connection.execute(
-                """
-                SELECT payload_json FROM audio_assets
-                WHERE tenant_id = ? AND asset_id = ?
-                """,
+                """SELECT payload_json FROM audio_assets
+                WHERE tenant_id = ? AND asset_id = ?""",
                 (tenant_id, asset_id),
             ).fetchone()
         return json.loads(row["payload_json"]) if row else None
 
     def delete_asset(self, tenant_id: str, asset_id: str) -> bool:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             cursor = connection.execute(
                 "DELETE FROM audio_assets WHERE tenant_id = ? AND asset_id = ?",
@@ -211,6 +158,79 @@ class SQLiteIngestionRepository:
             )
             connection.commit()
         return cursor.rowcount > 0
+
+    def claim_session(
+        self,
+        tenant_id: str,
+        session_id: str,
+        worker_id: str,
+        now: str,
+        lease_expires_at: str,
+    ) -> dict[str, Any] | None:
+        """Atomically claim an active session when its prior lease is absent/expired."""
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """SELECT state, payload_json FROM ingestion_sessions
+                WHERE tenant_id = ? AND session_id = ?""",
+                (tenant_id, session_id),
+            ).fetchone()
+            if row is None or row["state"] in {"completed", "failed", "cancelled", "expired"}:
+                connection.commit()
+                return None
+
+            session = json.loads(row["payload_json"])
+            prior_lease = session.get("lease") or {}
+            prior_expiry = prior_lease.get("expires_at")
+            prior_owner = prior_lease.get("owner_id")
+            if prior_expiry and prior_expiry > now and prior_owner != worker_id:
+                connection.commit()
+                return None
+
+            session["lease"] = {
+                "owner_id": worker_id,
+                "expires_at": lease_expires_at,
+                "heartbeat_at": now,
+                "attempt": int(prior_lease.get("attempt", 0)) + 1,
+            }
+            session["updated_at"] = now
+            cursor = connection.execute(
+                """UPDATE ingestion_sessions SET payload_json = ?
+                WHERE tenant_id = ? AND session_id = ? AND state = ?""",
+                (self._dump(session), tenant_id, session_id, row["state"]),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                return None
+            connection.commit()
+            return session
+
+    def list_recoverable_sessions(self, now: str, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        states = ("created", "receiving", "finalizing", "queued", "processing")
+        placeholders = ",".join("?" for _ in states)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                f"""SELECT payload_json FROM ingestion_sessions
+                WHERE state IN ({placeholders})
+                  AND (json_extract(payload_json, '$.lease.expires_at') IS NULL
+                       OR json_extract(payload_json, '$.lease.expires_at') <= ?)
+                ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
+                (*states, now, limit),
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
+    def list_sessions_by_state(self, state: str, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                """SELECT payload_json FROM ingestion_sessions
+                WHERE state = ? ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
+                (state, limit),
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._path, timeout=30, isolation_level=None)
@@ -221,7 +241,7 @@ class SQLiteIngestionRepository:
         return connection
 
     def _initialize(self) -> None:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.execute("PRAGMA synchronous = FULL")
             connection.executescript(
@@ -234,10 +254,8 @@ class SQLiteIngestionRepository:
                     payload_json TEXT NOT NULL,
                     UNIQUE (tenant_id, idempotency_key)
                 );
-
                 CREATE INDEX IF NOT EXISTS idx_ingestion_sessions_tenant_state
                     ON ingestion_sessions (tenant_id, state);
-
                 CREATE TABLE IF NOT EXISTS audio_assets (
                     asset_id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
