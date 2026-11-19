@@ -36,7 +36,6 @@ type CreateIngestionRequest struct {
 	ExpectedSizeBytes int64          `json:"expected_size_bytes"`
 	ExpectedSHA256    string         `json:"expected_sha256"`
 	ContentTypeHint   string         `json:"content_type_hint,omitempty"`
-	RetentionPolicyID string         `json:"retention_policy_id,omitempty"`
 	Source            SourceMetadata `json:"source"`
 }
 
@@ -98,8 +97,7 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_CHECKSUM", "expected_sha256 must be a SHA-256 hex digest")
 		return
 	}
-	if !validSource(request.Source) || len(request.ContentTypeHint) > 128 ||
-		len(request.RetentionPolicyID) > 128 {
+	if !validSource(request.Source) || len(request.ContentTypeHint) > 128 {
 		writeError(w, http.StatusBadRequest, "INVALID_SOURCE", "Source or retention metadata is invalid")
 		return
 	}
@@ -354,12 +352,11 @@ func sameCreateRequest(session, upload map[string]any, request CreateIngestionRe
 	digest, digestOK := upload["expected_sha256"].(string)
 	sourceBytes, _ := json.Marshal(session["source"])
 	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
-	retention, _ := session["retention_policy_id"].(string)
 	contentType, _ := upload["content_type_hint"].(string)
 	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
 		digest == strings.ToLower(request.ExpectedSHA256) &&
 		string(sourceBytes) == string(requestSourceBytes) &&
-		retention == request.RetentionPolicyID && contentType == request.ContentTypeHint
+		contentType == request.ContentTypeHint
 }
 
 func numberInt64(value any) (int64, bool) {
