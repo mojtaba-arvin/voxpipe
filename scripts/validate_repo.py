@@ -58,9 +58,9 @@ def validate_agent_assets() -> int:
             closing = lines.index("---", 1)
         except ValueError:
             fail(f"{skill_file.relative_to(ROOT)}: unterminated YAML frontmatter")
-        frontmatter = "\\n".join(lines[1:closing])
-        name_match = re.search(r"(?m)^name:\\s*([a-z0-9-]+)\\s*$", frontmatter)
-        description_match = re.search(r"(?m)^description:\\s*(.+)$", frontmatter)
+        frontmatter = "\n".join(lines[1:closing])
+        name_match = re.search(r"(?m)^name:\s*([a-z0-9-]+)\s*$", frontmatter)
+        description_match = re.search(r"(?m)^description:\s*(.+)$", frontmatter)
         if not name_match or not description_match:
             fail(f"{skill_file.relative_to(ROOT)}: frontmatter requires name and description")
         name = name_match.group(1)
