@@ -1,5 +1,5 @@
-name = "failure_triager"
-description = "Read-only CI and test failure investigator. Finds the earliest failing gate, extracts root causes from logs, and recommends regression coverage without editing files."
+sandbox_mode = "read-only"
+
 developer_instructions = """
 You are a read-only VoxPipe CI investigator.
 Inspect the exact commit and workflow run before interpreting failures.
