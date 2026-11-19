@@ -395,7 +395,7 @@
       "title": "Reconcile staged uploads and enforce retention and deletion",
       "phase": 1,
       "priority": 10,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0015"
       ],
@@ -408,7 +408,11 @@
         "PostgreSQL integration tests cover process crashes, concurrent upload/finalize/cancel, expired sessions, partial files, repeated cleanup, and deletion failures."
       ],
       "evidence": [
-        "Roadmap follow-up after VP-0015: local staging currently has no dedicated expiry/reconciliation service; deletion and audit propagation remain operational gates."
+        "Migration 0004 adds forced-RLS upload leases and tenant-scoped audit events.",
+        "API upload leases fence concurrent transfers and finalization; lease duration exceeds session expiry and expired leases fence cleanup.",
+        "Reconciliation expires stale unfinalized sessions, removes completed/terminal staging and interrupted parts, and deletes retained objects before metadata.",
+        "VOXPIPE_DEFAULT_RETENTION_DAYS assigns server-authoritative asset expiry; 0 disables automatic asset expiry.",
+        "Python unit/PostgreSQL integration and Go race/PostgreSQL integration passed on CI run 44469883406 (head 2604e32ebd438e98cb505529cc9e3082fb02bc53)."
       ],
       "blocked_reason": null
     },

@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are implemented; Python and Go/PostgreSQL CI passed on exact head 45cb7736. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
+**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are implemented; Python and Go/PostgreSQL CI passed on exact head 45cb7736. VP-0018 lease-fenced cleanup, configurable retention, and tenant audit events are implemented and CI-accepted on run 44469883406. Local filesystem staging and static-token authentication remain single-node/bootstrap choices; OIDC, quotas, and rate limiting are tracked in VP-0019, and worker supervision/observability in VP-0020.  
 **Default branch:** `main`
 
 ## Design principles
@@ -54,10 +54,15 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── server_test.go
 │   └── store_integration_test.go
 ├── contracts/
+│   ├── README.md
+│   ├── examples/
+│   │   ├── audio-asset.valid.json
+│   │   └── ingestion-session.valid.json
 │   ├── mcp/capabilities.v1.json
 │   ├── openapi/ingestion.v1.yaml
-│   ├── examples/
 │   └── schemas/
+│       ├── audio-asset.v1.schema.json
+│       └── ingestion-session.v1.schema.json
 ├── docs/
 │   ├── ROADMAP.md
 │   ├── architecture/
@@ -72,34 +77,45 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── requirements-dev.txt
 ├── requirements-postgres.txt
 ├── scripts/
-│   ├── validate_repo.py
 │   ├── generate_mcp_docs.py
 │   ├── prepare_test_database.py
+│   ├── reconcile_ingestion.py
 │   ├── run_ingestion_worker.py
-│   └── reconcile_ingestion.py
+│   └── validate_repo.py
 ├── src/voxpipe/
-│   ├── mcp/server.py
+│   ├── __init__.py
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   │   ├── jobs.py
+│   │   ├── postgres.py
+│   │   ├── recovery.py
+│   │   ├── repository.py
+│   │   ├── service.py
+│   │   └── worker.py
+│   ├── mcp/
+│   │   ├── __init__.py
+│   │   └── server.py
 │   ├── media/
-│   ├── storage/
-│   │   └── staging.py
-│   └── ingestion/
-│       ├── repository.py
-│       ├── postgres.py
-│       ├── jobs.py
-│       ├── worker.py
-│       ├── service.py
-│       └── recovery.py
+│   │   ├── __init__.py
+│   │   ├── probe.py
+│   │   └── validation.py
+│   └── storage/
+│       ├── __init__.py
+│       ├── local.py
+│       ├── ports.py
+│       └── staging.py
 └── tests/
     ├── test_contract_schemas.py
+    ├── test_ingestion_recovery.py
+    ├── test_ingestion_service.py
+    ├── test_ingestion_worker.py
+    ├── test_local_storage.py
+    ├── test_mcp_server.py
     ├── test_media_probe.py
     ├── test_media_validation.py
-    ├── test_local_storage.py
-    ├── test_ingestion_service.py
-    ├── test_ingestion_recovery.py
-    ├── test_ingestion_worker.py
     ├── test_postgres_repository.py
-    ├── test_mcp_server.py
-    └── test_staging_cleanup.py
+    ├── test_staging_cleanup.py
+    └── test_validate_repo.py
 ```
 
 ## Quick start
