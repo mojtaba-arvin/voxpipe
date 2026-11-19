@@ -29,7 +29,7 @@ pending --claim--> leased --complete--> completed
 
 ## Tenant isolation
 
-The table has forced row-level security and every operation sets transaction-local `voxpipe.tenant_id`. Every query also includes an explicit tenant predicate. The queue intentionally has no global claim method. A trusted scheduler must enumerate authorized tenants outside the application role and invoke a worker per tenant.
+The table has forced row-level security and every operation sets transaction-local `voxpipe.tenant_id`. Every query also includes an explicit tenant predicate. The queue intentionally has no global claim method. A trusted scheduler must enumerate authorized tenants outside the application role and invoke a worker per tenant. PostgreSQL recovery scans exclude every session that has a durable job; the queue worker is the sole recovery owner for those sessions. The legacy session recovery worker remains for sessions created through the non-queued local ingestion path.
 
 The application role must be non-owner, non-superuser, and `NOBYPASSRLS`. Grant it the required CRUD privileges on `ingestion_jobs` in addition to the session and asset tables.
 
