@@ -1,7 +1,7 @@
 """Isolated ffprobe adapter for authoritative media metadata inspection.
 
-This module intentionally performs metadata probing only. It does not decode,
-transcode, normalize, or persist media.
+This module performs metadata probing only. It does not decode, transcode,
+normalize, or persist media.
 """
 
 from __future__ import annotations
@@ -34,11 +34,10 @@ class ProbePolicy:
     min_sample_rate_hz: int = 8000
     max_sample_rate_hz: int = 384000
     max_channels: int = 32
-    max_streams: int = 64
     probe_size_bytes: int = 5 * 1024 * 1024
     analyze_duration_us: int = 5_000_000
     timeout_seconds: float = 10.0
-    max_json_bytes: int = 1_000_000
+    max_json_bytes: int = 64 * 1024
     allowed_container_formats: frozenset[str] = field(
         default_factory=lambda: frozenset(
             {"wav", "mp3", "m4a", "mp4", "ogg", "flac", "webm", "aac", "amr"}
@@ -52,7 +51,6 @@ class ProbePolicy:
             "min_sample_rate_hz",
             "max_sample_rate_hz",
             "max_channels",
-            "max_streams",
             "probe_size_bytes",
             "analyze_duration_us",
             "max_json_bytes",
@@ -83,10 +81,14 @@ class MediaMetadata:
 
 
 class FFprobeMediaInspector:
-    """Inspect staged local media through a bounded ffprobe subprocess.
+    """Inspect staged local media through bounded ffprobe subprocesses.
 
     The caller must stage the upload into a private, immutable working path.
     The path must never be taken directly from an untrusted request.
+
+    Separate one-stream probes keep ffprobe output small and deterministic:
+    the first audio stream is inspected, then the first real video stream is
+    queried only to distinguish audio-only containers from audio-bearing video.
     """
 
     def __init__(
@@ -124,90 +126,36 @@ class FFprobeMediaInspector:
         if executable is None:
             raise MediaInspectionError("MEDIA_PROBE_UNAVAILABLE", "Media inspection tool is unavailable")
 
-        command = [
+        audio_payload = self._run_probe(
             executable,
-            "-v", "error",
-            "-probesize", str(self._policy.probe_size_bytes),
-            "-analyzeduration", str(self._policy.analyze_duration_us),
-            "-max_alloc", str(64 * 1024 * 1024),
-            "-protocol_whitelist", "file",
-            "-show_format",
-            "-show_streams",
-            "-show_entries",
-            (
+            resolved,
+            selector="a:0",
+            entries=(
                 "format=format_name,duration,size:"
                 "stream=index,codec_type,codec_name,sample_rate,channels,"
                 "channel_layout,bits_per_sample,bits_per_raw_sample,duration"
             ),
-            "-of", "json",
-            str(resolved),
-        ]
-        environment = {
-            "PATH": os.environ.get("PATH", ""),
-            "LANG": "C",
-            "LC_ALL": "C",
-            "AV_LOG_FORCE_NOCOLOR": "1",
-        }
-
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self._policy.timeout_seconds,
-                check=False,
-                shell=False,
-                env=environment,
-                cwd=str(resolved.parent),
-            )
-        except subprocess.TimeoutExpired:
-            raise MediaInspectionError("MEDIA_PROBE_TIMEOUT", "Media inspection exceeded its time limit") from None
-        except OSError:
-            raise MediaInspectionError("MEDIA_PROBE_UNAVAILABLE", "Media inspection process could not be started") from None
-
-        if result.returncode != 0:
-            raise MediaInspectionError("MEDIA_PROBE_FAILED", "Media file could not be inspected")
-
-        output = result.stdout or ""
-        if len(output.encode("utf-8")) > self._policy.max_json_bytes:
-            raise MediaInspectionError("MEDIA_PROBE_OUTPUT_TOO_LARGE", "Media inspection output exceeds its limit")
-
-        try:
-            payload = json.loads(output)
-        except (json.JSONDecodeError, TypeError):
-            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned invalid metadata") from None
-
-        if not isinstance(payload, dict):
-            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned invalid metadata")
-
-        streams = payload.get("streams")
-        media_format = payload.get("format")
-        if not isinstance(streams, list) or not isinstance(media_format, dict):
-            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned incomplete metadata")
-        if len(streams) > self._policy.max_streams:
-            raise MediaInspectionError("MEDIA_TOO_MANY_STREAMS", "Media contains too many streams")
-
-        audio_streams = [
-            stream for stream in streams
-            if isinstance(stream, dict) and stream.get("codec_type") == "audio"
-        ]
+        )
+        audio_streams = self._streams(audio_payload)
         if not audio_streams:
             raise MediaInspectionError("MEDIA_NO_AUDIO_STREAM", "Media file contains no audio stream")
-
-        # Deterministic v1 policy: choose the lowest-index audio stream.
-        audio_streams.sort(key=lambda stream: self._integer(stream.get("index"), default=2**31))
         audio = audio_streams[0]
 
+        media_format = audio_payload.get("format")
+        if not isinstance(media_format, dict):
+            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned incomplete metadata")
         format_name = media_format.get("format_name")
         if not isinstance(format_name, str) or not format_name:
             raise MediaInspectionError("MEDIA_UNSUPPORTED_CONTAINER", "Media container is not recognized")
 
-        has_video = any(
-            isinstance(stream, dict) and stream.get("codec_type") == "video"
-            for stream in streams
+        # Uppercase V excludes attached pictures and video thumbnails.
+        video_payload = self._run_probe(
+            executable,
+            resolved,
+            selector="V:0",
+            entries="format=format_name:stream=index,codec_type",
         )
+        has_video = bool(self._streams(video_payload))
         container_format, mime_type = self._normalize_container(format_name, has_video)
         if container_format not in self._policy.allowed_container_formats:
             raise MediaInspectionError("MEDIA_UNSUPPORTED_CONTAINER", "Media container is not supported")
@@ -251,6 +199,76 @@ class FFprobeMediaInspector:
             bit_depth=bit_depth,
             channel_layout=channel_layout,
         )
+
+    def _run_probe(
+        self,
+        executable: str,
+        file_path: Path,
+        *,
+        selector: str,
+        entries: str,
+    ) -> dict[str, Any]:
+        command = [
+            executable,
+            "-v", "error",
+            "-probesize", str(self._policy.probe_size_bytes),
+            "-analyzeduration", str(self._policy.analyze_duration_us),
+            "-max_alloc", str(64 * 1024 * 1024),
+            "-protocol_whitelist", "file",
+            "-select_streams", selector,
+            "-show_format",
+            "-show_streams",
+            "-show_entries", entries,
+            "-of", "json",
+            str(file_path),
+        ]
+        environment = {
+            "PATH": os.environ.get("PATH", ""),
+            "LANG": "C",
+            "LC_ALL": "C",
+            "AV_LOG_FORCE_NOCOLOR": "1",
+        }
+
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self._policy.timeout_seconds,
+                check=False,
+                shell=False,
+                env=environment,
+                cwd=str(file_path.parent),
+            )
+        except subprocess.TimeoutExpired:
+            raise MediaInspectionError("MEDIA_PROBE_TIMEOUT", "Media inspection exceeded its time limit") from None
+        except OSError:
+            raise MediaInspectionError("MEDIA_PROBE_UNAVAILABLE", "Media inspection process could not be started") from None
+
+        if result.returncode != 0:
+            raise MediaInspectionError("MEDIA_PROBE_FAILED", "Media file could not be inspected")
+
+        output = result.stdout or ""
+        if len(output.encode("utf-8")) > self._policy.max_json_bytes:
+            raise MediaInspectionError("MEDIA_PROBE_OUTPUT_TOO_LARGE", "Media inspection output exceeds its limit")
+
+        try:
+            payload = json.loads(output)
+        except (json.JSONDecodeError, TypeError):
+            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned invalid metadata") from None
+
+        if not isinstance(payload, dict):
+            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned invalid metadata")
+        return payload
+
+    @staticmethod
+    def _streams(payload: dict[str, Any]) -> list[dict[str, Any]]:
+        streams = payload.get("streams")
+        if not isinstance(streams, list):
+            raise MediaInspectionError("MEDIA_PROBE_INVALID_OUTPUT", "Media inspection returned incomplete stream metadata")
+        return [stream for stream in streams if isinstance(stream, dict)]
 
     @staticmethod
     def _integer(value: Any, default: int | None = None) -> int | None:
