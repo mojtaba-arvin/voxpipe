@@ -14,7 +14,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Design principles
 
-1. **Agent-native, not agent-exclusive.** Agents are first-class operators; humans remain able to inspect, direct, and recover the system.
+1. **Autonomous by default, human-supervisable.** Agents can plan, implement, test, review, and recover routine work without a human in the loop; humans retain optional inspection and override authority.
 2. **Evidence over declarations.** A task is complete only when its acceptance criteria have reproducible evidence.
 3. **Contracts before implementations.** Components communicate through versioned, testable boundaries.
 4. **Replaceable capabilities.** Providers, models, storage engines, and workflow runtimes sit behind explicit ports.
@@ -40,6 +40,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── AGENTS.md
 ├── Makefile
 ├── README.md
+├── LICENSE
 ├── go.mod
 ├── cmd/voxpipe-api/main.go
 ├── internal/httpapi/
@@ -89,6 +90,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     ├── test_ingestion_recovery.py
     ├── test_ingestion_worker.py
     └── test_postgres_repository.py
+```
+
 ## Quick start
 
 Requirements: Python 3.11+, Go 1.25+, and Make. The repository pins Python 3.12 in `.python-version`; Go is used by the public HTTP API.
