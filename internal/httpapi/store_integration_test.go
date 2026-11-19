@@ -43,6 +43,10 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	created, inserted, err := store.CreateSession(ctx,tenantID,session["idempotency_key"].(string),session)
 	if err != nil { t.Fatal(err) }
 	if !inserted || created["session_id"]!=sessionID { t.Fatalf("unexpected create result: %#v",created) }
+	duplicate, wasInserted, err := store.CreateSession(ctx, tenantID, session["idempotency_key"].(string), session)
+	if err != nil || wasInserted || duplicate["session_id"] != sessionID {
+		t.Fatalf("idempotent create failed: inserted=%v duplicate=%#v err=%v", wasInserted, duplicate, err)
+	}
 	otherTenant, err := newUUID()
 	if err != nil { t.Fatal(err) }
 	if _, err := store.GetSession(ctx, otherTenant, sessionID); err != ErrNotFound {
