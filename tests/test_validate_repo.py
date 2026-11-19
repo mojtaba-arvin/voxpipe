@@ -66,7 +66,8 @@ class ValidateRepoTests(unittest.TestCase):
             agents = root / ".codex" / "agents"
             agents.mkdir(parents=True)
             (agents / "reviewer.toml").write_text(
-                agent_content\n                or 'sandbox_mode = "read-only"\\ndeveloper_instructions = "Do not edit files."\\n',
+                agent_content
+                or 'sandbox_mode = "read-only"\ndeveloper_instructions = "Do not edit files."\n',
                 encoding="utf-8",
             )
             (root / ".codex" / "config.toml").write_text(
@@ -92,7 +93,7 @@ class ValidateRepoTests(unittest.TestCase):
     def test_rejects_custom_agent_with_write_access(self) -> None:
         result = self.run_validator(
             valid_ledger(),
-            agent_content='sandbox_mode = "workspace-write"\\ndeveloper_instructions = "Do not edit files."\\n',
+            agent_content='sandbox_mode = "workspace-write"\ndeveloper_instructions = "Do not edit files."\n',
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must use read-only sandbox mode", result.stderr)
