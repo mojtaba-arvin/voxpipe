@@ -219,7 +219,7 @@ func TestAuthenticationAndTenantIsolation(t *testing.T) {
 }
 
 func TestTenantCannotReadAnotherTenantsSession(t *testing.T) {
-	server, store, tenantA, tokenA := testServer(t)
+	server, store, _, tokenA := testServer(t)
 	content := []byte("tenant isolated upload")
 	digest := sha256.Sum256(content)
 	payload, _ := json.Marshal(map[string]any{
