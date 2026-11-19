@@ -48,9 +48,13 @@ This repository is intentionally starting with engineering governance, executabl
 
 ## Quick start
 
-Requirements: Python 3.11+ and Make.
+Requirements: Python 3.11+ and Make. The repository pins Python 3.12 in `.python-version`.
+
+Create an isolated environment (no third-party packages are currently required):
 
 ```bash
+make bootstrap
+. .venv/bin/activate
 make check
 ```
 
