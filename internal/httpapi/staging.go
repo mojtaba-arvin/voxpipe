@@ -137,10 +137,6 @@ func (s *LocalStager) Remove(tenantID, sessionID string) error {
 	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
 	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
 	tenantDirectory := filepath.Dir(directory)
-	if err := os.Remove(tenantDirectory); err != nil && !errors.Is(err, os.ErrNotExist) {
-		// Another active session may still use this tenant directory.
-		if !errors.Is(err, syscall.ENOTEMPTY) { return err }
-	}
 	return nil
 }
 
