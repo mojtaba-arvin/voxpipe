@@ -8,8 +8,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Stage:** Phase 0 — Autonomous Engineering Foundation  
-**Status:** Bootstrap in progress  
+**Stage:** Phase 1 — Audio Ingestion Foundation  
+**Status:** Active development  
 **Default branch:** `main`  
 **Active foundation branch:** `bootstrap/phase-0-foundation`
 
@@ -40,7 +40,8 @@ This repository is intentionally starting with engineering governance, executabl
 ├── docs/
 │   ├── ROADMAP.md
 │   ├── architecture/
-│   │   └── overview.md
+│   │   ├── overview.md
+│   │   └── storage.md
 │   ├── decisions/
 │   │   └── 0001-agent-native-foundation.md
 │   └── operations/
@@ -53,7 +54,7 @@ This repository is intentionally starting with engineering governance, executabl
 
 Requirements: Python 3.11+ and Make. The repository pins Python 3.12 in `.python-version`.
 
-Create an isolated environment (no third-party packages are currently required):
+Create an isolated environment and install the development/test dependencies:
 
 ```bash
 make bootstrap
@@ -61,7 +62,7 @@ make bootstrap
 make check
 ```
 
-The work-ledger validator uses the Python standard library. JSON Schema contract tests use the development dependency in `requirements-dev.txt`. Runtime services and additional providers will be introduced only when a phase has a concrete, testable requirement.
+The work-ledger validator uses the Python standard library. Contract tests use `jsonschema`; media inspection uses system FFmpeg/ffprobe binaries. Runtime services and additional providers will be introduced only when a phase has a concrete, testable requirement.
 
 ## Development workflow
 
