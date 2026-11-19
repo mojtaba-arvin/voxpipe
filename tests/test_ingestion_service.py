@@ -21,7 +21,7 @@ from voxpipe.ingestion import (
     SQLiteIngestionRepository,
 )
 from voxpipe.media.probe import MediaInspectionError, MediaMetadata
-from voxpipe.storage import LocalFilesystemObjectStore, ObjectNotFoundError, StorageIOError
+from voxpipe.storage import LocalFilesystemObjectStore, ObjectInfo, ObjectNotFoundError, StorageIOError
 
 
 class FakeMediaInspector:
@@ -87,6 +87,26 @@ class FailingObjectStore:
 
     def delete(self, key):
         return False
+
+
+class CorruptObjectStore:
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    def put(self, key, source, *, expected_sha256=None, overwrite=False):
+        stored = self.wrapped.put(
+            key, source, expected_sha256=expected_sha256, overwrite=overwrite
+        )
+        return ObjectInfo(key=stored.key, size_bytes=stored.size_bytes, sha256="0" * 64)
+
+    def open(self, key):
+        return self.wrapped.open(key)
+
+    def head(self, key):
+        return self.wrapped.head(key)
+
+    def delete(self, key):
+        return self.wrapped.delete(key)
 
 
 class FailingAssetRepository(SQLiteIngestionRepository):
@@ -269,6 +289,17 @@ class BatchIngestionServiceTests(unittest.TestCase):
         session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
         self.assertEqual(session["state"], "failed")
         self.assertTrue(session["failure"]["retryable"])
+
+    def test_stored_object_fingerprint_mismatch_is_compensated(self) -> None:
+        service = self.make_service(object_store=CorruptObjectStore(self.object_store))
+        with self.assertRaises(IngestionFailed) as context:
+            service.ingest(self.request())
+        self.assertEqual(context.exception.code, "STORAGE_INTEGRITY_ERROR")
+        session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
+        self.assertEqual(session["state"], "failed")
+        with self.assertRaises(ObjectNotFoundError):
+            self.object_store.head(f"tenant/{self.tenant_id}/assets/{session['asset_id']}/source")
+
 
     def test_metadata_failure_compensates_stored_object(self) -> None:
         repository = FailingAssetRepository(self.database)
