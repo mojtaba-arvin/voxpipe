@@ -55,11 +55,11 @@ func (s *PostgresStore) CreateSession(ctx context.Context, tenantID, key string,
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return nil, false, err }; defer tx.Rollback(ctx)
     payload, err := json.Marshal(session); if err != nil { return nil, false, err }
     var result []byte
-    err = tx.QueryRow(ctx, \`
+    err = tx.QueryRow(ctx, `
         INSERT INTO ingestion_sessions (session_id, tenant_id, idempotency_key, state, payload, updated_at)
         VALUES ($1, $2, $3, $4, $5::jsonb, $6)
         ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING payload
-    \`, session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
+    `, session["session_id"], tenantID, key, session["state"], payload, session["updated_at"]).Scan(&result)
     if err == nil {
         if err := tx.Commit(ctx); err != nil { return nil, false, err }
         value, err := decodePayload(result); return value, true, err
@@ -85,10 +85,10 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
     if updated["tenant_id"] != tenantID { return ErrConflict }
     payload, err := json.Marshal(updated); if err != nil { return err }
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
-    tag, err := tx.Exec(ctx, \`
+    tag, err := tx.Exec(ctx, `
         UPDATE ingestion_sessions SET state=$1, payload=$2::jsonb, updated_at=$3
         WHERE tenant_id=$4 AND session_id=$5 AND state=$6
-    \`, updated["state"], payload, updated["updated_at"], tenantID, sessionID, expectedState)
+    `, updated["state"], payload, updated["updated_at"], tenantID, sessionID, expectedState)
     if err != nil { return err }; if tag.RowsAffected()!=1 { return ErrConflict }
     return tx.Commit(ctx)
 }
@@ -104,10 +104,10 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
     if state!="receiving" {
         if state=="finalizing" || state=="queued" || state=="processing" || state=="completed" {
             var jobJSON []byte
-            err := tx.QueryRow(ctx, \`
+            err := tx.QueryRow(ctx, `
                 SELECT jsonb_build_object('job_id',job_id,'state',state,'attempts',attempts,'max_attempts',max_attempts,'last_error_code',last_error_code)
                 FROM ingestion_jobs WHERE tenant_id=$1 AND session_id=$2
-            \`, tenantID, sessionID).Scan(&jobJSON)
+            `, tenantID, sessionID).Scan(&jobJSON)
             if errors.Is(err, pgx.ErrNoRows) { return nil, ErrConflict }; if err != nil { return nil, err }
             var job map[string]any; if err := json.Unmarshal(jobJSON,&job); err != nil { return nil, err }
             if err := tx.Commit(ctx); err != nil { return nil, err }; return job,nil
@@ -118,17 +118,17 @@ func (s *PostgresStore) FinalizeSession(ctx context.Context, tenantID, sessionID
     tag, err := tx.Exec(ctx, "UPDATE ingestion_sessions SET state='finalizing',payload=$1::jsonb,updated_at=$2 WHERE tenant_id=$3 AND session_id=$4 AND state='receiving'", payload, updated["updated_at"], tenantID, sessionID)
     if err != nil { return nil, err }; if tag.RowsAffected()!=1 { return nil, ErrConflict }
     var jobJSON []byte
-    err = tx.QueryRow(ctx, \`
+    err = tx.QueryRow(ctx, `
         INSERT INTO ingestion_jobs (job_id,tenant_id,session_id,state,max_attempts,available_at,created_at,updated_at)
         VALUES ($1,$2,$3,'pending',$4,now(),now(),now())
         ON CONFLICT (tenant_id,session_id) DO NOTHING
         RETURNING jsonb_build_object('job_id',job_id,'state',state,'attempts',attempts,'max_attempts',max_attempts,'last_error_code',last_error_code)
-    \`, jobID, tenantID, sessionID, maxAttempts).Scan(&jobJSON)
+    `, jobID, tenantID, sessionID, maxAttempts).Scan(&jobJSON)
     if errors.Is(err, pgx.ErrNoRows) {
-        err = tx.QueryRow(ctx, \`
+        err = tx.QueryRow(ctx, `
             SELECT jsonb_build_object('job_id',job_id,'state',state,'attempts',attempts,'max_attempts',max_attempts,'last_error_code',last_error_code)
             FROM ingestion_jobs WHERE tenant_id=$1 AND session_id=$2
-        \`, tenantID, sessionID).Scan(&jobJSON)
+        `, tenantID, sessionID).Scan(&jobJSON)
     }
     if err != nil { return nil, err }
     var job map[string]any; if err := json.Unmarshal(jobJSON,&job); err != nil { return nil, err }
@@ -141,10 +141,10 @@ func (s *PostgresStore) GetStatus(ctx context.Context, tenantID, sessionID strin
     err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1 AND session_id=$2", tenantID, sessionID).Scan(&raw)
     if errors.Is(err,pgx.ErrNoRows) { return nil,nil,ErrNotFound }; if err != nil { return nil,nil,err }
     var jobRaw []byte
-    err = tx.QueryRow(ctx, \`
+    err = tx.QueryRow(ctx, `
         SELECT jsonb_build_object('job_id',job_id,'state',state,'attempts',attempts,'max_attempts',max_attempts,'last_error_code',last_error_code)
         FROM ingestion_jobs WHERE tenant_id=$1 AND session_id=$2
-    \`, tenantID, sessionID).Scan(&jobRaw)
+    `, tenantID, sessionID).Scan(&jobRaw)
     var job map[string]any
     if err==nil { if err:=json.Unmarshal(jobRaw,&job); err!=nil { return nil,nil,err } } else if !errors.Is(err,pgx.ErrNoRows) { return nil,nil,err }
     if err:=tx.Commit(ctx); err!=nil { return nil,nil,err }
