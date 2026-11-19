@@ -114,7 +114,7 @@
       "title": "Complete detailed threat model and security controls matrix",
       "phase": 0,
       "priority": 7,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Assets, actors, trust boundaries, entry points, and abuse cases are enumerated.",
@@ -122,7 +122,9 @@
         "Each material threat has a mitigation, verification method, and residual-risk note.",
         "The threat model is linked to tests and operational controls."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/security/threat-model.md — 16 threats, trust boundaries, security invariants, mitigations, verification methods, residual risks, and reassessment triggers"
+      ],
       "blocked_reason": null
     },
     {
@@ -130,7 +132,7 @@
       "title": "Define canonical audio asset and ingestion session contracts",
       "phase": 1,
       "priority": 1,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0007"
       ],
