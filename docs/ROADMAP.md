@@ -12,7 +12,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add CI to run repository validation on every pull request.
 - [x] Define contribution and pull-request templates.
 - [x] Define versioning, compatibility, and release policy.
-- [ ] Define threat model, data classification, and audio retention defaults.
+- [x] Define threat model, data classification, and audio retention defaults (design-stage requirements documented; implementation gates remain for each feature).
 - [x] Compare orchestration approaches for durable agent/task execution (selection deferred to a measured proof of concept).
 - [x] Create a reproducible local development environment and validator test suite.
 
