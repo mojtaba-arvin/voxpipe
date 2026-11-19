@@ -336,10 +336,11 @@ func sameCreateRequest(session, upload map[string]any, request CreateIngestionRe
 	sourceBytes, _ := json.Marshal(session["source"])
 	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
 	retention, _ := session["retention_policy_id"].(string)
+	contentType, _ := upload["content_type_hint"].(string)
 	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
 		digest == strings.ToLower(request.ExpectedSHA256) &&
 		string(sourceBytes) == string(requestSourceBytes) &&
-		retention == request.RetentionPolicyID
+		retention == request.RetentionPolicyID && contentType == request.ContentTypeHint
 }
 
 func numberInt64(value any) (int64, bool) {
