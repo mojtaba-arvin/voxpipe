@@ -27,6 +27,7 @@ jobs:
           --health-retries 5
     env:
       VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/voxpipe_test
+      VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -43,3 +44,12 @@ jobs:
           ffprobe -version
       - name: Validate work ledger and repository structure
         run: make check
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: true
+      - name: Validate Go API and PostgreSQL integration
+        run: |
+          go mod tidy
+          go test ./...
