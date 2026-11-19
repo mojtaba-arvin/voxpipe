@@ -156,7 +156,7 @@
       "title": "Evaluate media probing and normalization tools",
       "phase": 1,
       "priority": 2,
-      "status": "ready",
+      "status": "done",
       "depends_on": [
         "VP-0008"
       ],
@@ -166,7 +166,9 @@
         "Recommendation distinguishes metadata inspection from transcoding/normalization.",
         "A reproducible proof-of-concept plan and known limitations are documented."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/research/media-probing-options.md — FFmpeg/ffprobe, GStreamer, MediaInfo, and Mutagen compared; licensing, isolation, deployment, metadata-vs-transcoding, and PoC gates documented; official sources checked 2026-11-19"
+      ],
       "blocked_reason": null
     },
     {
@@ -174,7 +176,7 @@
       "title": "Implement isolated media inspection and validation adapter",
       "phase": 1,
       "priority": 3,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0009"
       ],
