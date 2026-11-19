@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: bootstrap check validate test
+.PHONY: bootstrap check validate test go-check
 
 bootstrap:
 	$(PYTHON) -m venv .venv
@@ -13,3 +13,8 @@ validate:
 
 test:
 	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
+
+go-check:
+	gofmt -w ./cmd ./internal
+	go mod tidy
+	go test ./...
