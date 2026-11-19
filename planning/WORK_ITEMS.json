@@ -251,7 +251,7 @@
       "title": "Add stale ingestion recovery, leases, and orphan reconciliation",
       "phase": 1,
       "priority": 6,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0012"
       ],
