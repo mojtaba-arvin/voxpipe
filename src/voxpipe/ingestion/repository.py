@@ -227,7 +227,7 @@ class SQLiteIngestionRepository:
         with closing(self._connect()) as connection:
             rows = connection.execute(
                 """SELECT payload_json FROM ingestion_sessions
-                WHERE state = ? ORDER BY updated_at ASC LIMIT ?""",
+                WHERE state = ? ORDER BY json_extract(payload_json, '$.updated_at') ASC LIMIT ?""",
                 (state, limit),
             ).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
