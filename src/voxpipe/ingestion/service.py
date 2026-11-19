@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 
 from voxpipe.media.probe import FFprobeMediaInspector, MediaInspectionError, MediaMetadata
 from voxpipe.media.validation import FFmpegDecodeValidator
-from voxpipe.storage.ports import ObjectStoragePort, StorageError
+from voxpipe.storage.ports import ObjectStoragePort, StorageError, StorageIntegrityError
 from voxpipe.ingestion.repository import (
     IngestionRepositoryConflict,
     IngestionRepositoryPort,
@@ -206,6 +206,9 @@ class IngestionService:
                     source_stream,
                     expected_sha256=digest,
                 )
+
+            if stored.sha256 != digest or stored.size_bytes != size_bytes:
+                raise StorageIntegrityError("stored object does not match the staged media fingerprint")
 
             asset = self._build_asset(
                 tenant_id=tenant_id,
