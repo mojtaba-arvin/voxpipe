@@ -86,6 +86,8 @@ class PostgresIngestionJobQueue:
         lease_seconds: int = 60,
     ) -> dict[str, Any] | None:
         self._validate_limits(1, lease_seconds)
+        if lease_seconds < 1:
+            raise ValueError("lease_seconds must be greater than zero")
         with self._tenant_connection(tenant_id) as connection:
             # A final expired attempt must become terminal instead of remaining
             # leased forever and disappearing from future claim scans.
