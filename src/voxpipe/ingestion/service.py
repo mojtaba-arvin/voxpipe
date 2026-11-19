@@ -123,7 +123,10 @@ class IngestionService:
         idempotency_key = self._idempotency_key(request.idempotency_key)
         source = self._source(request.source)
         staged_path, size_bytes = self._staged_file(request.staged_path)
-        digest = self._sha256_file(staged_path)
+        try:
+            digest = self._sha256_file(staged_path)
+        except OSError:
+            raise IngestionRequestError("staged media could not be read") from None
 
         now = self._now()
         session_id = str(uuid4())
@@ -266,7 +269,10 @@ class IngestionService:
             raise IngestionRequestError("staged media path is outside the private staging root")
         if not resolved.is_file():
             raise IngestionRequestError("staged media must be a regular file")
-        size_bytes = resolved.stat().st_size
+        try:
+            size_bytes = resolved.stat().st_size
+        except OSError:
+            raise IngestionRequestError("staged media file cannot be read") from None
         if size_bytes < 1:
             raise IngestionRequestError("staged media file is empty")
         if size_bytes > self._max_file_size_bytes:
@@ -298,7 +304,7 @@ class IngestionService:
     def _source(value: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(value, Mapping):
             raise IngestionRequestError("source metadata must be an object")
-        source = dict(value)
+        source = {key: item for key, item in dict(value).items() if item is not None}
         if set(source) - _ALLOWED_SOURCE_FIELDS:
             raise IngestionRequestError("source metadata contains unsupported fields")
         if source.get("kind") not in _SOURCE_KINDS:
@@ -361,6 +367,8 @@ class IngestionService:
             "updated_at": timestamp,
         }
         if retention_policy_id is not None:
+            if not isinstance(retention_policy_id, str) or not retention_policy_id or len(retention_policy_id) > 128:
+                raise IngestionRequestError("retention_policy_id is invalid")
             asset["retention_policy_id"] = retention_policy_id
         return asset
 
