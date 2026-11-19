@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -276,6 +277,25 @@ func TestCancelReceivingSessionRemovesStagedBytes(t *testing.T) {
 	if cancelled.Code != http.StatusAccepted { t.Fatalf("cancel failed: %s", cancelled.Body.String()) }
 	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err == nil {
 		t.Fatal("staged file remained after pre-processing cancellation")
+	}
+}
+
+type interruptedReader struct { sent bool }
+func (reader *interruptedReader) Read(buffer []byte) (int, error) {
+	if reader.sent { return 0, errors.New("simulated client disconnect") }
+	reader.sent = true
+	return copy(buffer, []byte("partial")), nil
+}
+
+func TestInterruptedUploadDoesNotPublishPartialFile(t *testing.T) {
+	stager, err := NewLocalStager(t.TempDir())
+	if err != nil { t.Fatal(err) }
+	tenant := "11111111-1111-4111-8111-111111111111"
+	session := "22222222-2222-4222-8222-222222222222"
+	_, _, err = stager.Write(tenant, session, &interruptedReader{}, 32, 64, strings.Repeat("a", 64))
+	if err == nil { t.Fatal("interrupted stream should fail") }
+	if _, _, verifyErr := stager.Verify(tenant, session); verifyErr == nil {
+		t.Fatal("partial upload was published")
 	}
 }
 
