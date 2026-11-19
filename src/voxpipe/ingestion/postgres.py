@@ -140,6 +140,8 @@ class PostgresIngestionRepository:
         expected_state: str,
         updated_session: dict[str, Any],
     ) -> dict[str, Any]:
+        if updated_session.get("tenant_id") != tenant_id:
+            raise IngestionRepositoryConflict("updated session tenant does not match repository scope")
         with self._tenant_connection(tenant_id) as connection:
             row = connection.execute(
                 """
@@ -163,6 +165,8 @@ class PostgresIngestionRepository:
 
     def create_asset(self, asset: dict[str, Any]) -> dict[str, Any]:
         tenant_id = asset["tenant_id"]
+        if not tenant_id:
+            raise IngestionRepositoryConflict("asset tenant is required")
         with self._tenant_connection(tenant_id) as connection:
             row = connection.execute(
                 """
@@ -238,6 +242,8 @@ class PostgresIngestionRepository:
                 return None
 
             session = self._payload(row["payload"])
+            if session.get("tenant_id") != tenant_id:
+                raise IngestionRepositoryConflict("session payload tenant does not match repository scope")
             prior_lease = session.get("lease") or {}
             prior_expiry = prior_lease.get("expires_at")
             if prior_expiry and prior_expiry > now and prior_lease.get("owner_id") != worker_id:
@@ -266,6 +272,8 @@ class PostgresIngestionRepository:
         limit: int = 100,
         tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
         tenant = self._required_tenant(tenant_id)
         with self._tenant_connection(tenant) as connection:
             rows = connection.execute(
@@ -290,6 +298,8 @@ class PostgresIngestionRepository:
         limit: int = 100,
         tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
         tenant = self._required_tenant(tenant_id)
         with self._tenant_connection(tenant) as connection:
             rows = connection.execute(
