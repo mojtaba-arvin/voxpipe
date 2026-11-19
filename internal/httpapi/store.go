@@ -165,6 +165,6 @@ func (s *PostgresStore) Cancel(ctx context.Context, tenantID, sessionID string) 
     _,err=tx.Exec(ctx,"UPDATE ingestion_sessions SET state='cancelled',payload=$1::jsonb,updated_at=now() WHERE tenant_id=$2::uuid AND session_id=$3::uuid",payload,tenantID,sessionID)
     if err!=nil { return "",err }
     _,err=tx.Exec(ctx,"UPDATE ingestion_jobs SET state='cancelled',lease_owner=NULL,lease_expires_at=NULL,updated_at=now() WHERE tenant_id=$1::uuid AND session_id=$2::uuid AND state IN ('pending','leased')",tenantID,sessionID)
-    if err!=nil { return false,err }
+    if err!=nil { return "",err }
     if err:=tx.Commit(ctx); err!=nil { return "",err }; return state,nil
 }
