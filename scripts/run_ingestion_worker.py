@@ -63,6 +63,9 @@ def main() -> int:
         object_store=object_store,
         max_file_size_bytes=max_upload,
         storage_provider="local",
+        # The durable job lease is authoritative for queued sessions. A shorter
+        # session lease ensures a restarted worker is not blocked by stale state.
+        lease_ttl=timedelta(seconds=max(1, lease_seconds // 2)),
     )
     worker = IngestionJobWorker(
         queue=queue,
