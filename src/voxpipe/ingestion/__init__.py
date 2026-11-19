@@ -1,5 +1,6 @@
 """Batch ingestion application service, persistence, and recovery."""
 
+from voxpipe.ingestion.postgres import PostgresIngestionRepository, apply_migrations
 from voxpipe.ingestion.recovery import (
     IngestionOrphanReconciler,
     IngestionRecoveryWorker,
@@ -32,6 +33,7 @@ __all__ = [
     "IngestionRecoveryWorker",
     "IngestionRepositoryConflict",
     "IngestionRepositoryPort",
+    "PostgresIngestionRepository",
     "IngestionRequest",
     "IngestionRequestError",
     "IngestionResult",
@@ -42,4 +44,5 @@ __all__ = [
     "RecoveryReport",
     "SQLiteIngestionRepository",
     "StagedFileMissingError",
+    "apply_migrations",
 ]
