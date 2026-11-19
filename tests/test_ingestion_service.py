@@ -47,6 +47,23 @@ class FakeMediaInspector:
         )
 
 
+class SizeMismatchInspector(FakeMediaInspector):
+    def inspect(self, path: Path) -> MediaMetadata:
+        metadata = super().inspect(path)
+        return MediaMetadata(
+            mime_type=metadata.mime_type,
+            container_format=metadata.container_format,
+            codec=metadata.codec,
+            duration_ms=metadata.duration_ms,
+            size_bytes=metadata.size_bytes + 1,
+            sample_rate_hz=metadata.sample_rate_hz,
+            channels=metadata.channels,
+            audio_track_index=metadata.audio_track_index,
+            bit_depth=metadata.bit_depth,
+            channel_layout=metadata.channel_layout,
+        )
+
+
 class FakeDecodeValidator:
     def __init__(self, error: Exception | None = None) -> None:
         self.calls = 0
@@ -223,6 +240,17 @@ class BatchIngestionServiceTests(unittest.TestCase):
         self.assertIsNone(self.repository.get_asset(self.tenant_id, session["asset_id"]))
         with self.assertRaises(ObjectNotFoundError):
             self.object_store.head(f"tenant/{self.tenant_id}/assets/{session['asset_id']}/source")
+
+    def test_staged_file_change_is_rejected_before_storage(self) -> None:
+        service = self.make_service(inspector=SizeMismatchInspector())
+        with self.assertRaises(IngestionFailed) as context:
+            service.ingest(self.request())
+        self.assertEqual(context.exception.code, "MEDIA_FILE_CHANGED_DURING_INGESTION")
+        session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
+        self.assertEqual(session["state"], "failed")
+        with self.assertRaises(ObjectNotFoundError):
+            self.object_store.head(f"tenant/{self.tenant_id}/assets/{session['asset_id']}/source")
+
 
     def test_decode_failure_marks_session_failed(self) -> None:
         decoder = FakeDecodeValidator(MediaInspectionError("MEDIA_DECODE_FAILED", "truncated"))
