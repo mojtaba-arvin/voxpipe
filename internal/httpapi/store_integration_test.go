@@ -43,6 +43,11 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	created, inserted, err := store.CreateSession(ctx,tenantID,session["idempotency_key"].(string),session)
 	if err != nil { t.Fatal(err) }
 	if !inserted || created["session_id"]!=sessionID { t.Fatalf("unexpected create result: %#v",created) }
+	otherTenant, err := newUUID()
+	if err != nil { t.Fatal(err) }
+	if _, err := store.GetSession(ctx, otherTenant, sessionID); err != ErrNotFound {
+		t.Fatalf("cross-tenant session lookup should be hidden, got %v", err)
+	}
 	receiving := cloneMap(created)
 	receiving["state"]="receiving"
 	receiving["updated_at"]=time.Now().UTC().Format(time.RFC3339Nano)
