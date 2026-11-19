@@ -97,6 +97,11 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             "tenant_id": tenant_id or str(uuid4()),
             "idempotency_key": key,
             "state": "created",
+            "upload": {
+                "expected_size_bytes": 1,
+                "received_size_bytes": 1,
+                "expected_sha256": "a" * 64,
+            },
             "created_at": timestamp,
             "updated_at": timestamp,
         }
