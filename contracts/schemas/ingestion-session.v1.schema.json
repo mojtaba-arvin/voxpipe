@@ -32,7 +32,8 @@
           "enum": ["file_upload", "device_capture", "telephony", "live_stream", "import"]
         },
         "external_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
-        "recorded_at": { "type": "string", "format": "date-time" }
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "declared_by": { "type": "string", "maxLength": 256 }
       }
     },
     "state": {
