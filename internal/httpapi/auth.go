@@ -41,6 +41,7 @@ type StaticTokenAuthenticator struct {
 // providers should implement Authenticator and return the same principal shape.
 func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, error) {
 	auth := &StaticTokenAuthenticator{}
+	seen := make(map[[sha256.Size]byte]struct{})
 	for _, entry := range entries {
 		parts := strings.SplitN(entry, ":", 3)
 		if len(parts) != 3 || len(parts[0]) != sha256.Size*2 {
@@ -57,6 +58,7 @@ func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, e
 		for _, scope := range strings.Split(parts[2], ",") {
 			scope = strings.TrimSpace(scope)
 			if scope != "" {
+				if scope != "ingestion:read" && scope != "ingestion:write" { return nil, fmt.Errorf("unsupported token scope") }
 				scopes[scope] = struct{}{}
 			}
 		}
@@ -65,6 +67,8 @@ func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, e
 		}
 		var digest [sha256.Size]byte
 		copy(digest[:], rawDigest)
+		if _, exists := seen[digest]; exists { return nil, fmt.Errorf("duplicate token digest grant") }
+		seen[digest] = struct{}{}
 		auth.grants = append(auth.grants, tokenGrant{
 			digest: digest,
 			tenant: strings.ToLower(parts[1]),
