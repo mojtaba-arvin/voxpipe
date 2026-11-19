@@ -19,7 +19,7 @@ make bootstrap
 make check
 ```
 
-No third-party Python dependencies or paid services are currently required. The test suite uses Python's standard-library `unittest`.
+The test runner uses Python's standard-library `unittest`; contract validation uses `jsonschema` from `requirements-dev.txt`. No paid services or production credentials are required.
 
 The validation currently uses only the Python standard library.
 
