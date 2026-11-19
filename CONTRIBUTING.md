@@ -8,14 +8,18 @@
 
 ## Local requirements
 
-- Python 3.11+
+- Python 3.11+ (3.12 is pinned in `.python-version`)
 - Make
 
-Run the standard repository check:
+Create and activate an isolated environment, then run all checks:
 
 ```bash
+make bootstrap
+. .venv/bin/activate
 make check
 ```
+
+No third-party Python dependencies or paid services are currently required. The test suite uses Python's standard-library `unittest`.
 
 The validation currently uses only the Python standard library.
 
