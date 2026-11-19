@@ -56,7 +56,7 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	status,storedJob,err:=store.GetStatus(ctx,tenantID,sessionID)
 	if err!=nil { t.Fatal(err) }
 	if status["state"]!="finalizing" || storedJob["job_id"]!=jobID { t.Fatalf("unexpected status: %#v %#v",status,storedJob) }
-	if ok,err:=store.Cancel(ctx,tenantID,sessionID); err!=nil || !ok { t.Fatalf("cancel failed: ok=%v err=%v",ok,err) }
+	if priorState,err:=store.Cancel(ctx,tenantID,sessionID); err!=nil || priorState!="finalizing" { t.Fatalf("cancel failed: prior_state=%q err=%v",priorState,err) }
 	cancelled,err:=store.GetSession(ctx,tenantID,sessionID)
 	if err!=nil || cancelled["state"]!="cancelled" { t.Fatalf("session was not cancelled: %#v %v",cancelled,err) }
 }
