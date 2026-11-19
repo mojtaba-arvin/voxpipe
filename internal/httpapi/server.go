@@ -187,7 +187,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 	}
 	ownerID, err := newUUID()
 	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to reserve upload lease"); return }
-	if err := s.store.BeginUpload(r.Context(), principal.TenantID, sessionID, ownerID, min(86400, max(1, int(s.sessionTTL.Seconds())))); err != nil {
+	if err := s.store.BeginUpload(r.Context(), principal.TenantID, sessionID, ownerID, min(31622400, max(1, int((s.sessionTTL + time.Hour).Seconds())))); err != nil {
 		writeStoreError(w, err)
 		return
 	}
@@ -237,6 +237,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 			latestUpload, _ := latest["upload"].(map[string]any)
 			latestSize, _ := numberInt64(latestUpload["received_size_bytes"])
 			if latestState == "receiving" && latestSize == expectedSize {
+				uploadOutcome = "succeeded"
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}

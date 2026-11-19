@@ -41,6 +41,8 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
             connection.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
+            connection.execute("DROP TABLE IF EXISTS ingestion_upload_leases CASCADE")
+            connection.execute("DROP TABLE IF EXISTS ingestion_audit_events CASCADE")
             connection.execute("DROP TABLE IF EXISTS audio_assets CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_sessions CASCADE")
             connection.execute("DROP TABLE IF EXISTS voxpipe_schema_migrations CASCADE")
@@ -71,7 +73,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
             connection.execute("GRANT USAGE ON SCHEMA public TO voxpipe_app")
             connection.execute(
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs TO voxpipe_app"
+                "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
             )
 
         cls.repository = PostgresIngestionRepository(cls.app_dsn)
@@ -81,7 +83,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def tearDown(self) -> None:
         pass
@@ -119,10 +121,10 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
-            for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs"):
+            for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
                 row = connection.execute(
                     "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = %s",
                     (table,),

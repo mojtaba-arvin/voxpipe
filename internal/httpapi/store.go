@@ -103,7 +103,7 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
 }
 
 func (s *PostgresStore) BeginUpload(ctx context.Context, tenantID, sessionID, ownerID string, leaseSeconds int) error {
-	if leaseSeconds < 1 || leaseSeconds > 31622400 { return fmt.Errorf("upload lease must be between 1 and 86400 seconds") }
+	if leaseSeconds < 1 || leaseSeconds > 31622400 { return fmt.Errorf("upload lease must be between 1 and 31622400 seconds") }
 	tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
 	var raw []byte
 	err = tx.QueryRow(ctx, "SELECT payload FROM ingestion_sessions WHERE tenant_id=$1::text::uuid AND session_id=$2::text::uuid FOR UPDATE", tenantID, sessionID).Scan(&raw)
