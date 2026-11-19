@@ -108,13 +108,14 @@ class BatchIngestionServiceTests(unittest.TestCase):
         key: str = "ingestion-request-000001",
         path: Path | None = None,
         source: dict | None = None,
+        retention_policy_id: str | None = "test-retention-30d",
     ) -> IngestionRequest:
         return IngestionRequest(
             tenant_id=tenant_id or self.tenant_id,
             idempotency_key=key,
             staged_path=path or self.path,
             source=source or self.source,
-            retention_policy_id="test-retention-30d",
+            retention_policy_id=retention_policy_id,
         )
 
     def test_ingests_asset_and_persists_valid_contracts(self) -> None:
@@ -157,6 +158,11 @@ class BatchIngestionServiceTests(unittest.TestCase):
         other.write_bytes(b"different staged audio")
         with self.assertRaises(IngestionIdempotencyConflict):
             self.service.ingest(self.request(path=other))
+
+    def test_retention_policy_is_part_of_idempotency_fingerprint(self) -> None:
+        self.service.ingest(self.request())
+        with self.assertRaises(IngestionIdempotencyConflict):
+            self.service.ingest(self.request(retention_policy_id="different-retention-90d"))
 
     def test_idempotency_scope_is_per_tenant(self) -> None:
         first = self.service.ingest(self.request())
