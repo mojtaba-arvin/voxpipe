@@ -102,9 +102,18 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         }
 
     def test_versioned_migrations_upgrade_from_v1_and_are_idempotent(self) -> None:
+        import psycopg
+
         self.assertEqual(self.initial_versions, (1,))
         self.assertEqual(self.upgrade_versions, (2,))
         self.assertEqual(self.noop_versions, ())
+        with psycopg.connect(self.admin_dsn) as connection:
+            for table in ("ingestion_sessions", "audio_assets"):
+                row = connection.execute(
+                    "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = %s",
+                    (table,),
+                ).fetchone()
+                self.assertEqual(row, (True, True))
 
     def test_insert_idempotency_and_tenant_isolation(self) -> None:
         session = self.session()
@@ -132,6 +141,13 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertIsNone(self.repository.get_asset(str(uuid4()), asset["asset_id"]))
         self.assertTrue(self.repository.delete_asset(tenant_id, asset["asset_id"]))
         self.assertFalse(self.repository.delete_asset(tenant_id, asset["asset_id"]))
+
+    def test_concurrent_identical_asset_writes_create_one_record(self) -> None:
+        asset = self.asset(str(uuid4()))
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(self.repository.create_asset, [asset, asset]))
+        self.assertEqual(results[0], results[1])
+        self.assertEqual(self.repository.get_asset(asset["tenant_id"], asset["asset_id"]), asset)
 
     def test_claim_lease_is_exclusive_and_can_be_reclaimed_after_expiry(self) -> None:
         session = self.session()
