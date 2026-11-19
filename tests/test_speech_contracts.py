@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from voxpipe.speech import (
     SpeechToTextService,
@@ -94,6 +94,8 @@ class SpeechContractTests(unittest.TestCase):
             TranscriptionRequest(ASSET_ID, "private/path.wav", "audio/wav")  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
             TranscriptionRequest(ASSET_ID, BytesIO(b"x"), "application/octet-stream")
+        with self.assertRaises(ValueError):
+            TranscriptionRequest(ASSET_ID, StringIO("text"), "audio/wav")
 
     def test_service_validates_adapter_asset_binding_and_duration(self) -> None:
         adapter = FakeSpeechToTextAdapter(valid_transcript())
@@ -110,8 +112,8 @@ class SpeechContractTests(unittest.TestCase):
         transcript = valid_transcript()
         with self.assertRaises(TranscriptValidationError):
             validate_transcript(transcript, duration_ms=1000)
-        later = replace(transcript.segments[0], start_ms=100, end_ms=300)
-        earlier = replace(transcript.segments[0], segment_id="c2f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0102", start_ms=400, end_ms=600)
+        later = replace(transcript.segments[0], start_ms=400, end_ms=600)
+        earlier = replace(transcript.segments[0], segment_id="c2f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0102", start_ms=100, end_ms=300)
         with self.assertRaises(TranscriptValidationError):
             validate_transcript(replace(transcript, segments=(later, earlier)))
 
@@ -133,6 +135,14 @@ class SpeechContractTests(unittest.TestCase):
         bad_provenance = replace(transcript.provenance, audio_sha256="not-a-digest")
         with self.assertRaises(TranscriptValidationError):
             validate_transcript(replace(transcript, provenance=bad_provenance))
+
+    def test_service_rejects_mismatched_provider_provenance(self) -> None:
+        result = valid_transcript()
+        bad = replace(result, provenance=replace(result.provenance, provider="other-provider"))
+        service = SpeechToTextService(FakeSpeechToTextAdapter(bad))
+        request = TranscriptionRequest(ASSET_ID, BytesIO(b"audio"), "audio/wav")
+        with self.assertRaises(TranscriptValidationError):
+            service.transcribe(request)
 
     def test_transcription_errors_expose_stable_retry_semantics(self) -> None:
         error = TranscriptionError(

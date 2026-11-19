@@ -17,6 +17,8 @@ class SpeechToTextService:
 
     def transcribe(self, request: TranscriptionRequest) -> Transcript:
         result = self._adapter.transcribe(request)
+        if result.provenance.provider != self._adapter.provider_name:
+            raise TranscriptValidationError("transcript provider provenance does not match the selected adapter")
         validate_transcript(
             result,
             expected_asset_id=request.asset_id,

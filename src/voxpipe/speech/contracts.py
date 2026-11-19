@@ -63,6 +63,8 @@ class TranscriptionRequest:
             raise ValueError("asset_id must be a UUID") from None
         if not callable(getattr(self.audio_stream, "read", None)):
             raise ValueError("audio_stream must be a readable binary stream")
+        if not isinstance(self.audio_stream.read(0), bytes):
+            raise ValueError("audio_stream must yield bytes, not text")
         readable = getattr(self.audio_stream, "readable", None)
         if callable(readable) and not readable():
             raise ValueError("audio_stream is not readable")
@@ -135,7 +137,7 @@ def _require_uuid(value: str, field: str) -> None:
 
 def _require_confidence(value: float | None, field: str) -> None:
     if value is not None and (
-        not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1
+        not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not 0 <= value <= 1
     ):
         raise TranscriptValidationError(f"{field} must be between 0 and 1")
 
@@ -156,6 +158,8 @@ def validate_transcript(
         raise TranscriptValidationError("unsupported transcript schema_version")
     _require_uuid(transcript.transcript_id, "transcript_id")
     _require_uuid(transcript.asset_id, "asset_id")
+    if expected_asset_id is not None:
+        _require_uuid(expected_asset_id, "expected_asset_id")
     if expected_asset_id is not None and UUID(transcript.asset_id) != UUID(expected_asset_id):
         raise TranscriptValidationError("transcript asset_id does not match the requested asset")
     if not isinstance(transcript.language, str) or not _LANGUAGE_TAG.fullmatch(transcript.language):
@@ -166,7 +170,7 @@ def validate_transcript(
         raise TranscriptValidationError("duration_ms must be positive")
 
     provenance = transcript.provenance
-    if not provenance.provider or not provenance.model:
+    if not isinstance(provenance.provider, str) or not provenance.provider.strip() or not isinstance(provenance.model, str) or not provenance.model.strip():
         raise TranscriptValidationError("provenance provider and model are required")
     if not isinstance(provenance.audio_sha256, str) or not _SHA256.fullmatch(provenance.audio_sha256):
         raise TranscriptValidationError("provenance audio_sha256 must be a lowercase SHA-256 digest")
