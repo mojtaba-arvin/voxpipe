@@ -187,6 +187,8 @@ class BatchIngestionServiceTests(unittest.TestCase):
         self.assertNotEqual(first.session["session_id"], second.session["session_id"])
         self.assertEqual(first.asset["tenant_id"], self.tenant_id)
         self.assertEqual(second.asset["tenant_id"], other_tenant)
+        self.assertIsNone(self.repository.get_asset(other_tenant, first.asset["asset_id"]))
+        self.assertIsNone(self.repository.get_asset(self.tenant_id, second.asset["asset_id"]))
 
     def test_rejects_staged_file_outside_private_root(self) -> None:
         outside = Path(self.temporary.name) / "outside.wav"
