@@ -6,8 +6,11 @@ from voxpipe.media.probe import (
     MediaMetadata,
     ProbePolicy,
 )
+from voxpipe.media.validation import DecodePolicy, FFmpegDecodeValidator
 
 __all__ = [
+    "DecodePolicy",
+    "FFmpegDecodeValidator",
     "FFprobeMediaInspector",
     "MediaInspectionError",
     "MediaMetadata",
