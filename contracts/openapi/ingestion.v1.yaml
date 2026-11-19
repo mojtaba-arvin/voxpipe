@@ -1,0 +1,281 @@
+openapi: 3.1.0
+info:
+  title: VoxPipe Ingestion API
+  version: 1.0.0
+  description: Authenticated, tenant-scoped batch media ingestion. Audio bytes are streamed separately from JSON metadata.
+servers:
+  - url: https://api.example.invalid
+security:
+  - bearerAuth: []
+paths:
+  /v1/ingestions:
+    post:
+      operationId: createIngestion
+      summary: Create or retrieve an idempotent upload session
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIngestionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionSession'
+        '200':
+          description: Existing idempotent session returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionSession'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+  /v1/ingestions/{session_id}/content:
+    put:
+      operationId: uploadIngestionContent
+      summary: Stream media bytes into the private staging area
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Bytes received and integrity-checked
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+  /v1/ingestions/{session_id}/finalize:
+    post:
+      operationId: finalizeIngestion
+      summary: Validate upload completeness and enqueue durable processing
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '202':
+          description: Processing job durably enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/ingestions/{session_id}:
+    get:
+      operationId: getIngestion
+      summary: Read the caller tenant's ingestion status
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Current session and optional job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cancelIngestion
+      summary: Cancel a non-terminal ingestion session and its job
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '202':
+          description: Cancellation accepted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._:-]+$'
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateIngestionRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_size_bytes, expected_sha256, source]
+      properties:
+        expected_size_bytes:
+          type: integer
+          minimum: 1
+        expected_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        content_type_hint:
+          type: string
+          maxLength: 128
+        retention_policy_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        source:
+          type: object
+          additionalProperties: false
+          required: [kind]
+          properties:
+            kind:
+              type: string
+              enum: [file_upload, device_capture, telephony, live_stream, import]
+            external_reference:
+              type: string
+              minLength: 1
+              maxLength: 2048
+            recorded_at:
+              type: string
+              format: date-time
+            declared_by:
+              type: string
+              maxLength: 256
+    IngestionSession:
+      type: object
+      additionalProperties: false
+      required: [session_id, state, expected_size_bytes, expected_sha256, upload_url]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [created, receiving, finalizing, queued, processing, completed, failed, cancelled, expired]
+        expected_size_bytes:
+          type: integer
+        expected_sha256:
+          type: string
+        upload_url:
+          type: string
+          format: uri-reference
+    AcceptedJob:
+      type: object
+      additionalProperties: false
+      required: [session_id, job_id, state]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        state:
+          const: pending
+    IngestionStatus:
+      type: object
+      additionalProperties: false
+      required: [session_id, state, created_at, updated_at]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+        job:
+          type: object
+          properties:
+            job_id:
+              type: string
+              format: uuid
+            state:
+              type: string
+              enum: [pending, leased, completed, dead, cancelled]
+            attempts:
+              type: integer
+            max_attempts:
+              type: integer
+            last_error_code:
+              type: string
+        asset_id:
+          type: string
+          format: uuid
+        failure:
+          type: object
+          properties:
+            code:
+              type: string
+            retryable:
+              type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  responses:
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource does not exist in the authenticated tenant
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Idempotency, lifecycle, or concurrent update conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PayloadTooLarge:
+      description: Upload exceeds configured or declared byte limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
