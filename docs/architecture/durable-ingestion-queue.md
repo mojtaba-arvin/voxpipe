@@ -35,6 +35,8 @@ The application role must be non-owner, non-superuser, and `NOBYPASSRLS`. Grant 
 
 ## Worker contract
 
+The durable job lease is authoritative for queued sessions. The worker runner configures the ingestion-session lease to expire before the queue lease, so a process restart cannot leave a stale session lease blocking the next job claimant. Legacy recovery scans exclude sessions with jobs.
+
 A worker must:
 
 1. Claim one job for an authorized tenant.
