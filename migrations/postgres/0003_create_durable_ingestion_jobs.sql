@@ -1,3 +1,7 @@
+ALTER TABLE ingestion_sessions
+    ADD CONSTRAINT uq_ingestion_sessions_tenant_session
+    UNIQUE (tenant_id, session_id);
+
 CREATE TABLE ingestion_jobs (
     job_id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
