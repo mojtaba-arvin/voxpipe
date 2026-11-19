@@ -167,6 +167,65 @@ class IngestionRecoveryTests(unittest.TestCase):
         self.assertEqual(self.object_store.head(original.asset["storage"]["object_key"]).sha256,
                          original.asset["integrity"]["digest"])
 
+    def test_recovery_from_finalizing_state_repeats_validation_and_storage(self) -> None:
+        result = self.service.ingest(self.request())
+        session = dict(result.session)
+        self.repository.delete_asset(session["tenant_id"], session["asset_id"])
+        self.object_store.delete(result.asset["storage"]["object_key"])
+        session["state"] = "finalizing"
+        session["lease"] = {
+            "owner_id": str(uuid4()),
+            "expires_at": "2000-01-01T00:00:00.000Z",
+            "heartbeat_at": "2000-01-01T00:00:00.000Z",
+            "attempt": 1,
+        }
+        self.repository.update_session(
+            session["tenant_id"], session["session_id"], "completed", session
+        )
+
+        report = IngestionRecoveryWorker(
+            repository=self.repository,
+            service=self.make_service(),
+        ).run(limit=10)
+
+        self.assertEqual(report.recovered, 1)
+        recovered = self.repository.get_session(session["tenant_id"], session["session_id"])
+        self.assertEqual(recovered["state"], "completed")
+        self.assertIsNotNone(self.repository.get_asset(session["tenant_id"], session["asset_id"]))
+        self.assertEqual(
+            self.object_store.head(result.asset["storage"]["object_key"]).sha256,
+            result.asset["integrity"]["digest"],
+        )
+
+    def test_recovery_after_object_write_before_asset_commit(self) -> None:
+        result = self.service.ingest(self.request())
+        session = dict(result.session)
+        self.repository.delete_asset(session["tenant_id"], session["asset_id"])
+        session["state"] = "processing"
+        session["lease"] = {
+            "owner_id": str(uuid4()),
+            "expires_at": "2000-01-01T00:00:00.000Z",
+            "heartbeat_at": "2000-01-01T00:00:00.000Z",
+            "attempt": 1,
+        }
+        self.repository.update_session(
+            session["tenant_id"], session["session_id"], "completed", session
+        )
+
+        report = IngestionRecoveryWorker(
+            repository=self.repository,
+            service=self.make_service(),
+        ).run(limit=10)
+
+        self.assertEqual(report.recovered, 1)
+        recovered = self.repository.get_session(session["tenant_id"], session["session_id"])
+        self.assertEqual(recovered["state"], "completed")
+        self.assertIsNotNone(self.repository.get_asset(session["tenant_id"], session["asset_id"]))
+        self.assertEqual(
+            self.object_store.head(result.asset["storage"]["object_key"]).sha256,
+            result.asset["integrity"]["digest"],
+        )
+
     def test_live_lease_is_skipped_by_recovery_worker(self) -> None:
         result = self.service.ingest(self.request())
         session = dict(result.session)
