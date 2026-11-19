@@ -7,7 +7,6 @@ points it at a disposable test database. It never reads production settings.
 from __future__ import annotations
 
 import os
-import sys
 
 
 def main() -> None:
