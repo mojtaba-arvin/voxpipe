@@ -86,7 +86,7 @@ func (s *PostgresStore) UpdateSession(ctx context.Context, tenantID, sessionID, 
     payload, err := json.Marshal(updated); if err != nil { return err }
     tx, err := s.beginTenant(ctx, tenantID); if err != nil { return err }; defer tx.Rollback(ctx)
     tag, err := tx.Exec(ctx, `
-        UPDATE ingestion_sessions SET state=$1, payload=$2::jsonb, updated_at=$3
+        UPDATE ingestion_sessions SET state=$1, payload=$2::jsonb, updated_at=$3::text::timestamptz
         WHERE tenant_id=$4::text::uuid AND session_id=$5::text::uuid AND state=$6
     `, updated["state"], payload, updated["updated_at"], tenantID, sessionID, expectedState)
     if err != nil { return err }; if tag.RowsAffected()!=1 { return ErrConflict }
