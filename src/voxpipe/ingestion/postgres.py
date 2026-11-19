@@ -172,7 +172,7 @@ class PostgresIngestionRepository:
                 """
                 INSERT INTO audio_assets (asset_id, tenant_id, payload, updated_at)
                 VALUES (%s, %s, %s::jsonb, %s::timestamptz)
-                ON CONFLICT (asset_id) DO NOTHING
+                ON CONFLICT DO NOTHING
                 RETURNING payload
                 """,
                 (
