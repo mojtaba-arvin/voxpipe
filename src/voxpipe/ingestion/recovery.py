@@ -119,7 +119,10 @@ class IngestionOrphanReconciler:
     def run(self, *, limit: int = 100) -> ReconciliationReport:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
-        sessions = self._repository.list_sessions_by_state("failed", limit)
+        failed_sessions = self._repository.list_sessions_by_state("failed", limit)
+        remaining = max(0, limit - len(failed_sessions))
+        expired_sessions = self._repository.list_sessions_by_state("expired", remaining) if remaining else []
+        sessions = failed_sessions + expired_sessions
         items: list[ReconciliationItem] = []
 
         for session in sessions:
