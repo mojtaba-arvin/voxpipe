@@ -70,13 +70,14 @@ func (m *memoryStore) GetStatus(_ context.Context,tenant,id string)(map[string]a
 	var job map[string]any; if value,ok:=m.jobs[key]; ok { job=cloneMap(value) }
 	return cloneMap(session),job,nil
 }
-func (m *memoryStore) Cancel(_ context.Context,tenant,id string)(bool,error){
+func (m *memoryStore) Cancel(_ context.Context,tenant,id string)(string,error){
 	m.mu.Lock(); defer m.mu.Unlock()
-	key:=sessionKey(tenant,id); session,ok:=m.sessions[key]; if !ok { return false,ErrNotFound }
-	switch session["state"] { case "completed","failed","cancelled","expired": return false,ErrConflict }
+	key:=sessionKey(tenant,id); session,ok:=m.sessions[key]; if !ok { return "",ErrNotFound }
+	state,_:=session["state"].(string)
+	switch state { case "completed","failed","cancelled","expired": return "",ErrConflict }
 	session["state"]="cancelled"; delete(session,"lease")
 	if job,ok:=m.jobs[key]; ok { job["state"]="cancelled" }
-	return true,nil
+	return state,nil
 }
 
 func testServer(t *testing.T) (*Server,*memoryStore,string,string) {
