@@ -154,12 +154,12 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 
 func TestClientCannotChooseRetentionPolicy(t *testing.T) {
 	server, _, _, token := testServer(t)
-	payload := []byte(\`{
+	payload := []byte(`{
 		"expected_size_bytes": 12,
 		"expected_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"source": {"kind": "file_upload"},
 		"retention_policy_id": "client-selected-policy"
-	}\`)
+	}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/ingestions", bytes.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Idempotency-Key", "retention-policy-client-0001")
