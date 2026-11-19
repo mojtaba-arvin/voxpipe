@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** Active development — batch ingestion, media validation, SQLite/local storage, lease recovery, and the PostgreSQL RLS repository are implemented and CI-verified. Authenticated upload API and durable job queue are next.  
+**Status:** Active development — batch ingestion and PostgreSQL RLS persistence are CI-verified; the durable queue, worker, and Go upload API are implemented on an active review branch, with new CI verification pending.  
 **Default branch:** `main`
 
 ## Design principles
@@ -33,12 +33,16 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── server.go
 │   ├── staging.go
 │   ├── store.go
-│   └── worker.go
+│   ├── uuid.go
+│   ├── server_test.go
+│   └── store_integration_test.go
 ├── go.mod
 ├── AGENTS.md
 ├── Makefile
 ├── README.md
 ├── contracts/
+│   ├── openapi/
+│   │   └── ingestion.v1.yaml
 │   ├── examples/
 │   └── schemas/
 ├── docs/
@@ -73,6 +77,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   └── ingestion/
 │       ├── repository.py
 │       ├── postgres.py
+│       ├── jobs.py
+│       ├── worker.py
 │       ├── service.py
 │       └── recovery.py
 └── tests/
@@ -83,7 +89,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     ├── test_local_storage.py
     ├── test_ingestion_service.py
     ├── test_ingestion_recovery.py
-    └── test_postgres_repository.py
+    ├── test_postgres_repository.py
+    └── internal/httpapi (Go API and PostgreSQL integration tests)
 ```
 
 ## Quick start
