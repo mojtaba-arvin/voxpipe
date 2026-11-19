@@ -48,6 +48,8 @@ def main() -> int:
     lease_seconds = int(os.environ.get("VOXPIPE_JOB_LEASE_SECONDS", "90"))
     poll_seconds = float(os.environ.get("VOXPIPE_JOB_POLL_SECONDS", "1"))
     max_upload = int(os.environ.get("VOXPIPE_MAX_UPLOAD_BYTES", str(512 * 1024 * 1024)))
+    if poll_seconds <= 0 or max_upload < 1:
+        raise SystemExit("worker poll interval and upload limit must be positive")
 
     repository = PostgresIngestionRepository(dsn)
     queue = PostgresIngestionJobQueue(dsn)
