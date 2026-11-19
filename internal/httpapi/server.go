@@ -1,0 +1,389 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
+)
+
+const (
+	scopeIngestionRead  = "ingestion:read"
+	scopeIngestionWrite = "ingestion:write"
+)
+
+var (
+	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
+	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+)
+
+type Server struct {
+	store        Store
+	auth         Authenticator
+	stager       *LocalStager
+	maxUpload    int64
+	sessionTTL   time.Duration
+	maxAttempts  int
+	clock        func() time.Time
+}
+
+type CreateIngestionRequest struct {
+	ExpectedSizeBytes int64          `json:"expected_size_bytes"`
+	ExpectedSHA256    string         `json:"expected_sha256"`
+	ContentTypeHint   string         `json:"content_type_hint,omitempty"`
+	RetentionPolicyID string         `json:"retention_policy_id,omitempty"`
+	Source            SourceMetadata `json:"source"`
+}
+
+type SourceMetadata struct {
+	Kind              string `json:"kind"`
+	ExternalReference string `json:"external_reference,omitempty"`
+	RecordedAt        string `json:"recorded_at,omitempty"`
+	DeclaredBy        string `json:"declared_by,omitempty"`
+}
+
+func NewServer(store Store, auth Authenticator, stager *LocalStager, maxUpload int64, sessionTTL time.Duration, maxAttempts int) (*Server, error) {
+	if store == nil || auth == nil || stager == nil {
+		return nil, fmt.Errorf("store, authenticator, and stager are required")
+	}
+	if maxUpload < 1 || sessionTTL <= 0 || maxAttempts < 1 || maxAttempts > 100 {
+		return nil, fmt.Errorf("invalid upload or session limits")
+	}
+	return &Server{
+		store: store, auth: auth, stager: stager, maxUpload: maxUpload,
+		sessionTTL: sessionTTL, maxAttempts: maxAttempts, clock: time.Now,
+	}, nil
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/ingestions", s.createIngestion)
+	mux.HandleFunc("PUT /v1/ingestions/{session_id}/content", s.uploadContent)
+	mux.HandleFunc("POST /v1/ingestions/{session_id}/finalize", s.finalizeIngestion)
+	mux.HandleFunc("GET /v1/ingestions/{session_id}", s.getIngestion)
+	mux.HandleFunc("DELETE /v1/ingestions/{session_id}", s.cancelIngestion)
+	return mux
+}
+
+func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionWrite)
+	if !ok { return }
+	key := r.Header.Get("Idempotency-Key")
+	if !idempotencyPattern.MatchString(key) {
+		writeError(w, http.StatusBadRequest, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 64*1024)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	var request CreateIngestionRequest
+	if err := decoder.Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Request body is invalid")
+		return
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Request body must contain one JSON object")
+		return
+	}
+	if request.ExpectedSizeBytes < 1 || request.ExpectedSizeBytes > s.maxUpload {
+		writeError(w, http.StatusRequestEntityTooLarge, "UPLOAD_SIZE_LIMIT", "Declared upload size is outside configured limits")
+		return
+	}
+	if !sha256Pattern.MatchString(request.ExpectedSHA256) {
+		writeError(w, http.StatusBadRequest, "INVALID_CHECKSUM", "expected_sha256 must be a SHA-256 hex digest")
+		return
+	}
+	if !validSource(request.Source) || len(request.ContentTypeHint) > 128 ||
+		len(request.RetentionPolicyID) > 128 {
+		writeError(w, http.StatusBadRequest, "INVALID_SOURCE", "Source or retention metadata is invalid")
+		return
+	}
+
+	sessionID, err := newUUID()
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to create session"); return }
+	assetID, err := newUUID()
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to create session"); return }
+	reference, err := s.stager.Reference(principal.TenantID, sessionID)
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to prepare upload"); return }
+	now := s.clock().UTC()
+	timestamp := now.Format(time.RFC3339Nano)
+	upload := map[string]any{
+		"expected_size_bytes": request.ExpectedSizeBytes,
+		"received_size_bytes": int64(0),
+		"expected_sha256": strings.ToLower(request.ExpectedSHA256),
+	}
+	if request.ContentTypeHint != "" { upload["content_type_hint"] = request.ContentTypeHint }
+	session := map[string]any{
+		"schema_version": "1.0.0",
+		"session_id": sessionID,
+		"tenant_id": principal.TenantID,
+		"mode": "batch",
+		"source": sourceMap(request.Source),
+		"state": "created",
+		"idempotency_key": key,
+		"asset_id": assetID,
+		"staging_reference": reference,
+		"upload": upload,
+		"created_at": timestamp,
+		"updated_at": timestamp,
+		"expires_at": now.Add(s.sessionTTL).Format(time.RFC3339Nano),
+	}
+	if request.RetentionPolicyID != "" { session["retention_policy_id"] = request.RetentionPolicyID }
+
+	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session)
+	if err != nil { writeStoreError(w, err); return }
+	savedUpload, _ := saved["upload"].(map[string]any)
+	if !sameCreateRequest(saved, savedUpload, request) {
+		writeError(w, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request")
+		return
+	}
+	id, _ := saved["session_id"].(string)
+	state, _ := saved["state"].(string)
+	size, _ := numberInt64(savedUpload["expected_size_bytes"])
+	checksum, _ := savedUpload["expected_sha256"].(string)
+	status := http.StatusCreated
+	if !created { status = http.StatusOK }
+	writeJSON(w, status, map[string]any{
+		"session_id": id,
+		"state": state,
+		"expected_size_bytes": size,
+		"expected_sha256": checksum,
+		"upload_url": "/v1/ingestions/" + id + "/content",
+	})
+}
+
+func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionWrite)
+	if !ok { return }
+	sessionID := r.PathValue("session_id")
+	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
+	if mediaType := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0])); mediaType != "application/octet-stream" {
+		writeError(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_CONTENT_TYPE", "Use application/octet-stream for media bytes")
+		return
+	}
+	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
+	if err != nil { writeStoreError(w, err); return }
+	state, _ := session["state"].(string)
+	if state != "created" && state != "receiving" {
+		writeError(w, http.StatusConflict, "INVALID_SESSION_STATE", "Session is not accepting upload bytes")
+		return
+	}
+	upload, _ := session["upload"].(map[string]any)
+	expectedSize, sizeOK := numberInt64(upload["expected_size_bytes"])
+	expectedDigest, digestOK := upload["expected_sha256"].(string)
+	if !sizeOK || !digestOK {
+		writeError(w, http.StatusConflict, "INVALID_SESSION_STATE", "Session upload metadata is incomplete")
+		return
+	}
+	if r.ContentLength >= 0 && r.ContentLength != expectedSize {
+		writeError(w, http.StatusBadRequest, "UPLOAD_SIZE_MISMATCH", "Content-Length does not match declared upload size")
+		return
+	}
+	written, _, err := s.stager.Write(principal.TenantID, sessionID, r.Body, expectedSize, s.maxUpload, expectedDigest)
+	if errors.Is(err, ErrUploadTooLarge) {
+		writeError(w, http.StatusRequestEntityTooLarge, "UPLOAD_SIZE_LIMIT", "Upload exceeds configured limits")
+		return
+	}
+	if errors.Is(err, ErrUploadIntegrity) {
+		writeError(w, http.StatusBadRequest, "UPLOAD_INTEGRITY_MISMATCH", "Upload size or checksum does not match the declaration")
+		return
+	}
+	if errors.Is(err, ErrUploadConflict) {
+		writeError(w, http.StatusConflict, "UPLOAD_CONFLICT", "A different upload is already staged for this session")
+		return
+	}
+	if err != nil { writeError(w, http.StatusInternalServerError, "STAGING_FAILED", "Unable to stage upload"); return }
+
+	updated, err := cloneJSONMap(session)
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to update session"); return }
+	updatedUpload, _ := updated["upload"].(map[string]any)
+	updatedUpload["received_size_bytes"] = written
+	updated["state"] = "receiving"
+	updated["updated_at"] = s.clock().UTC().Format(time.RFC3339Nano)
+	if err := s.store.UpdateSession(r.Context(), principal.TenantID, sessionID, state, updated); err != nil {
+		latest, readErr := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
+		if readErr == nil {
+			latestState, _ := latest["state"].(string)
+			latestUpload, _ := latest["upload"].(map[string]any)
+			latestSize, _ := numberInt64(latestUpload["received_size_bytes"])
+			if latestState == "receiving" && latestSize == expectedSize {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		writeStoreError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) finalizeIngestion(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionWrite)
+	if !ok { return }
+	sessionID := r.PathValue("session_id")
+	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
+	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
+	if err != nil { writeStoreError(w, err); return }
+	state, _ := session["state"].(string)
+	if state != "receiving" && state != "finalizing" && state != "queued" && state != "processing" && state != "completed" {
+		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "A complete upload is required before finalization")
+		return
+	}
+	upload, _ := session["upload"].(map[string]any)
+	expectedSize, sizeOK := numberInt64(upload["expected_size_bytes"])
+	expectedDigest, digestOK := upload["expected_sha256"].(string)
+	if !sizeOK || !digestOK {
+		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "Upload metadata is incomplete")
+		return
+	}
+	actualSize, actualDigest, err := s.stager.Verify(principal.TenantID, sessionID)
+	if err != nil || actualSize != expectedSize || actualDigest != strings.ToLower(expectedDigest) {
+		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "Staged upload is missing or failed integrity verification")
+		return
+	}
+	updated, err := cloneJSONMap(session)
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to finalize session"); return }
+	updated["state"] = "finalizing"
+	updated["updated_at"] = s.clock().UTC().Format(time.RFC3339Nano)
+	jobID, err := newUUID()
+	if err != nil { writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Unable to create job"); return }
+	job, err := s.store.FinalizeSession(r.Context(), principal.TenantID, sessionID, jobID, s.maxAttempts, updated)
+	if err != nil { writeStoreError(w, err); return }
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"session_id": sessionID,
+		"job_id": job["job_id"],
+		"state": job["state"],
+	})
+}
+
+func (s *Server) getIngestion(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionRead)
+	if !ok { return }
+	sessionID := r.PathValue("session_id")
+	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
+	session, job, err := s.store.GetStatus(r.Context(), principal.TenantID, sessionID)
+	if err != nil { writeStoreError(w, err); return }
+	response := map[string]any{
+		"session_id": sessionID,
+		"state": session["state"],
+		"created_at": session["created_at"],
+		"updated_at": session["updated_at"],
+	}
+	if job != nil { response["job"] = job }
+	if assetID, exists := session["asset_id"]; exists && session["state"] == "completed" { response["asset_id"] = assetID }
+	if failure, exists := session["failure"]; exists { response["failure"] = failure }
+	writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionWrite)
+	if !ok { return }
+	sessionID := r.PathValue("session_id")
+	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
+	if _, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID); err != nil {
+		writeStoreError(w, err); return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) principal(w http.ResponseWriter, r *http.Request, scope string) (Principal, bool) {
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") || strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")) == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHENTICATED", "Bearer authentication is required")
+		return Principal{}, false
+	}
+	principal, err := s.auth.Authenticate(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")))
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHENTICATED", "Bearer token is invalid")
+		return Principal{}, false
+	}
+	if !principal.Allows(scope) {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Token does not grant the required capability")
+		return Principal{}, false
+	}
+	return principal, true
+}
+
+func validSource(source SourceMetadata) bool {
+	switch source.Kind {
+	case "file_upload", "device_capture", "telephony", "live_stream", "import":
+	default:
+		return false
+	}
+	if len(source.ExternalReference) > 2048 || len(source.DeclaredBy) > 256 { return false }
+	if source.RecordedAt != "" {
+		if _, err := time.Parse(time.RFC3339, source.RecordedAt); err != nil { return false }
+	}
+	return true
+}
+
+func sourceMap(source SourceMetadata) map[string]any {
+	result := map[string]any{"kind": source.Kind}
+	if source.ExternalReference != "" { result["external_reference"] = source.ExternalReference }
+	if source.RecordedAt != "" { result["recorded_at"] = source.RecordedAt }
+	if source.DeclaredBy != "" { result["declared_by"] = source.DeclaredBy }
+	return result
+}
+
+func sameCreateRequest(session, upload map[string]any, request CreateIngestionRequest) bool {
+	size, sizeOK := numberInt64(upload["expected_size_bytes"])
+	digest, digestOK := upload["expected_sha256"].(string)
+	sourceBytes, _ := json.Marshal(session["source"])
+	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
+	retention, _ := session["retention_policy_id"].(string)
+	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
+		digest == strings.ToLower(request.ExpectedSHA256) &&
+		string(sourceBytes) == string(requestSourceBytes) &&
+		retention == request.RetentionPolicyID
+}
+
+func numberInt64(value any) (int64, bool) {
+	switch number := value.(type) {
+	case int: return int64(number), true
+	case int64: return number, true
+	case float64:
+		if math.IsNaN(number) || math.IsInf(number, 0) || math.Trunc(number) != number { return 0, false }
+		return int64(number), true
+	case json.Number:
+		result, err := number.Int64(); return result, err == nil
+	default: return 0, false
+	}
+}
+
+func cloneJSONMap(value map[string]any) (map[string]any, error) {
+	encoded, err := json.Marshal(value); if err != nil { return nil, err }
+	var cloned map[string]any
+	err = json.Unmarshal(encoded, &cloned); return cloned, err
+}
+
+func ensureJSONEOF(decoder *json.Decoder) error {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF { return fmt.Errorf("trailing JSON value") }
+	return nil
+}
+
+func writeStoreError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found")
+	case errors.Is(err, ErrConflict):
+		writeError(w, http.StatusConflict, "STATE_CONFLICT", "Ingestion session changed or is not in the required state")
+	default:
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "The request could not be completed")
+	}
+}
+
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]string{"code": code, "message": message})
+}
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
+}
