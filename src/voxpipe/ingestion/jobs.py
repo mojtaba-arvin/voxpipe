@@ -91,46 +91,69 @@ class PostgresIngestionJobQueue:
         with self._tenant_connection(tenant_id) as connection:
             # A final expired attempt must become terminal instead of remaining
             # leased forever and disappearing from future claim scans.
-            exhausted = connection.execute(
+            expired_jobs = connection.execute(
                 """
-                UPDATE ingestion_jobs
-                SET state = 'dead',
-                    lease_owner = NULL,
-                    lease_expires_at = NULL,
-                    last_error_code = COALESCE(last_error_code, 'INGESTION_RETRY_EXHAUSTED'),
-                    updated_at = now()
+                SELECT job_id, session_id
+                FROM ingestion_jobs
                 WHERE tenant_id = %s
                   AND state = 'leased'
                   AND lease_expires_at <= now()
                   AND attempts >= max_attempts
-                RETURNING session_id
+                ORDER BY updated_at ASC
+                LIMIT 100
                 """,
                 (tenant_id,),
             ).fetchall()
-            for expired_job in exhausted:
+            for expired_job in expired_jobs:
+                # Keep the cross-runtime lock order stable: session, then job.
                 connection.execute(
                     """
-                    UPDATE ingestion_sessions
-                    SET state = 'failed',
-                        payload = (payload - 'lease') ||
-                            jsonb_build_object(
-                                'state', 'failed',
-                                'failure', jsonb_build_object(
-                                    'code', 'INGESTION_RETRY_EXHAUSTED',
-                                    'retryable', false,
-                                    'detail', 'The durable job exhausted its lease attempts.'
-                                ),
-                                'updated_at', to_char(
-                                    now() AT TIME ZONE 'UTC',
-                                    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-                                )
-                            ),
-                        updated_at = now()
+                    SELECT session_id FROM ingestion_sessions
                     WHERE tenant_id = %s AND session_id = %s
-                      AND state NOT IN ('completed', 'failed', 'cancelled', 'expired')
+                    FOR UPDATE
                     """,
                     (tenant_id, expired_job["session_id"]),
-                )
+                ).fetchone()
+                terminal = connection.execute(
+                    """
+                    UPDATE ingestion_jobs
+                    SET state = 'dead',
+                        lease_owner = NULL,
+                        lease_expires_at = NULL,
+                        last_error_code = COALESCE(last_error_code, 'INGESTION_RETRY_EXHAUSTED'),
+                        updated_at = now()
+                    WHERE tenant_id = %s AND job_id = %s
+                      AND state = 'leased'
+                      AND lease_expires_at <= now()
+                      AND attempts >= max_attempts
+                    RETURNING session_id
+                    """,
+                    (tenant_id, expired_job["job_id"]),
+                ).fetchone()
+                if terminal is not None:
+                    connection.execute(
+                        """
+                        UPDATE ingestion_sessions
+                        SET state = 'failed',
+                            payload = (payload - 'lease') ||
+                                jsonb_build_object(
+                                    'state', 'failed',
+                                    'failure', jsonb_build_object(
+                                        'code', 'INGESTION_RETRY_EXHAUSTED',
+                                        'retryable', false,
+                                        'detail', 'The durable job exhausted its lease attempts.'
+                                    ),
+                                    'updated_at', to_char(
+                                        now() AT TIME ZONE 'UTC',
+                                        'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                                    )
+                                ),
+                            updated_at = now()
+                        WHERE tenant_id = %s AND session_id = %s
+                          AND state NOT IN ('completed', 'failed', 'cancelled', 'expired')
+                        """,
+                        (tenant_id, expired_job["session_id"]),
+                    )
             row = connection.execute(
                 """
                 WITH candidate AS (
@@ -222,6 +245,25 @@ class PostgresIngestionJobQueue:
             raise ValueError("error_code must contain 1 to 64 characters")
         self._validate_limits(1, retry_delay_seconds)
         with self._tenant_connection(tenant_id) as connection:
+            job_ref = connection.execute(
+                """
+                SELECT session_id FROM ingestion_jobs
+                WHERE tenant_id = %s AND job_id = %s
+                """,
+                (tenant_id, job_id),
+            ).fetchone()
+            if job_ref is None:
+                raise JobLeaseLost("job no longer exists for this tenant")
+
+            # Lock the session before the job, matching API and cancellation paths.
+            connection.execute(
+                """
+                SELECT session_id FROM ingestion_sessions
+                WHERE tenant_id = %s AND session_id = %s
+                FOR UPDATE
+                """,
+                (tenant_id, job_ref["session_id"]),
+            ).fetchone()
             current = connection.execute(
                 """
                 SELECT session_id, attempts, max_attempts
