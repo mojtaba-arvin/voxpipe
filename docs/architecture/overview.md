@@ -10,7 +10,8 @@ The platform must support batch ingestion first and real-time streaming as a lat
 
 | Component | Responsibility | Primary boundary |
 |---|---|---|
-| Ingestion | Upload, validation, normalization, session lifecycle | Audio asset/session contract |
+| Go HTTP API | Authenticated upload, tenant boundary, durable job submission | OpenAPI + PostgreSQL session/job contract |
+| Python ingestion worker | Media inspection, decode validation, object storage and session lifecycle | Audio asset/session contract |
 | Speech | VAD, STT, diarization, language and timing | Speech provider ports |
 | Structuring | Extraction, entity resolution, schema compilation | Versioned structured-output contract |
 | Knowledge | Metadata, object storage, indexing and retrieval | Storage/search ports |
@@ -29,7 +30,7 @@ Use Protobuf for service-to-service streaming contracts only when its benefits j
 
 ### Language selection is evidence-driven
 
-Python is the initial candidate for model orchestration, extraction, and evaluation. Go and Rust are candidates for concurrency-sensitive or resource-constrained components. No language is mandated solely by a general benchmark claim.
+The public HTTP/API surface is implemented in Go, following ADR-0004. The ingestion application service and worker remain Python to reuse the existing media, storage, and data ecosystem. Go/Python communicate through versioned OpenAPI and PostgreSQL contracts, never by importing each other's implementation. Rust remains an evidence-triggered option for a measured hot path or sandbox boundary.
 
 Before splitting a component into another language or service, measure:
 - throughput and tail latency under representative concurrency;
@@ -63,13 +64,7 @@ Apply data minimization, explicit retention, deletion propagation, encryption, a
 
 ## Initial deployment shape
 
-Start with a modular monolith and separately deploy only components whose scaling, runtime, or isolation needs justify it:
-
-- API and job submission;
-- worker execution;
-- relational metadata database;
-- object storage;
-- optional model gateway/inference services.
+The first ingestion deployment has separate Go API and Python worker processes, PostgreSQL metadata/jobs, and private local staging/object storage. The API and worker share a service-owned volume on one host; this is a deliberate single-node boundary, not a horizontal-scaling claim. Replace local staging/object storage with a shared object-storage adapter before separating API and worker across hosts. Optional model gateway/inference services remain independently deployable when their resource and policy needs justify it.
 
 Real-time media gateways, dedicated vector databases, and sandboxed execution remain evidence-triggered extensions.
 
