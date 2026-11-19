@@ -220,6 +220,22 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertIn(complete["session_id"], recovered_ids)
 
 
+    def test_legacy_recovery_scan_skips_sessions_owned_by_durable_queue(self) -> None:
+        tenant_id = str(uuid4())
+        session = self.session(tenant_id=tenant_id, key="postgres-queue-owned-session-0001")
+        session["upload"] = {
+            "expected_size_bytes": 512,
+            "received_size_bytes": 512,
+            "expected_sha256": "c" * 64,
+        }
+        self.repository.create_or_get_session(session)
+        self.queue.enqueue(tenant_id, session["session_id"])
+        recoverable = self.repository.list_recoverable_sessions(
+            self.now(), 10, tenant_id=tenant_id
+        )
+        self.assertNotIn(session["session_id"], {item["session_id"] for item in recoverable})
+
+
     def test_recovery_scans_require_and_enforce_tenant_scope(self) -> None:
         tenant_a, tenant_b = str(uuid4()), str(uuid4())
         session_a = self.session(tenant_id=tenant_a, key="postgres-tenant-a-0001")
