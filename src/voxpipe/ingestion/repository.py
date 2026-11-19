@@ -43,7 +43,116 @@ class IngestionRepositoryPort(Protocol):
     def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None:
         ...
 
+    def claim_session(
+        self,
+        tenant_id: str,
+        session_id: str,
+        worker_id: str,
+        now: str,
+        lease_expires_at: str,
+    ) -> dict[str, Any] | None:
+        """Atomically claim an active session when its prior lease is absent/expired."""
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT state, payload_json FROM ingestion_sessions
+                WHERE tenant_id = ? AND session_id = ?
+                """,
+                (tenant_id, session_id),
+            ).fetchone()
+            if row is None or row["state"] in {"completed", "failed", "cancelled", "expired"}:
+                connection.commit()
+                return None
+
+            session = json.loads(row["payload_json"])
+            prior_lease = session.get("lease") or {}
+            prior_expiry = prior_lease.get("expires_at")
+            prior_owner = prior_lease.get("owner_id")
+            if prior_expiry and prior_expiry > now and prior_owner != worker_id:
+                connection.commit()
+                return None
+
+            attempt = int(prior_lease.get("attempt", 0)) + 1
+            session["lease"] = {
+                "owner_id": worker_id,
+                "expires_at": lease_expires_at,
+                "heartbeat_at": now,
+                "attempt": attempt,
+            }
+            session["updated_at"] = now
+            cursor = connection.execute(
+                """
+                UPDATE ingestion_sessions
+                SET payload_json = ?
+                WHERE tenant_id = ? AND session_id = ? AND state = ?
+                """,
+                (self._dump(session), tenant_id, session_id, row["state"]),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                return None
+            connection.commit()
+            return session
+
+    def list_recoverable_sessions(self, now: str, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        active_states = ("created", "receiving", "finalizing", "queued", "processing")
+        placeholders = ",".join("?" for _ in active_states)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                f"""
+                SELECT payload_json FROM ingestion_sessions
+                WHERE state IN ({placeholders})
+                ORDER BY updated_at ASC
+                LIMIT ?
+                """,
+                (*active_states, limit * 4),
+            ).fetchall()
+        recoverable: list[dict[str, Any]] = []
+        for row in rows:
+            session = json.loads(row["payload_json"])
+            lease = session.get("lease") or {}
+            lease_expiry = lease.get("expires_at")
+            if not lease_expiry or lease_expiry <= now:
+                recoverable.append(session)
+                if len(recoverable) >= limit:
+                    break
+        return recoverable
+
+    def list_sessions_by_state(self, state: str, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT payload_json FROM ingestion_sessions
+                WHERE state = ?
+                ORDER BY updated_at ASC
+                LIMIT ?
+                """,
+                (state, limit),
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
     def delete_asset(self, tenant_id: str, asset_id: str) -> bool:
+        ...
+
+    def claim_session(
+        self,
+        tenant_id: str,
+        session_id: str,
+        worker_id: str,
+        now: str,
+        lease_expires_at: str,
+    ) -> dict[str, Any] | None:
+        ...
+
+    def list_recoverable_sessions(self, now: str, limit: int) -> list[dict[str, Any]]:
+        ...
+
+    def list_sessions_by_state(self, state: str, limit: int) -> list[dict[str, Any]]:
         ...
 
 
