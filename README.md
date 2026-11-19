@@ -122,4 +122,4 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for phase goals, gates, and current prior
 
 ## License
 
-License has not yet been selected. Do not assume that this repository is open-source licensed until a license file is added.
+VoxPipe is distributed under the [MIT License](LICENSE).
