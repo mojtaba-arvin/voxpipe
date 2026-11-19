@@ -197,7 +197,8 @@ components:
           type: string
           format: uuid
         state:
-          const: pending
+          type: string
+          enum: [pending, leased, completed, dead, cancelled]
     IngestionStatus:
       type: object
       additionalProperties: false
