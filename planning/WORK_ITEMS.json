@@ -224,7 +224,7 @@
       "title": "Implement batch ingestion application service",
       "phase": 1,
       "priority": 5,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0010",
         "VP-0011"
@@ -236,7 +236,14 @@
         "Failures trigger bounded cleanup/compensation and never leave a completed session without an accepted asset.",
         "Unit and integration tests cover duplicate requests, storage failures, parser failures, and tenant mismatch."
       ],
-      "evidence": [],
+      "evidence": [
+        "src/voxpipe/ingestion/service.py — batch orchestration, staging-root enforcement, SHA-256 request fingerprint, state transitions, idempotency, tenant scoping, asset creation, and compensation",
+        "src/voxpipe/ingestion/repository.py — SQLite WAL repository with FULL synchronous commits, unique tenant/idempotency constraint, tenant-scoped lookups, and compare-and-swap state updates",
+        "contracts/schemas/ingestion-session.v1.schema.json — retention policy and allowlisted declared_by source metadata",
+        "tests/test_ingestion_service.py — schema validation, idempotent replay/conflict, tenant isolation, path protection, probe/decode/storage failures, staged mutation, cleanup, and repository reopen",
+        "docs/architecture/ingestion.md — processing flow, persistence boundary, failure semantics, and known recovery limitations",
+        "GitHub Actions run 44442849625 — repository validation passed (14 work items); 67/67 tests passed, including real FFmpeg/ffprobe integration tests"
+      ],
       "blocked_reason": null
     },
     {
@@ -244,7 +251,7 @@
       "title": "Add stale ingestion recovery, leases, and orphan reconciliation",
       "phase": 1,
       "priority": 6,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0012"
       ],
@@ -262,7 +269,7 @@
       "title": "Implement PostgreSQL ingestion repository and schema migrations",
       "phase": 1,
       "priority": 7,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0012"
       ],
