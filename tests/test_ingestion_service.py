@@ -47,6 +47,14 @@ class FakeMediaInspector:
         )
 
 
+class FailOnceMediaInspector(FakeMediaInspector):
+    def inspect(self, path: Path) -> MediaMetadata:
+        self.calls += 1
+        if self.calls == 1:
+            raise MediaInspectionError("MEDIA_PROBE_TIMEOUT", "simulated transient probe timeout")
+        return FakeMediaInspector().inspect(path)
+
+
 class SizeMismatchInspector(FakeMediaInspector):
     def inspect(self, path: Path) -> MediaMetadata:
         metadata = super().inspect(path)
@@ -169,6 +177,22 @@ class BatchIngestionServiceTests(unittest.TestCase):
             source=source or self.source,
             retention_policy_id=retention_policy_id,
         )
+
+
+    def test_retryable_failure_keeps_session_recoverable_for_worker_retry(self) -> None:
+        inspector = FailOnceMediaInspector()
+        service = self.make_service(inspector=inspector)
+        with self.assertRaises(IngestionFailed) as raised:
+            service.ingest(self.request(key="retryable-probe-failure-0001"))
+
+        failed_attempt = raised.exception.session
+        self.assertEqual(failed_attempt["state"], "finalizing")
+        self.assertTrue(failed_attempt["failure"]["retryable"])
+        self.assertNotIn("lease", failed_attempt)
+
+        recovered = service.resume_session(self.tenant_id, failed_attempt["session_id"])
+        self.assertEqual(recovered.session["state"], "completed")
+        self.assertEqual(inspector.calls, 2)
 
     def test_ingests_asset_and_persists_valid_contracts(self) -> None:
         result = self.service.ingest(self.request())
