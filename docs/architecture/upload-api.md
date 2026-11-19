@@ -82,6 +82,6 @@ The worker tenant list is an explicit allowlist supplied by a trusted scheduler/
 
 - Static token mapping must be replaced or integrated with the deployment identity provider.
 - Local staging and object storage require API/worker co-location and a private service-owned filesystem.
-- Staged-source retention and cleanup after cancellation/expiry need a dedicated reconciler and policy.
+- Pre-processing cancellation removes the staged source. Staged-source cleanup after expiry and after cancellation during finalizing/processing still needs a dedicated reconciler and explicit retention policy.
 - No TLS termination, rate limiter, per-tenant quota service, or distributed upload storage is included in this first API slice; deploy behind a trusted TLS ingress and add explicit quota policy before internet exposure.
 - The API does not run migrations or create roles/grants automatically.
