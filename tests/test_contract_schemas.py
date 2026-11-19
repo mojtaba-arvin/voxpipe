@@ -1,0 +1,83 @@
+"""Schema and fixture tests for public/internal VoxPipe contracts."""
+
+from __future__ import annotations
+
+import json
+import unittest
+from pathlib import Path
+
+from jsonschema import Draft202012Validator, FormatChecker
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCHEMAS = ROOT / "contracts" / "schemas"
+EXAMPLES = ROOT / "contracts" / "examples"
+
+
+class ContractSchemaTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.asset_schema = json.loads(
+            (SCHEMAS / "audio-asset.v1.schema.json").read_text(encoding="utf-8")
+        )
+        cls.session_schema = json.loads(
+            (SCHEMAS / "ingestion-session.v1.schema.json").read_text(encoding="utf-8")
+        )
+        Draft202012Validator.check_schema(cls.asset_schema)
+        Draft202012Validator.check_schema(cls.session_schema)
+        cls.asset_validator = Draft202012Validator(
+            cls.asset_schema, format_checker=FormatChecker()
+        )
+        cls.session_validator = Draft202012Validator(
+            cls.session_schema, format_checker=FormatChecker()
+        )
+        cls.asset_example = json.loads(
+            (EXAMPLES / "audio-asset.valid.json").read_text(encoding="utf-8")
+        )
+        cls.session_example = json.loads(
+            (EXAMPLES / "ingestion-session.valid.json").read_text(encoding="utf-8")
+        )
+
+    def test_schemas_are_valid_draft_2020_12(self) -> None:
+        Draft202012Validator.check_schema(self.asset_schema)
+        Draft202012Validator.check_schema(self.session_schema)
+
+    def test_valid_examples_pass(self) -> None:
+        self.asset_validator.validate(self.asset_example)
+        self.session_validator.validate(self.session_example)
+
+    def test_asset_rejects_invalid_checksum(self) -> None:
+        asset = dict(self.asset_example)
+        asset["integrity"] = {"algorithm": "sha256", "digest": "not-a-sha256"}
+        self.assertFalse(self.asset_validator.is_valid(asset))
+
+    def test_asset_rejects_unknown_fields(self) -> None:
+        asset = dict(self.asset_example)
+        asset["public_download_url"] = "https://example.invalid/audio.wav"
+        self.assertFalse(self.asset_validator.is_valid(asset))
+
+    def test_asset_requires_tenant_scope(self) -> None:
+        asset = dict(self.asset_example)
+        asset.pop("tenant_id")
+        self.assertFalse(self.asset_validator.is_valid(asset))
+
+    def test_session_completed_requires_asset_reference(self) -> None:
+        session = dict(self.session_example)
+        session.pop("asset_id")
+        self.assertFalse(self.session_validator.is_valid(session))
+
+    def test_failed_session_requires_failure_details(self) -> None:
+        session = dict(self.session_example)
+        session["state"] = "failed"
+        session.pop("failure", None)
+        self.assertFalse(self.session_validator.is_valid(session))
+
+    def test_rejects_invalid_uuid_and_datetime(self) -> None:
+        asset = dict(self.asset_example)
+        asset["asset_id"] = "not-a-uuid"
+        asset["created_at"] = "yesterday"
+        self.assertFalse(self.asset_validator.is_valid(asset))
+
+
+if __name__ == "__main__":
+    unittest.main()
