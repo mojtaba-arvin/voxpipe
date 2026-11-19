@@ -315,6 +315,23 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             "cancelled",
         )
 
+    def test_cancel_leased_job_fences_worker_and_cancels_processing_session(self) -> None:
+        session = self.session()
+        session["state"] = "processing"
+        self.repository.create_or_get_session(session)
+        job = self.queue.enqueue(session["tenant_id"], session["session_id"])
+        worker = str(uuid4())
+        claimed = self.queue.claim_next(session["tenant_id"], worker)
+        self.assertEqual(claimed["state"], "leased")
+        self.assertTrue(self.queue.cancel(session["tenant_id"], job["job_id"]))
+        self.assertEqual(self.queue.get(session["tenant_id"], job["job_id"])["state"], "cancelled")
+        self.assertEqual(
+            self.repository.get_session(session["tenant_id"], session["session_id"])["state"],
+            "cancelled",
+        )
+        with self.assertRaises(JobLeaseLost):
+            self.queue.complete(session["tenant_id"], job["job_id"], worker)
+
     def test_job_rows_are_hidden_without_tenant_context(self) -> None:
         import psycopg
 
