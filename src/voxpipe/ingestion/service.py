@@ -346,10 +346,20 @@ class IngestionService:
         return resolved, size_bytes, reference
 
     def _resolve_staging_reference(self, reference: Any) -> tuple[Path, int]:
-        if not isinstance(reference, str) or not reference or "\\" in reference:
+        if (
+            not isinstance(reference, str)
+            or not reference
+            or "\\" in reference
+            or any(ord(character) < 32 or ord(character) == 127 for character in reference)
+        ):
             raise StagedFileMissingError("staging reference is invalid")
         pure = PurePosixPath(reference)
-        if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts):
+        if (
+            pure.is_absolute()
+            or not pure.parts
+            or ":" in pure.parts[0]
+            or any(part in {"", ".", ".."} for part in pure.parts)
+        ):
             raise StagedFileMissingError("staging reference is invalid")
         candidate = self._staging_root.joinpath(*pure.parts)
         if candidate.is_symlink():
