@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** Active development — batch ingestion and PostgreSQL RLS persistence are CI-verified; the durable queue, worker, and Go upload API are implemented on an active review branch, with new CI verification pending.  
+**Status:** Active development — batch ingestion and PostgreSQL RLS persistence are CI-verified. The durable queue, Python worker, and authenticated Go upload API are implemented on PR #21; final acceptance is gated on independent Python/Go PostgreSQL CI and operational hardening.  
 **Default branch:** `main`
 
 ## Design principles
@@ -27,6 +27,16 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ```text
 .
 ├── .github/workflows/validate.yml
+├── .agents/skills/
+│   ├── voxpipe-task-execution/SKILL.md
+│   ├── voxpipe-ci-triage/SKILL.md
+│   ├── voxpipe-postgres-reliability/SKILL.md
+│   └── voxpipe-contract-evolution/SKILL.md
+├── .codex/agents/
+│   ├── failure-triager.toml
+│   ├── security-reviewer.toml
+│   └── contract-reviewer.toml
+├── .codex/config.toml
 ├── AGENTS.md
 ├── Makefile
 ├── README.md
@@ -58,6 +68,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── requirements-postgres.txt
 ├── scripts/
 │   ├── validate_repo.py
+│   ├── prepare_test_database.py
 │   └── run_ingestion_worker.py
 ├── src/voxpipe/
 │   ├── media/
@@ -100,8 +111,9 @@ For a PostgreSQL deployment, install the optional driver with `pip install -r re
 - Read [AGENTS.md](AGENTS.md) before changing the repository.
 - Select work from [planning/WORK_ITEMS.json](planning/WORK_ITEMS.json).
 - Follow the [agent execution protocol](docs/operations/agent-execution-protocol.md).
+- Load the matching repository skill and use read-only specialist agents for independent review when supported.
 - Record material architecture decisions as ADRs.
-- Run `make check` before reporting completion.
+- Run `make check` for Python changes and `make go-check` for Go/cross-runtime changes before reporting completion. CI runs both gates independently.
 - Keep changes focused and submit them through a pull request.
 
 ## Roadmap
