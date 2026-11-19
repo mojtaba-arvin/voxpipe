@@ -209,6 +209,13 @@ class IngestionService:
         asset_id = current["asset_id"]
         object_key = f"tenant/{tenant_id}/assets/{asset_id}/source"
         try:
+            if current.get("failure") is not None:
+                resumed = dict(current)
+                resumed.pop("failure", None)
+                resumed["updated_at"] = self._format_time(self._now())
+                current = self._repository.update_session(
+                    tenant_id, session_id, current["state"], resumed
+                )
             if current["expires_at"] <= self._format_time(self._now()):
                 self._cleanup_artifacts(tenant_id, asset_id, object_key)
                 expired = dict(current)
@@ -280,16 +287,20 @@ class IngestionService:
             failure_code = "INGESTION_CLEANUP_FAILED" if cleanup_failed else self._error_code(error)
             latest = self._repository.get_session(tenant_id, session_id) or current
             if latest["state"] not in {"completed", "failed", "cancelled", "expired"}:
+                retryable = self._is_retryable(failure_code)
                 failed = dict(latest)
-                failed["state"] = "failed"
+                if not retryable:
+                    failed["state"] = "failed"
                 failed.pop("lease", None)
                 failed["updated_at"] = self._format_time(self._now())
                 failed["failure"] = {
                     "code": failure_code,
-                    "retryable": self._is_retryable(failure_code),
+                    "retryable": retryable,
                     "detail": "Processing failed; inspect restricted service diagnostics.",
                 }
                 try:
+                    # Retryable failures retain their active lifecycle state
+                    # with no lease, allowing a durable queue retry/recovery.
                     latest = self._repository.update_session(
                         tenant_id, session_id, latest["state"], failed
                     )
