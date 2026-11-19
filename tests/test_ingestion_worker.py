@@ -92,6 +92,20 @@ class IngestionJobWorkerTests(unittest.TestCase):
         self.assertTrue(queue.failure["retryable"])
         self.assertEqual(queue.failure["retry_delay_seconds"], 8)
 
+
+    def test_retryable_service_failure_schedules_bounded_retry(self) -> None:
+        queue = FakeQueue()
+        service = FakeService(
+            IngestionFailed(
+                "MEDIA_PROBE_TIMEOUT",
+                {"failure": {"retryable": True}},
+            )
+        )
+        result = self.worker(queue, service).run_once(self.tenant_id)
+        self.assertEqual(result.outcome, "retry_scheduled")
+        self.assertTrue(queue.failure["retryable"])
+        self.assertEqual(queue.failure["retry_delay_seconds"], 8)
+
     def test_permanent_session_failure_is_dead_lettered(self) -> None:
         queue = FakeQueue()
         service = FakeService(
