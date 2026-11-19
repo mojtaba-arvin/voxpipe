@@ -80,7 +80,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     └── test_postgres_repository.py
 ## Quick start
 
-Requirements: Python 3.11+ and Make. The repository pins Python 3.12 in `.python-version`.
+Requirements: Python 3.11+, Go 1.25+, and Make. The repository pins Python 3.12 in `.python-version`; Go is used by the public HTTP API.
 
 Create an isolated environment and install development/test dependencies:
 
@@ -88,6 +88,7 @@ Create an isolated environment and install development/test dependencies:
 make bootstrap
 . .venv/bin/activate
 make check
+make go-check
 ```
 
 Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
