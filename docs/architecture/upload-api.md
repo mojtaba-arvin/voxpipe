@@ -33,7 +33,7 @@ Only the digest belongs in this mapping. The raw bearer token is supplied by the
 4. GET /v1/ingestions/{session_id} returns tenant-scoped session/job status.
 5. DELETE /v1/ingestions/{session_id} atomically cancels the session and any pending/leased job.
 
-The API returns after durable job submission. It never holds the upload HTTP request open while FFmpeg or model processing runs.
+The API returns after durable job submission. It never holds the upload HTTP request open while FFmpeg or model processing runs. Interrupted transfers remove their temporary file; the client retries the complete upload from byte zero. Byte-range/resumable chunk uploads are deliberately deferred.
 
 ## First deployment topology
 
@@ -83,5 +83,6 @@ The worker tenant list is an explicit allowlist supplied by a trusted scheduler/
 - Static token mapping must be replaced or integrated with the deployment identity provider.
 - Local staging and object storage require API/worker co-location and a private service-owned filesystem.
 - Pre-processing cancellation removes the staged source. Staged-source cleanup after expiry and after cancellation during finalizing/processing still needs a dedicated reconciler and explicit retention policy.
+- Upload retry is whole-file and idempotent, not byte-range resumable.
 - No TLS termination, rate limiter, per-tenant quota service, or distributed upload storage is included in this first API slice; deploy behind a trusted TLS ingress and add explicit quota policy before internet exposure.
 - The API does not run migrations or create roles/grants automatically.
