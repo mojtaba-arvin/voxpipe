@@ -174,6 +174,8 @@ class BatchIngestionServiceTests(unittest.TestCase):
         result = self.service.ingest(self.request())
 
         self.assertEqual(result.session["state"], "completed")
+        self.assertEqual(result.session["staging_reference"], "sample.wav")
+        self.assertNotIn("lease", result.session)
         self.assertEqual(result.asset["state"], "accepted")
         self.assertEqual(result.session["asset_id"], result.asset["asset_id"])
         self.assertEqual(result.asset["tenant_id"], self.tenant_id)
@@ -256,6 +258,7 @@ class BatchIngestionServiceTests(unittest.TestCase):
         self.assertEqual(context.exception.code, "MEDIA_PROBE_FAILED")
         session = self.repository.get_session_by_idempotency(self.tenant_id, "ingestion-request-000001")
         self.assertEqual(session["state"], "failed")
+        self.assertNotIn("lease", session)
         self.assertEqual(session["failure"]["code"], "MEDIA_PROBE_FAILED")
         self.assertIsNone(self.repository.get_asset(self.tenant_id, session["asset_id"]))
         with self.assertRaises(ObjectNotFoundError):
