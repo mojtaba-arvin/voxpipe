@@ -20,21 +20,17 @@ def main() -> None:
     from voxpipe.ingestion import apply_migrations
 
     with psycopg.connect(admin_dsn, autocommit=True) as connection:
-        connection.execute(
-            """
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'voxpipe_app') THEN
-                    CREATE ROLE voxpipe_app LOGIN PASSWORD 'voxpipe_app'
-                        NOSUPERUSER NOBYPASSRLS;
-                ELSE
-                    ALTER ROLE voxpipe_app WITH LOGIN PASSWORD 'voxpipe_app'
-                        NOSUPERUSER NOBYPASSRLS;
-                END IF;
-            END
-            $$
-            """
-        )
+        role_exists = connection.execute(
+            "SELECT 1 FROM pg_roles WHERE rolname = 'voxpipe_app'"
+        ).fetchone()
+        if role_exists is None:
+            connection.execute(
+                "CREATE ROLE voxpipe_app LOGIN PASSWORD 'voxpipe_app' NOSUPERUSER NOBYPASSRLS"
+            )
+        else:
+            connection.execute(
+                "ALTER ROLE voxpipe_app WITH LOGIN PASSWORD 'voxpipe_app' NOSUPERUSER NOBYPASSRLS"
+            )
 
     apply_migrations(admin_dsn)
 
