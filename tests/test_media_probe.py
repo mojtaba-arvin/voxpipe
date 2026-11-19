@@ -156,6 +156,18 @@ class FFprobeMediaInspectorTests(unittest.TestCase):
 
     @patch("voxpipe.media.probe.shutil.which", return_value="/usr/bin/ffprobe")
     @patch("voxpipe.media.probe.subprocess.run")
+    def test_prefers_selected_audio_stream_duration(self, run, _which) -> None:
+        payload = json.loads(probe_payload(duration="60"))
+        payload["streams"][0]["duration"] = "2.5"
+        run.side_effect = [
+            completed(json.dumps(payload)),
+            completed(video_payload(format_name="mov,mp4,m4a,3gp,3g2,mj2", has_video=True)),
+        ]
+        metadata = self.inspector.inspect(self.path)
+        self.assertEqual(metadata.duration_ms, 2500)
+
+    @patch("voxpipe.media.probe.shutil.which", return_value="/usr/bin/ffprobe")
+    @patch("voxpipe.media.probe.subprocess.run")
     def test_rejects_duration_over_policy(self, run, _which) -> None:
         run.side_effect = [
             completed(probe_payload(duration="60")),
