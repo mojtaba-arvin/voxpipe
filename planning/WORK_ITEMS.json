@@ -200,7 +200,7 @@
       "title": "Define object storage port and implement local filesystem adapter",
       "phase": 1,
       "priority": 4,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0008"
       ],
@@ -210,7 +210,13 @@
         "Tests cover overwrite/conflict policy, missing objects, corrupted checksums, path traversal, interrupted writes, and deletion.",
         "Storage references remain opaque and compatible with AudioAsset v1."
       ],
-      "evidence": [],
+      "evidence": [
+        "src/voxpipe/storage/ports.py — provider-neutral ObjectStoragePort",
+        "src/voxpipe/storage/local.py — atomic local filesystem adapter with SHA-256, size limits, idempotency, conflict and path/symlink protection",
+        "tests/test_local_storage.py — 12 storage tests covering round-trip, atomicity, interrupted writes, checksum, traversal, symlink escape, and conflicts",
+        "docs/architecture/storage.md — boundary and deployment limitations",
+        "GitHub Actions run 44442217659 — 51/51 tests passed"
+      ],
       "blocked_reason": null
     },
     {
@@ -218,7 +224,7 @@
       "title": "Implement batch ingestion application service",
       "phase": 1,
       "priority": 5,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0010",
         "VP-0011"
