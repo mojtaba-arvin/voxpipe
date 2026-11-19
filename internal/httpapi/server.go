@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -66,6 +67,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/ingestions/{session_id}/finalize", s.finalizeIngestion)
 	mux.HandleFunc("GET /v1/ingestions/{session_id}", s.getIngestion)
 	mux.HandleFunc("DELETE /v1/ingestions/{session_id}", s.cancelIngestion)
+	mux.HandleFunc("GET /v1/assets/{asset_id}", s.getAsset)
+	mux.HandleFunc("GET /v1/assets/search", s.searchAssets)
 	return mux
 }
 
@@ -305,6 +308,56 @@ func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 		_ = s.stager.Remove(principal.TenantID, sessionID)
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionRead)
+	if !ok { return }
+	assetID := r.PathValue("asset_id")
+	if !isUUID(assetID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Asset was not found"); return }
+	asset, err := s.store.GetAsset(r.Context(), principal.TenantID, assetID)
+	if err != nil { writeStoreError(w, err); return }
+	writeJSON(w, http.StatusOK, publicAsset(asset))
+}
+
+func (s *Server) searchAssets(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeIngestionRead)
+	if !ok { return }
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(query) < 2 || len(query) > 128 {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_QUERY", "q must contain between 2 and 128 characters")
+		return
+	}
+	limit := 20
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 1 || value > 50 {
+			writeError(w, http.StatusBadRequest, "INVALID_SEARCH_LIMIT", "limit must be between 1 and 50")
+			return
+		}
+		limit = value
+	}
+	assets, err := s.store.SearchAssets(r.Context(), principal.TenantID, query, limit)
+	if err != nil { writeStoreError(w, err); return }
+	result := make([]map[string]any, 0, len(assets))
+	for _, asset := range assets { result = append(result, publicAsset(asset)) }
+	writeJSON(w, http.StatusOK, map[string]any{"items": result, "limit": limit})
+}
+
+// publicAsset deliberately omits tenant identifiers and private storage references.
+func publicAsset(asset map[string]any) map[string]any {
+	result := map[string]any{}
+	for _, key := range []string{"asset_id", "media", "integrity", "state", "created_at", "updated_at"} {
+		if value, exists := asset[key]; exists { result[key] = value }
+	}
+	if source, ok := asset["source"].(map[string]any); ok {
+		publicSource := map[string]any{}
+		for _, key := range []string{"kind", "recorded_at"} {
+			if value, exists := source[key]; exists { publicSource[key] = value }
+		}
+		result["source"] = publicSource
+	}
+	return result
 }
 
 func (s *Server) principal(w http.ResponseWriter, r *http.Request, scope string) (Principal, bool) {

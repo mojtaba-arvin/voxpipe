@@ -1,0 +1,1 @@
+"""VoxPipe MCP server package."""

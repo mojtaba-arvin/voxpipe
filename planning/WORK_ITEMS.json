@@ -337,7 +337,7 @@
       "title": "Expose ingestion and search capabilities through MCP and agent skill contracts",
       "phase": 1,
       "priority": 9,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0015"
       ],

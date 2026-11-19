@@ -236,6 +236,51 @@ components:
         updated_at:
           type: string
           format: date-time
+    AssetMetadata:
+      type: object
+      additionalProperties: false
+      required: [asset_id, source, media, integrity, state, created_at, updated_at]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        source:
+          type: object
+          properties:
+            kind:
+              type: string
+        media:
+          type: object
+          properties:
+            mime_type:
+              type: string
+            container_format:
+              type: string
+            codec:
+              type: string
+            duration_ms:
+              type: integer
+            size_bytes:
+              type: integer
+            sample_rate_hz:
+              type: integer
+            channels:
+              type: integer
+        integrity:
+          type: object
+          properties:
+            algorithm:
+              type: string
+            digest:
+              type: string
+        state:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     Error:
       type: object
       additionalProperties: false

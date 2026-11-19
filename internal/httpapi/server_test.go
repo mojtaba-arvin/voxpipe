@@ -71,6 +71,12 @@ func (m *memoryStore) GetStatus(_ context.Context,tenant,id string)(map[string]a
 	var job map[string]any; if value,ok:=m.jobs[key]; ok { job=cloneMap(value) }
 	return cloneMap(session),job,nil
 }
+func (m *memoryStore) GetAsset(_ context.Context, tenant, id string) (map[string]any, error) {
+	return nil, ErrNotFound
+}
+func (m *memoryStore) SearchAssets(_ context.Context, tenant, query string, limit int) ([]map[string]any, error) {
+	return []map[string]any{}, nil
+}
 func (m *memoryStore) Cancel(_ context.Context,tenant,id string)(string,error){
 	m.mu.Lock(); defer m.mu.Unlock()
 	key:=sessionKey(tenant,id); session,ok:=m.sessions[key]; if !ok { return "",ErrNotFound }
@@ -150,6 +156,41 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 
 	cancel:=request(handler,http.MethodDelete,"/v1/ingestions/"+sessionID,token,nil)
 	if cancel.Code!=http.StatusAccepted { t.Fatalf("cancel: got %d: %s",cancel.Code,cancel.Body.String()) }
+}
+
+func TestPublicAssetOmitsTenantAndPrivateReferences(t *testing.T) {
+	asset := map[string]any{
+		"asset_id": "11111111-1111-4111-8111-111111111111",
+		"tenant_id": "22222222-2222-4222-8222-222222222222",
+		"source": map[string]any{"kind": "file_upload", "recorded_at": "2026-11-19T00:00:00Z", "external_reference": "private-ref", "declared_by": "private-user"},
+		"storage": map[string]any{"object_key": "private/object/key"},
+		"media": map[string]any{"container_format": "wav"},
+		"integrity": map[string]any{"algorithm": "sha256", "digest": strings.Repeat("a", 64)},
+		"state": "accepted",
+		"created_at": "2026-11-19T00:00:00Z",
+		"updated_at": "2026-11-19T00:00:00Z",
+	}
+	public := publicAsset(asset)
+	if _, ok := public["tenant_id"]; ok { t.Fatal("tenant ID leaked in public asset") }
+	if _, ok := public["storage"]; ok { t.Fatal("private storage reference leaked in public asset") }
+	source := public["source"].(map[string]any)
+	if _, ok := source["external_reference"]; ok { t.Fatal("external reference leaked in public asset") }
+	if _, ok := source["declared_by"]; ok { t.Fatal("declared_by leaked in public asset") }
+	if source["kind"] != "file_upload" { t.Fatal("public source kind was omitted") }
+}
+
+func TestAssetMetadataEndpointsAreTenantAuthenticated(t *testing.T) {
+	server, _, _, token := testServer(t)
+	handler := server.Handler()
+	missing := request(handler, http.MethodGet, "/v1/assets/11111111-1111-4111-8111-111111111111", token, nil)
+	if missing.Code != http.StatusNotFound { t.Fatalf("missing asset should be hidden: %d", missing.Code) }
+	invalid := request(handler, http.MethodGet, "/v1/assets/search?q=x", token, nil)
+	if invalid.Code != http.StatusBadRequest { t.Fatalf("short search query should fail: %d", invalid.Code) }
+	search := request(handler, http.MethodGet, "/v1/assets/search?q=wav&limit=10", token, nil)
+	if search.Code != http.StatusOK { t.Fatalf("search failed: %d %s", search.Code, search.Body.String()) }
+	if _, ok := decodeResponse(t, search)["items"]; !ok { t.Fatal("search response omitted items") }
+	unauthorized := request(handler, http.MethodGet, "/v1/assets/search?q=wav", "", nil)
+	if unauthorized.Code != http.StatusUnauthorized { t.Fatalf("unauthenticated search should fail: %d", unauthorized.Code) }
 }
 
 func TestClientCannotChooseRetentionPolicy(t *testing.T) {

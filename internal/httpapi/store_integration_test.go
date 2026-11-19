@@ -62,6 +62,19 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	job,err:=store.FinalizeSession(ctx,tenantID,sessionID,jobID,3,finalizing)
 	if err!=nil { t.Fatal(err) }
 	if job["state"]!="pending" { t.Fatalf("expected pending job: %#v",job) }
+	missingAssetID, err := newUUID()
+	if err != nil { t.Fatal(err) }
+	if _, err := store.GetAsset(ctx, tenantID, missingAssetID); err != ErrNotFound {
+		t.Fatalf("missing asset lookup should be tenant-scoped not-found, got %v", err)
+	}
+	matches, err := store.SearchAssets(ctx, tenantID, "wav", 5)
+	if err != nil || len(matches) != 0 {
+		t.Fatalf("empty tenant metadata search should return no results: %#v %v", matches, err)
+	}
+	otherMatches, err := store.SearchAssets(ctx, otherTenant, "wav", 5)
+	if err != nil || len(otherMatches) != 0 {
+		t.Fatalf("cross-tenant metadata search should return no results: %#v %v", otherMatches, err)
+	}
 	status,storedJob,err:=store.GetStatus(ctx,tenantID,sessionID)
 	if err!=nil { t.Fatal(err) }
 	if status["state"]!="finalizing" || storedJob["job_id"]!=jobID { t.Fatalf("unexpected status: %#v %#v",status,storedJob) }

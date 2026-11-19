@@ -31,7 +31,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add PostgreSQL metadata repository, versioned migrations, and forced tenant RLS.
 - [x] Complete authenticated batch upload API and PostgreSQL-backed durable job queue (VP-0015 accepted; Python and Go/PostgreSQL CI passed on the implementation head).
 - [x] Implement queue cancellation, bounded retries, dead-letter handling, and tenant-scoped job status.
-- [ ] Reconcile staged-source expiry and enforce retention/deletion/audit propagation (VP-0018).
+- [ ] Expose authenticated ingestion and asset-metadata capabilities through MCP (VP-0016 in progress; search is metadata-only).\n- [ ] Reconcile staged-source expiry and enforce retention/deletion/audit propagation (VP-0018).
 - [ ] Add production identity, per-tenant quotas, rate limits, and upload deadlines (VP-0019).
 - [ ] Harden worker supervision, lease-loss handling, and queue observability (VP-0020).
 
