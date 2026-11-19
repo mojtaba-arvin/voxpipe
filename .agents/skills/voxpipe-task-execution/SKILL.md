@@ -11,10 +11,11 @@ description: Use when planning, resuming, implementing, or closing any VoxPipe w
 4. Before implementation, record the work item, problem statement, smallest planned change, expected tests, security/compatibility risks, and rollback path in the PR or work log.
 5. Keep one bounded implementation slice per worker. Parallelize read-only research/review; do not let multiple agents write the same files or coupled interfaces.
 6. After each meaningful slice, run focused tests. Before review, run all required repository checks and inspect their complete output.
-7. Ask a separate read-only reviewer to inspect the diff for correctness, security, contracts, and missing failure tests. Resolve findings before claiming completion.
-8. Update the work ledger and docs only after evidence exists. A successful API call, generated code, or local mock test is not completion evidence.
-9. Report exact commands, environment, pass/fail outcomes, commit/PR, residual risks, and the next unblocked item.
-10. After two materially different failed approaches, stop repeating attempts. Record evidence and change strategy or delegate.
+7. Bundle implementation, tests, and required docs into one logical commit per task slice. Never create a commit per file or per tiny correction. Inspect the full diff before committing; if a connector imposes file-scoped commits, keep the PR cohesive and squash it when approved.
+8. Ask a separate read-only reviewer to inspect the diff for correctness, security, contracts, and missing failure tests. Resolve findings before claiming completion.
+9. Update the work ledger and docs only after evidence exists. A successful API call, generated code, or local mock test is not completion evidence.
+10. Report exact commands, environment, pass/fail outcomes, commit/PR, residual risks, and the next unblocked item.
+11. After two materially different failed approaches, stop repeating attempts. Record evidence and change strategy or delegate.
 
 ## Required verification
 
