@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** Active development — batch ingestion, media validation, local storage, SQLite persistence, and lease recovery are implemented; PostgreSQL adapter is under validation.  
+**Status:** Active development — batch ingestion, media validation, SQLite/local storage, lease recovery, and the PostgreSQL RLS repository are implemented and CI-verified. Authenticated upload API and durable job queue are next.  
 **Default branch:** `main`
 
 ## Design principles
