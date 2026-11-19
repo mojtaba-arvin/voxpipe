@@ -37,7 +37,9 @@ def valid_ledger() -> dict:
 
 
 class ValidateRepoTests(unittest.TestCase):
-    def run_validator(self, ledger: dict | str) -> subprocess.CompletedProcess[str]:
+    def run_validator(
+        self, ledger: dict | str, *, skill_content: str | None = None
+    ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "planning").mkdir()
@@ -54,6 +56,23 @@ class ValidateRepoTests(unittest.TestCase):
                 target.write_text("test fixture\n", encoding="utf-8")
             shutil.copy2(VALIDATOR, root / "scripts" / "validate_repo.py")
             content = ledger if isinstance(ledger, str) else json.dumps(ledger)
+            skills = root / ".agents" / "skills" / "fixture-skill"
+            skills.mkdir(parents=True)
+            (skills / "SKILL.md").write_text(
+                skill_content
+                or "---\nname: fixture-skill\ndescription: Use this skill for fixture validation and test coverage.\n---\n\nInstructions.\n",
+                encoding="utf-8",
+            )
+            agents = root / ".codex" / "agents"
+            agents.mkdir(parents=True)
+            (agents / "reviewer.toml").write_text(
+                'name = "reviewer"\ndescription = "Read-only fixture reviewer."\ndeveloper_instructions = "Do not edit files."\n',
+                encoding="utf-8",
+            )
+            (root / ".codex" / "config.toml").write_text(
+                "[agents]\nmax_concurrent_threads_per_session = 2\n",
+                encoding="utf-8",
+            )
             (root / "planning" / "WORK_ITEMS.json").write_text(content, encoding="utf-8")
             return subprocess.run(
                 [sys.executable, str(root / "scripts" / "validate_repo.py")],
@@ -67,6 +86,14 @@ class ValidateRepoTests(unittest.TestCase):
         result = self.run_validator(valid_ledger())
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("validation passed", result.stdout)
+
+    def test_rejects_skill_without_discovery_description(self) -> None:
+        result = self.run_validator(
+            valid_ledger(),
+            skill_content="---\nname: fixture-skill\n---\n\nInstructions.\n",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires name and description", result.stderr)
 
     def test_rejects_invalid_json(self) -> None:
         result = self.run_validator("{not-json")
