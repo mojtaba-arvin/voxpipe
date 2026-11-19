@@ -32,6 +32,9 @@ This repository is intentionally starting with engineering governance, executabl
 ├── AGENTS.md
 ├── README.md
 ├── Makefile
+├── contracts/
+│   ├── schemas/
+│   └── examples/
 ├── planning/
 │   └── WORK_ITEMS.json
 ├── docs/
@@ -58,7 +61,7 @@ make bootstrap
 make check
 ```
 
-The initial validation uses only the Python standard library. Runtime services and third-party dependencies will be introduced only when a phase has a concrete, testable requirement.
+The work-ledger validator uses the Python standard library. JSON Schema contract tests use the development dependency in `requirements-dev.txt`. Runtime services and additional providers will be introduced only when a phase has a concrete, testable requirement.
 
 ## Development workflow
 
