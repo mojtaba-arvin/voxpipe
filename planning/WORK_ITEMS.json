@@ -8,14 +8,17 @@
       "title": "Add continuous repository validation workflow",
       "phase": 0,
       "priority": 1,
-      "status": "ready",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "A GitHub Actions workflow runs the repository validator on pull requests and pushes to main.",
         "The workflow uses a supported Python version and does not require secrets.",
         "Workflow syntax and local validation are checked before completion."
       ],
-      "evidence": [],
+      "evidence": [
+        ".github/workflows/validate.yml",
+        "GitHub Actions run 44440385449 — validate job succeeded on commit 3fff789f834ffa06b3b5ce90ddfa092a28e8353f"
+      ],
       "blocked_reason": null
     },
     {
@@ -90,7 +93,7 @@
       "title": "Create reproducible local development environment",
       "phase": 0,
       "priority": 6,
-      "status": "planned",
+      "status": "ready",
       "depends_on": [
         "VP-0001"
       ],
