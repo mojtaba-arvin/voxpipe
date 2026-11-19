@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 1 — Audio Ingestion Foundation  
-**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met; VP-0016 MCP capability implementation is in progress; independent Python and Go/PostgreSQL CI passed on the implementation head. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
+**Status:** VP-0015 authenticated upload and durable queue acceptance criteria are met and passed independent Python and Go/PostgreSQL CI on its implementation head. VP-0016 authenticated MCP capabilities are in progress; CI verification is pending. The initial filesystem staging and static token authenticator remain single-node/bootstrap choices; production hardening is tracked in VP-0018–VP-0020.  
 **Default branch:** `main`
 
 ## Design principles
@@ -31,7 +31,9 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── voxpipe-task-execution/SKILL.md
 │   ├── voxpipe-ci-triage/SKILL.md
 │   ├── voxpipe-postgres-reliability/SKILL.md
-│   └── voxpipe-contract-evolution/SKILL.md
+│   ├── voxpipe-contract-evolution/SKILL.md
+│   ├── voxpipe-ingestion/SKILL.md
+│   └── voxpipe-asset-discovery/SKILL.md
 ├── .codex/agents/
 │   ├── failure-triager.toml
 │   ├── security-reviewer.toml
@@ -92,7 +94,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
     ├── test_ingestion_service.py
     ├── test_ingestion_recovery.py
     ├── test_ingestion_worker.py
-    └── test_postgres_repository.py
+    ├── test_postgres_repository.py
+    └── test_mcp_server.py
 ```
 
 ## Quick start
@@ -110,7 +113,9 @@ make go-check
 
 Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
 
-Run the authenticated MCP stdio adapter with `PYTHONPATH=src python -m voxpipe.mcp.server`; configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`. See [MCP capabilities](docs/architecture/mcp-capabilities.md).\n\nFor a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md). The authenticated Go upload API and Python worker topology are described in [Upload API operations](docs/architecture/upload-api.md).
+Run the authenticated MCP stdio adapter with `PYTHONPATH=src python -m voxpipe.mcp.server`; configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`. See [MCP capabilities](docs/architecture/mcp-capabilities.md).
+
+For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md). The authenticated Go upload API and Python worker topology are described in [Upload API operations](docs/architecture/upload-api.md).
 
 ## Development workflow
 

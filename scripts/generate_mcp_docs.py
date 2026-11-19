@@ -18,7 +18,7 @@ def render(data):
         lines.extend(["### "+t["name"],"",t["description"],"",
           "Required scope: "+t["scope"]+".","","Input schema:","",
           json.dumps(t["inputSchema"],indent=2),"","Output schema:","",
-          json.dumps(t["outputSchema"],indent=2,sort_keys=True),"","Stable errors:"])
+          json.dumps(t["outputSchema"],indent=2),"","Stable errors:"])
         for e in t["errors"]:
             lines.append("- "+e["code"]+"; retryable: "+str(e["retryable"]).lower())
         lines.append("")

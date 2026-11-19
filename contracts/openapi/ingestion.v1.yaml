@@ -80,6 +80,68 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/assets/{asset_id}:
+    get:
+      operationId: getAsset
+      summary: Get tenant-scoped public asset metadata
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public asset metadata without tenant or private storage references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetMetadata'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/assets/search:
+    get:
+      operationId: searchAssets
+      summary: Search tenant-scoped asset metadata
+      description: Searches asset ID, source kind, MIME type, container format, and codec. This is not transcript or semantic search.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 128
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Matching public asset metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssetMetadata'
+                  limit:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /v1/ingestions/{session_id}:
     get:
       operationId: getIngestion
