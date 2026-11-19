@@ -102,6 +102,8 @@ class SQLiteIngestionRepository:
         expected_state: str,
         updated_session: dict[str, Any],
     ) -> dict[str, Any]:
+        if updated_session.get("tenant_id") != tenant_id:
+            raise IngestionRepositoryConflict("updated session tenant does not match repository scope")
         with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             cursor = connection.execute(
@@ -180,6 +182,9 @@ class SQLiteIngestionRepository:
                 return None
 
             session = json.loads(row["payload_json"])
+            if session.get("tenant_id") != tenant_id:
+                connection.rollback()
+                raise IngestionRepositoryConflict("session payload tenant does not match repository scope")
             prior_lease = session.get("lease") or {}
             prior_expiry = prior_lease.get("expires_at")
             prior_owner = prior_lease.get("owner_id")
