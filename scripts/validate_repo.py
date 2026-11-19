@@ -84,7 +84,7 @@ def validate_agent_assets() -> int:
         for field in ("name", "description", "developer_instructions"):
             if not isinstance(agent.get(field), str) or not agent[field].strip():
                 fail(f"{agent_file.relative_to(ROOT)}: missing non-empty {field}")
-        if agent["name"] != agent_file.stem:
+        if agent["name"] != agent_file.stem.replace("-", "_"):
             fail(f"{agent_file.relative_to(ROOT)}: agent name must match its filename")
         if agent["name"] in agent_names:
             fail(f"duplicate custom agent name: {agent['name']}")
