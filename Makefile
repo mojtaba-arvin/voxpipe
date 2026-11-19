@@ -1,6 +1,14 @@
-.PHONY: check validate
+PYTHON ?= python3
 
-check: validate
+.PHONY: bootstrap check validate test
+
+bootstrap:
+	$(PYTHON) -m venv .venv
+
+check: validate test
 
 validate:
-	python3 scripts/validate_repo.py
+	$(PYTHON) scripts/validate_repo.py
+
+test:
+	$(PYTHON) -m unittest discover -s tests -v
