@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "project": "voxpipe",
+  "updated_at": "2026-11-19",
+  "items": [
+    {
+      "id": "VP-0001",
+      "title": "Add continuous repository validation workflow",
+      "phase": 0,
+      "priority": 1,
+      "status": "ready",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "A GitHub Actions workflow runs the repository validator on pull requests and pushes to main.",
+        "The workflow uses a supported Python version and does not require secrets.",
+        "Workflow syntax and local validation are checked before completion."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0002",
+      "title": "Define contribution and pull request templates",
+      "phase": 0,
+      "priority": 2,
+      "status": "ready",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Contribution guidance explains setup, checks, branch and commit expectations.",
+        "Pull request template requires scope, verification evidence, risks, and linked work item."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0003",
+      "title": "Define security, privacy, and audio data lifecycle baseline",
+      "phase": 0,
+      "priority": 3,
+      "status": "ready",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Threat boundaries, sensitive data classes, and trust assumptions are documented.",
+        "Retention, deletion propagation, access control, and audit requirements are specified.",
+        "Audio/transcript prompt-injection and tenant-isolation risks are addressed."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0004",
+      "title": "Compare durable workflow and agent orchestration options",
+      "phase": 0,
+      "priority": 4,
+      "status": "ready",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "At least three viable approaches are compared using current official documentation.",
+        "Comparison covers durability, retries, human/agent task handoff, language support, operations, and licensing.",
+        "Recommendation and unresolved assumptions are recorded in an ADR or research note."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0005",
+      "title": "Define versioning, compatibility, and release policy",
+      "phase": 0,
+      "priority": 5,
+      "status": "ready",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Public API and event compatibility expectations are documented.",
+        "Versioning, deprecation, release, and rollback rules are documented."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0006",
+      "title": "Create reproducible local development environment",
+      "phase": 0,
+      "priority": 6,
+      "status": "planned",
+      "depends_on": ["VP-0001"],
+      "acceptance_criteria": [
+        "A clean checkout has documented commands for setup and validation.",
+        "Local checks do not require paid services or production credentials."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    }
+  ]
+}
