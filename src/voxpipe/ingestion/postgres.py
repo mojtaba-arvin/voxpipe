@@ -437,6 +437,80 @@ class PostgresIngestionRepository:
             ).fetchall()
         return [self._payload(row["payload"]) for row in rows]
 
+    def search_transcript_segments(
+        self,
+        tenant_id: str,
+        query: str,
+        *,
+        transcript_id: str | None = None,
+        language: str | None = None,
+        speaker_id: str | None = None,
+        start_ms: int | None = None,
+        end_ms: int | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Search transcript segments using PostgreSQL FTS under mandatory tenant RLS.
+
+        Returned rows retain the immutable transcript revision and source asset
+        provenance. Query text and transcript contents are never logged here.
+        """
+        if not isinstance(tenant_id, str) or not tenant_id.strip():
+            raise ValueError("tenant_id is required")
+        if not isinstance(query, str) or not query.strip() or len(query) > 256:
+            raise ValueError("query must contain 1..256 characters")
+        if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+            raise ValueError("pagination is outside the allowed bounds")
+        if start_ms is not None and (not isinstance(start_ms, int) or isinstance(start_ms, bool) or start_ms < 0):
+            raise ValueError("start_ms must be a non-negative integer")
+        if end_ms is not None and (not isinstance(end_ms, int) or isinstance(end_ms, bool) or end_ms < 1):
+            raise ValueError("end_ms must be a positive integer")
+        if start_ms is not None and end_ms is not None and end_ms <= start_ms:
+            raise ValueError("end_ms must be greater than start_ms")
+        if transcript_id is not None:
+            import uuid
+            try:
+                uuid.UUID(transcript_id)
+            except (ValueError, TypeError, AttributeError):
+                raise ValueError("transcript_id must be a UUID") from None
+        if speaker_id is not None:
+            import uuid
+            try:
+                uuid.UUID(speaker_id)
+            except (ValueError, TypeError, AttributeError):
+                raise ValueError("speaker_id must be a UUID") from None
+        with self._tenant_connection(tenant_id) as connection:
+            rows = connection.execute(
+                """
+                WITH search_query AS (
+                    SELECT websearch_to_tsquery('simple', %s) AS value
+                )
+                SELECT
+                    t.transcript_id, t.revision, t.asset_id, t.language,
+                    t.provider, t.model, t.model_version, t.audio_sha256,
+                    s.segment_id, s.start_ms, s.end_ms, s.text, s.speaker_id,
+                    ts_rank(s.search_vector, q.value) AS rank
+                FROM transcript_segments AS s
+                JOIN transcripts AS t
+                  ON t.tenant_id = s.tenant_id
+                 AND t.transcript_id = s.transcript_id
+                 AND t.revision = s.revision
+                CROSS JOIN search_query AS q
+                WHERE s.search_vector @@ q.value
+                  AND (%s::uuid IS NULL OR t.transcript_id = %s::uuid)
+                  AND (%s::text IS NULL OR t.language = %s::text)
+                  AND (%s::uuid IS NULL OR s.speaker_id = %s::uuid)
+                  AND (%s::bigint IS NULL OR s.end_ms >= %s::bigint)
+                  AND (%s::bigint IS NULL OR s.start_ms < %s::bigint)
+                ORDER BY rank DESC, s.start_ms ASC, s.segment_id ASC
+                LIMIT %s OFFSET %s
+                """,
+                (query, transcript_id, transcript_id, language, language,
+                 speaker_id, speaker_id, start_ms, start_ms, end_ms, end_ms,
+                 limit, offset),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     @contextmanager
     def _tenant_connection(self, tenant_id: str) -> Iterator[Any]:
         import psycopg
