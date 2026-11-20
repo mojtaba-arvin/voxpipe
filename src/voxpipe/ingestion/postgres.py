@@ -460,12 +460,15 @@ class PostgresIngestionRepository:
         )
         if not isinstance(transcript, dict) or any(key not in transcript for key in required):
             raise ValueError("transcript is missing required fields")
+        normalized_ids: dict[str, str] = {}
         for field in ("tenant_id", "transcript_id", "asset_id"):
             try:
-                uuid.UUID(str(transcript[field]))
+                normalized_ids[field] = str(uuid.UUID(str(transcript[field])))
             except (ValueError, TypeError, AttributeError):
                 raise ValueError(f"{field} must be a UUID") from None
-        tenant_id = str(transcript["tenant_id"])
+        tenant_id = normalized_ids["tenant_id"]
+        transcript_id = normalized_ids["transcript_id"]
+        asset_id = normalized_ids["asset_id"]
         revision = transcript["revision"]
         if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
             raise ValueError("revision must be a positive integer")
@@ -597,7 +600,7 @@ class PostgresIngestionRepository:
                     (tenant_id, transcript_id, asset_id, revision, language, text,
                      provider, model, model_version, audio_sha256, generated_at)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                    (tenant_id, transcript["transcript_id"], transcript["asset_id"],
+                    (tenant_id, transcript_id, asset_id,
                      revision, transcript["language"], transcript["text"],
                      transcript["provider"], transcript["model"], model_version,
                      audio_sha256, generated_at_value),
@@ -632,7 +635,7 @@ class PostgresIngestionRepository:
                         )
         except psycopg.errors.UniqueViolation as exc:
             existing = self.get_transcript_revision(
-                tenant_id, str(transcript["transcript_id"]), revision,
+                tenant_id, transcript_id, revision,
             )
             if existing is not None:
                 existing_speakers = [
@@ -675,8 +678,8 @@ class PostgresIngestionRepository:
                 ]
                 if (
                     str(existing["tenant_id"]) == tenant_id
-                    and str(existing["transcript_id"]) == str(transcript["transcript_id"])
-                    and str(existing["asset_id"]) == str(transcript["asset_id"])
+                    and str(existing["transcript_id"]) == transcript_id
+                    and str(existing["asset_id"]) == asset_id
                     and existing["revision"] == revision
                     and existing["language"] == transcript["language"]
                     and existing["text"] == transcript["text"]
@@ -692,7 +695,7 @@ class PostgresIngestionRepository:
             raise IngestionRepositoryConflict(
                 "transcript revision already exists with different content"
             ) from exc
-        return self.get_transcript_revision(tenant_id, str(transcript["transcript_id"]), revision)
+        return self.get_transcript_revision(tenant_id, transcript_id, revision)
 
     def get_transcript_revision(
         self, tenant_id: str, transcript_id: str, revision: int | None = None,
