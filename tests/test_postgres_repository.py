@@ -138,13 +138,14 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             })
 
         transcript_id, segment_id, speaker_id = str(uuid4()), str(uuid4()), str(uuid4())
+        second_segment_id = str(uuid4())
         with psycopg.connect(self.app_dsn) as connection:
             connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
             connection.execute(
                 """INSERT INTO transcripts
                 (tenant_id, transcript_id, asset_id, revision, language, text, provider, model,
                  model_version, audio_sha256, generated_at)
-                VALUES (%s,%s,%s,1,'fa-IR','سلام جلسه شروع شد','fixture','test-model','1',%s,%s)""",
+                VALUES (%s,%s,%s,1,'fa-IR','سلام جلسه شروع شد. جلسه جلسه مهم','fixture','test-model','1',%s,%s)""",
                 (tenant_a, transcript_id, asset_a, "a" * 64, now),
             )
             connection.execute(
@@ -154,8 +155,10 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute(
                 """INSERT INTO transcript_segments
                 (tenant_id, transcript_id, revision, segment_id, start_ms, end_ms, text, speaker_id)
-                VALUES (%s,%s,1,%s,0,1200,'سلام جلسه شروع شد',%s)""",
-                (tenant_a, transcript_id, segment_id, speaker_id),
+                VALUES (%s,%s,1,%s,0,1200,'سلام جلسه شروع شد',%s),
+                       (%s,%s,1,%s,1300,2200,'جلسه جلسه مهم',%s)""",
+                (tenant_a, transcript_id, segment_id, speaker_id,
+                 tenant_a, transcript_id, second_segment_id, speaker_id),
             )
             connection.execute(
                 """INSERT INTO transcript_words
@@ -178,12 +181,20 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
 
         rows = self.repository.search_transcript_segments(
             tenant_a, "جلسه", transcript_id=transcript_id, language="fa-IR",
-            speaker_id=speaker_id, start_ms=0, end_ms=1000, limit=10,
+            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10,
         )
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(str(rows[0]["segment_id"]), segment_id)
+        self.assertEqual(len(rows), 2)
+        # More occurrences of the term rank higher; ties remain stable by time and ID.
+        self.assertEqual(str(rows[0]["segment_id"]), second_segment_id)
+        self.assertEqual(str(rows[1]["segment_id"]), segment_id)
+        self.assertGreater(rows[0]["rank"], rows[1]["rank"])
         self.assertEqual(str(rows[0]["asset_id"]), asset_a)
         self.assertEqual(rows[0]["revision"], 1)
+        page = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", transcript_id=transcript_id, limit=1, offset=1
+        )
+        self.assertEqual(len(page), 1)
+        self.assertEqual(str(page[0]["segment_id"]), segment_id)
         self.assertEqual(
             self.repository.search_transcript_segments(tenant_b, "جلسه"), []
         )
