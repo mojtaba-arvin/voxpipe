@@ -9,7 +9,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ## Project status
 
 **Stage:** Phase 2 — Speech Intelligence  
-**Status:** VP-0015 through VP-0020 are implemented. The latest hardening work (production OIDC/introspection, tenant quotas, bounded upload streams, worker lease fencing, queue metrics, and graceful shutdown) passed both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 CI jobs on exact head `68e35212`. Local filesystem staging/object storage remain single-node deployment choices; static-token authentication is an explicit bootstrap mode. VP-0021 canonical transcript schema, provider-neutral STT port, cross-field validator, and offline contract tests are complete and CI-verified. VP-0022 (STT provider evaluation and first adapter) is next; no hosted provider or paid inference is preselected.  
+**Status:** VP-0015 through VP-0020 are implemented. The latest hardening work (production OIDC/introspection, tenant quotas, bounded upload streams, worker lease fencing, queue metrics, and graceful shutdown) passed both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 CI jobs on exact head `68e35212`. Local filesystem staging/object storage remain single-node deployment choices; static-token authentication is an explicit bootstrap mode. VP-0021 canonical transcript schema, provider-neutral STT port, cross-field validator, and offline contract tests are complete and CI-verified. VP-0022 implements a local faster-whisper adapter behind the provider-neutral port; the source-backed comparison and ADR are recorded. The optional runtime is not installed by default, model weights must be provisioned offline, and no hosted inference is enabled.  
 **Default branch:** `main`
 
 ## Design principles
@@ -144,6 +144,8 @@ make bootstrap
 make check
 make go-check
 ```
+
+The optional local STT runtime is installed separately with `pip install -r requirements-stt.txt`; provision and pin model weights before offline use. `FasterWhisperAdapter` defaults to local-only model loading, CPU int8, and no diarization. See [the STT evaluation](docs/research/stt-provider-evaluation.md) and [ADR-0022](docs/decisions/ADR-0022-first-stt-adapter.md). The benchmark scorer accepts JSONL results from a consented corpus: `python scripts/benchmark_stt.py results.jsonl`.
 
 Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
 

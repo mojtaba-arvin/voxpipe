@@ -497,7 +497,7 @@
       "title": "Evaluate speech-to-text providers and implement the first adapter",
       "phase": 2,
       "priority": 14,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0021"
       ],
@@ -507,9 +507,16 @@
         "Provider selection is recorded in an ADR and does not assume paid inference or external data transfer without explicit authorization.",
         "The selected adapter implements SpeechToTextPort without leaking vendor SDK types into application contracts.",
         "Provider errors map to stable VoxPipe transcription error codes with retryability and bounded retry-after semantics.",
-        "Offline contract tests cover request options, result validation, provenance binding, and provider failure mapping; any live integration test is opt-in and does not require secrets in CI."
+        "Offline contract tests cover request options, result validation, provenance binding, and provider failure mapping; any live integration test is opt-in and does not require secrets in CI.",
+        "A repeatable scoring harness reports normalized Persian-aware WER/CER, real-time factor, and optional estimated API cost from versioned per-file JSONL results; unmeasured model quality is not fabricated."
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/research/stt-provider-evaluation.md — compares faster-whisper, Google Chirp 3, Deepgram Nova-3 Multilingual, and OpenAI gpt-transcribe using current official capability, language, diarization, privacy, license/deployment, and price evidence; records that Persian accuracy has not been measured without an approved corpus.",
+        "docs/decisions/ADR-0022-first-stt-adapter.md — selects local faster-whisper, records trade-offs, model provisioning, rollout and rollback.",
+        "src/voxpipe/speech/faster_whisper.py and requirements-stt.txt — local-only lazy model loading, bounded private temp-file staging, word timestamps, provenance validation, explicit diarization rejection, no hosted API or runtime download by default.",
+        "tests/test_faster_whisper_adapter.py — fake-model offline tests for Persian output, timestamps, provenance, cleanup, input limits, failure mapping, and unsupported diarization.",
+        "scripts/benchmark_stt.py and tests/test_benchmark_stt.py — deterministic WER/CER/RTF and optional cost scoring without loading a model or calling a service."
+      ],
       "blocked_reason": null
     }
   ]
