@@ -651,7 +651,7 @@
       "title": "Implement lexical transcript search",
       "phase": 4,
       "priority": 30,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Index transcript text and segment metadata with tenant isolation and source provenance.",
@@ -659,8 +659,13 @@
         "Return matched text spans and transcript revision references, never unscoped raw rows.",
         "Test ranking, updates, deletion, RLS and cross-tenant isolation."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "migrations/postgres/0006_create_tenant_transcripts.sql — tenant-scoped transcript/segment schema with generated PostgreSQL full-text vector, forced RLS and source-asset deletion cascade.",
+        "src/voxpipe/ingestion/postgres.py — search_transcript_segments uses websearch_to_tsquery/ts_rank under transaction-local tenant context; supports transcript, language, speaker, time and bounded pagination filters and returns revision/asset/audio/model provenance.",
+        "tests/test_postgres_repository.py — PostgreSQL integration test covers matching result, source provenance, tenant isolation, invalid query/pagination, RLS and asset-deletion cascade; ranking variants and explicit update semantics still need broader coverage.",
+        "GitHub Actions run 44786597063 — Python/PostgreSQL and Go/PostgreSQL integration jobs both succeeded on PR head 7e28e0c90ef867dbd55fe0d56ea14914625c5f24."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0031",
