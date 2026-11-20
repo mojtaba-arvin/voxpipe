@@ -693,7 +693,7 @@
       "title": "Build model/provider capability registry",
       "phase": 5,
       "priority": 32,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Register provider/model versions, language support, features, data handling, cost and deployment requirements.",
@@ -701,8 +701,12 @@
         "Validate registry entries and capability claims against tests or cited vendor docs.",
         "Record model deprecation and rollback metadata."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/capabilities.py — immutable provider/model/version capability records and deterministic registry lookup/filtering for language, features, locality, cost and declared audio limits.",
+        "tests/test_provider_capabilities.py — covers duplicate registration, capability filtering, unknown-cost and unknown-audio-limit fail-closed behavior and invalid metadata.",
+        "The registry is intentionally not populated with guessed provider claims; deployment configuration must supply verified capabilities. Adaptive routing remains a separate VP-0033 item."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0033",
