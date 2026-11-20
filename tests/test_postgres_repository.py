@@ -71,6 +71,10 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         cls.migrations_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgres"
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
+            connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcripts CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_upload_leases CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_audit_events CASCADE")
@@ -106,6 +110,9 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute(
                 "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
             )
+            connection.execute(
+                "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words TO voxpipe_app"
+            )
 
         cls.repository = PostgresIngestionRepository(cls.app_dsn)
         cls.queue = PostgresIngestionJobQueue(cls.app_dsn)
@@ -114,7 +121,78 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+
+    def test_transcript_storage_is_append_only_tenant_scoped_and_searchable(self) -> None:
+        import psycopg
+
+        tenant_a, tenant_b = str(uuid4()), str(uuid4())
+        asset_a = str(uuid4())
+        asset_b = str(uuid4())
+        now = self.now()
+        for tenant, asset in ((tenant_a, asset_a), (tenant_b, asset_b)):
+            self.repository.create_asset({
+                "asset_id": asset, "tenant_id": tenant, "updated_at": now,
+                "created_at": now, "content_type": "audio/wav", "size_bytes": 1,
+                "sha256": "a" * 64,
+            })
+
+        transcript_id, segment_id, speaker_id = str(uuid4()), str(uuid4()), str(uuid4())
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            connection.execute(
+                """INSERT INTO transcripts
+                (tenant_id, transcript_id, asset_id, revision, language, text, provider, model,
+                 model_version, audio_sha256, generated_at)
+                VALUES (%s,%s,%s,1,'fa-IR','سلام جلسه شروع شد','fixture','test-model','1',%s,%s)""",
+                (tenant_a, transcript_id, asset_a, "a" * 64, now),
+            )
+            connection.execute(
+                "INSERT INTO transcript_speakers (tenant_id, transcript_id, revision, speaker_id, label) VALUES (%s,%s,1,%s,'speaker_1')",
+                (tenant_a, transcript_id, speaker_id),
+            )
+            connection.execute(
+                """INSERT INTO transcript_segments
+                (tenant_id, transcript_id, revision, segment_id, start_ms, end_ms, text, speaker_id)
+                VALUES (%s,%s,1,%s,0,1200,'سلام جلسه شروع شد',%s)""",
+                (tenant_a, transcript_id, segment_id, speaker_id),
+            )
+            connection.execute(
+                """INSERT INTO transcript_words
+                (tenant_id, transcript_id, revision, segment_id, word_index, start_ms, end_ms, text)
+                VALUES (%s,%s,1,%s,0,0,300,'سلام')""",
+                (tenant_a, transcript_id, segment_id),
+            )
+
+        with psycopg.connect(self.app_dsn) as connection:
+            # Missing tenant context must fail closed for every transcript-derived table.
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_segments").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
+
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_b,))
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                connection.execute("UPDATE transcripts SET text='tampered' WHERE transcript_id=%s", (transcript_id,))
+
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            rows = connection.execute(
+                """SELECT segment_id, ts_rank(search_vector, websearch_to_tsquery('simple', %s)) AS rank
+                FROM transcript_segments
+                WHERE search_vector @@ websearch_to_tsquery('simple', %s)""",
+                ("جلسه", "جلسه"),
+            ).fetchall()
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(str(rows[0][0]), segment_id)
+
+        # Asset deletion cascades transcript revisions, segments, speakers and words.
+        self.assertTrue(self.repository.delete_asset(tenant_a, asset_a))
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
 
     def tearDown(self) -> None:
         pass
