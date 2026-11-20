@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Mapping
@@ -11,9 +10,6 @@ from uuid import UUID
 
 
 CLAIM_COLLECTIONS = ("entities", "events", "topics", "relations", "action_items")
-_VERSION = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
-
-
 @dataclass(frozen=True, slots=True)
 class EvidenceSpan:
     segment_id: str
