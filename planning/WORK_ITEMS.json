@@ -642,7 +642,7 @@
       "evidence": [
         "migrations/postgres/0006_create_tenant_transcripts.sql — tenant-scoped immutable transcript revisions, speakers, segments and words; forced RLS; append-only app grants; source-asset deletion cascade.",
         "src/voxpipe/ingestion/postgres.py — create_transcript_revision atomically validates and inserts one complete revision with speaker/segment/word rows; get_transcript_revision reads an explicit or latest revision under transaction-local tenant context.",
-        "tests/test_postgres_repository.py — PostgreSQL integration tests cover immutable revision conflict, revision reads/latest selection, nested word/speaker retrieval, cross-tenant invisibility and pre-write rejection of unknown speakers.",
+        "tests/test_postgres_repository.py — PostgreSQL integration tests cover immutable revision conflicts, concurrent same-revision writers (exactly one succeeds), revision reads/latest selection, nested word/speaker retrieval, cross-tenant invisibility and pre-write rejection of unknown speakers.",
         "GitHub Actions run 44802778201 passed both Python/PostgreSQL and Go/PostgreSQL integration jobs before these latest repository API commits; latest-head CI is required to confirm the new code."
       ],
       "blocked_reason": null
