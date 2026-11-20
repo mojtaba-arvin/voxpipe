@@ -13,6 +13,9 @@ class STTBenchmarkTests(unittest.TestCase):
         self.assertEqual(result["wer"], .5)
         self.assertGreater(result["cer"], 0)
         self.assertEqual(result["real_time_factor"], .5)
+        self.assertEqual(result["latency_seconds_p50"], 5)
+        self.assertEqual(result["latency_seconds_p95"], 5)
+        self.assertEqual(result["per_file_rtf_p50"], .5)
         self.assertAlmostEqual(result["estimated_api_cost_usd"], .01/6)
 
     def test_unknown_cost_is_not_reported_as_zero(self):
