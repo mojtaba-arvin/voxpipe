@@ -591,16 +591,22 @@
       "title": "Define structured intelligence schemas and provenance",
       "phase": 3,
       "priority": 27,
-      "status": "planned",
-      "depends_on": [],
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0021"
+      ],
       "acceptance_criteria": [
         "Version schemas for entity, event, topic, relation and action-item outputs.",
         "Every extracted claim carries source asset, transcript revision, segment/word evidence offsets and extractor provenance.",
         "Validate evidence offsets against immutable transcript revisions.",
         "Add compatibility, malformed evidence, cross-tenant and prompt-injection tests."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "contracts/schemas/structured-intelligence.v1.schema.json — Draft 2020-12 contract for entity/event/topic/relation/action-item claims with exact segment evidence spans and extraction provenance.",
+        "src/voxpipe/structuring/contracts.py — provider-neutral immutable data contracts and deterministic asset/transcript/revision/evidence/quote/provenance validation.",
+        "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — offline validation tests added; full CI verification pending."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0028",
