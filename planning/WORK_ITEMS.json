@@ -521,6 +521,246 @@
         "scripts/benchmark_stt.py and tests/test_benchmark_stt.py — deterministic WER/CER/RTF and optional cost scoring without loading a model or calling a service."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0023",
+      "title": "Evaluate and implement VAD",
+      "phase": 2,
+      "priority": 23,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Compare at least two VAD approaches on licensed speech data.",
+        "Report speech-region precision/recall, boundary error, false activation, missed speech, runtime and memory.",
+        "Expose a provider-neutral VAD contract and deterministic offline tests.",
+        "Document failure behavior for silence, music, overlap and noisy input."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0024",
+      "title": "Evaluate speaker diarization",
+      "phase": 2,
+      "priority": 24,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Compare at least two diarization approaches with speaker-labelled consented audio.",
+        "Report DER and JER with documented collar/overlap policy and speaker-count error.",
+        "Preserve speaker identity only within an asset; do not infer real-world identity.",
+        "Expose a provider-neutral diarization result and failure contract."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0025",
+      "title": "Implement language identification",
+      "phase": 2,
+      "priority": 25,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Evaluate language identification on Persian, English and code-switched audio.",
+        "Report macro-F1, confusion matrix, confidence calibration and segment-level boundary behavior.",
+        "Support unknown/uncertain outcomes; never force a language label below a configured threshold.",
+        "Expose a provider-neutral language-identification contract and tests."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0026",
+      "title": "Create consented speech evaluation corpus governance",
+      "phase": 2,
+      "priority": 26,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Record source, license, consent basis, dataset revision, split, speaker/session identity and checksum for each item.",
+        "Separate public benchmark data from customer data and prevent customer audio entering public evaluation by default.",
+        "Validate dataset manifest and reject unlicensed or untraceable audio/reference pairs.",
+        "Document deletion, attribution and redistribution restrictions."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0027",
+      "title": "Define structured intelligence schemas and provenance",
+      "phase": 3,
+      "priority": 27,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Version schemas for entity, event, topic, relation and action-item outputs.",
+        "Every extracted claim carries source asset, transcript revision, segment/word evidence offsets and extractor provenance.",
+        "Validate evidence offsets against immutable transcript revisions.",
+        "Add compatibility, malformed evidence, cross-tenant and prompt-injection tests."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0028",
+      "title": "Implement structured extraction pipeline",
+      "phase": 3,
+      "priority": 28,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Extract typed entities, events, topics, relations and action items behind a provider-neutral port.",
+        "Validate outputs deterministically against versioned schemas and evidence spans.",
+        "Measure precision/recall/F1 on a human-reviewed evaluation set; abstain when evidence is insufficient.",
+        "Persist model/prompt/schema versions and avoid unsupported inferred claims."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0029",
+      "title": "Implement tenant-isolated transcript persistence",
+      "phase": 4,
+      "priority": 29,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Persist transcript revisions, segments, words, speakers and provenance in PostgreSQL.",
+        "Apply forced RLS and tenant-scoped foreign keys to all transcript-derived records.",
+        "Enforce idempotent writes, immutable source linkage and retention/deletion propagation.",
+        "Test cross-tenant reads/writes and concurrent revision creation."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0030",
+      "title": "Implement lexical transcript search",
+      "phase": 4,
+      "priority": 30,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Index transcript text and segment metadata with tenant isolation and source provenance.",
+        "Support query, language, time, speaker and source filters with stable pagination.",
+        "Return matched text spans and transcript revision references, never unscoped raw rows.",
+        "Test ranking, updates, deletion, RLS and cross-tenant isolation."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0031",
+      "title": "Implement hybrid and semantic retrieval",
+      "phase": 4,
+      "priority": 31,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Compare PostgreSQL full-text and pgvector hybrid retrieval against a versioned relevance set.",
+        "Support lexical/vector fusion, tenant/source/time/speaker/entity filters and explainable provenance.",
+        "Report Recall@k, MRR/nDCG, latency and index/storage cost.",
+        "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0032",
+      "title": "Build model/provider capability registry",
+      "phase": 5,
+      "priority": 32,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Register provider/model versions, language support, features, data handling, cost and deployment requirements.",
+        "Require explicit operator allowlisting for hosted providers and data egress.",
+        "Validate registry entries and capability claims against tests or cited vendor docs.",
+        "Record model deprecation and rollback metadata."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0033",
+      "title": "Implement policy-based adaptive model routing",
+      "phase": 5,
+      "priority": 33,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Route only among explicitly enabled models using measured quality, latency, availability and cost evidence.",
+        "Enforce per-task quality floors, budget ceilings, privacy/data-residency constraints and deterministic fallback limits.",
+        "Record routing decision metadata without logging audio/transcript content.",
+        "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0034",
+      "title": "Implement durable workflow orchestration",
+      "phase": 6,
+      "priority": 34,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Run ingestion, transcription, enrichment and indexing as versioned durable workflows.",
+        "Persist step state, idempotency keys, retries, timeouts, cancellation and human approval gates.",
+        "Prove restart recovery and duplicate-delivery safety with failure injection.",
+        "Select orchestration engine through an ADR and measured operational PoC."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0035",
+      "title": "Add production alerting and SLOs",
+      "phase": 6,
+      "priority": 35,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Define SLOs for upload acceptance, queue age, processing success, transcription latency and deletion completion.",
+        "Export tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
+        "Add actionable alerts, runbooks and synthetic checks for critical paths.",
+        "Test alert rules and verify dashboards against staging workload."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0036",
+      "title": "Implement release, canary and rollback automation",
+      "phase": 6,
+      "priority": 36,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Build immutable release artifacts with SBOM, dependency provenance and signed/checksummed model manifests.",
+        "Run migration compatibility and smoke tests before promotion.",
+        "Support canary health gates and rollback without corrupting durable job/schema state.",
+        "Verify restore and rollback procedures in a production-like environment."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
+    },
+    {
+      "id": "VP-0037",
+      "title": "Add bounded autonomous maintenance workflows",
+      "phase": 6,
+      "priority": 37,
+      "status": "planned",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Automate only allowlisted dependency, security and regression remediation tasks.",
+        "Require independent CI/security gates and human approval for high-impact changes.",
+        "Enforce spending, permissions, branch-protection and blast-radius limits.",
+        "Audit every action and test safe stop/rollback behavior."
+      ],
+      "evidence": [],
+      "blocked_reason": "Not implemented or independently verified yet."
     }
   ]
 }
