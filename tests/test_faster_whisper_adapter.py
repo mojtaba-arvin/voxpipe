@@ -101,6 +101,15 @@ class FasterWhisperTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "STT_INVALID_AUDIO")
         self.assertNotIn("secret", str(caught.exception))
 
+    def test_model_loader_refuses_network_downloads_by_default(self):
+        loaded = FakeModel()
+        module = SimpleNamespace(WhisperModel=lambda *args, **kwargs: loaded)
+        with patch("voxpipe.speech.faster_whisper.importlib.import_module", return_value=module):
+            adapter = FasterWhisperAdapter(download_root="/offline/model-cache")
+            self.assertIs(adapter._get_model(), loaded)
+        self.assertTrue(adapter.local_files_only)
+        self.assertEqual(adapter.download_root, "/offline/model-cache")
+
     def test_missing_local_runtime_maps_to_stable_error(self):
         adapter = FasterWhisperAdapter(model_name="not-cached")
         with patch("voxpipe.speech.faster_whisper.importlib.import_module", side_effect=ImportError):
