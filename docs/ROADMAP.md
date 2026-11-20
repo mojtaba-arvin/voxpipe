@@ -60,8 +60,8 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 4 — Knowledge and Retrieval
 
-- [ ] Implement tenant-isolated transcript persistence and lifecycle (VP-0029).
-- [ ] Implement lexical transcript search (VP-0030).
+- [ ] Implement tenant-isolated transcript persistence and lifecycle (VP-0029; transcript/speaker/segment/word schema, forced RLS, append-only app grants, source-asset deletion cascade and PostgreSQL integration coverage are in place; repository write/read API, idempotent revision creation and concurrent revision tests remain).
+- [ ] Implement lexical transcript search (VP-0030; PostgreSQL FTS query API now supports tenant scope, transcript/language/speaker/time filters, bounded pagination and source/model/revision provenance; ranking edge cases and broader update/deletion behavior still need coverage).
 - [ ] Implement hybrid/semantic retrieval with measured relevance and tenant isolation (VP-0031).
 - Evaluate PostgreSQL/pgvector and dedicated vector engines on representative workloads.
 
