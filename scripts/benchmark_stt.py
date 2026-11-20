@@ -25,6 +25,17 @@ def edit_distance(left: list[str], right: list[str]) -> int:
     return previous[-1]
 
 
+def percentile(values: list[float], quantile: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * quantile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+
 def score(rows: list[dict]) -> dict:
     ref_words = hyp_words = word_errors = char_errors = ref_chars = 0
     audio_seconds = inference_seconds = estimated_cost = 0.0
