@@ -176,16 +176,21 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             with self.assertRaises(psycopg.errors.InsufficientPrivilege):
                 connection.execute("UPDATE transcripts SET text='tampered' WHERE transcript_id=%s", (transcript_id,))
 
-        with psycopg.connect(self.app_dsn) as connection:
-            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
-            rows = connection.execute(
-                """SELECT segment_id, ts_rank(search_vector, websearch_to_tsquery('simple', %s)) AS rank
-                FROM transcript_segments
-                WHERE search_vector @@ websearch_to_tsquery('simple', %s)""",
-                ("جلسه", "جلسه"),
-            ).fetchall()
-            self.assertEqual(len(rows), 1)
-            self.assertEqual(str(rows[0][0]), segment_id)
+        rows = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", transcript_id=transcript_id, language="fa-IR",
+            speaker_id=speaker_id, start_ms=0, end_ms=1000, limit=10,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(str(rows[0]["segment_id"]), segment_id)
+        self.assertEqual(str(rows[0]["asset_id"]), asset_a)
+        self.assertEqual(rows[0]["revision"], 1)
+        self.assertEqual(
+            self.repository.search_transcript_segments(tenant_b, "جلسه"), []
+        )
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, " ")
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, "جلسه", limit=101)
 
         # Asset deletion cascades transcript revisions, segments, speakers and words.
         self.assertTrue(self.repository.delete_asset(tenant_a, asset_a))
