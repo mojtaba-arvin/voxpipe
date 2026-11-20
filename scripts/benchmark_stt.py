@@ -40,6 +40,8 @@ def score(rows: list[dict]) -> dict:
     ref_words = hyp_words = word_errors = char_errors = ref_chars = 0
     audio_seconds = inference_seconds = estimated_cost = 0.0
     cost_known = True
+    latencies: list[float] = []
+    rtfs: list[float] = []
     for row in rows:
         reference, hypothesis = normalize(row["reference"]), normalize(row["hypothesis"])
         word_errors += edit_distance(reference, hypothesis)
@@ -53,6 +55,8 @@ def score(rows: list[dict]) -> dict:
             raise ValueError("audio duration must be positive and inference time non-negative")
         audio_seconds += audio
         inference_seconds += inference
+        latencies.append(inference)
+        rtfs.append(inference / audio)
         rate = row.get("cost_per_audio_minute")
         if rate is None:
             cost_known = False
@@ -63,6 +67,10 @@ def score(rows: list[dict]) -> dict:
         "wer": word_errors / ref_words if ref_words else None,
         "cer": char_errors / ref_chars if ref_chars else None,
         "real_time_factor": inference_seconds / audio_seconds if audio_seconds else None,
+        "latency_seconds_p50": percentile(latencies, 0.50),
+        "latency_seconds_p95": percentile(latencies, 0.95),
+        "per_file_rtf_p50": percentile(rtfs, 0.50),
+        "per_file_rtf_p95": percentile(rtfs, 0.95),
         "audio_seconds": audio_seconds, "inference_seconds": inference_seconds,
         "estimated_api_cost_usd": estimated_cost if cost_known else None,
     }
