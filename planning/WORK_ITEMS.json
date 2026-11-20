@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-19",
+  "updated_at": "2026-11-20",
   "items": [
     {
       "id": "VP-0001",
@@ -472,7 +472,7 @@
       "title": "Define canonical transcript contract and provider-neutral speech-to-text port",
       "phase": 2,
       "priority": 13,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0019",
         "VP-0020"
@@ -487,8 +487,29 @@
       "evidence": [
         "contracts/schemas/transcript.v1.schema.json and contracts/examples/transcript.valid.json — canonical transcript wire contract and valid fixture.",
         "src/voxpipe/speech/contracts.py, ports.py, and service.py — immutable provider-neutral request/result types, stable errors, adapter protocol, and output validation.",
-        "tests/test_speech_contracts.py and tests/test_contract_schemas.py — offline validation and adapter boundary tests."
+        "tests/test_speech_contracts.py and tests/test_contract_schemas.py — offline validation and adapter boundary tests.",
+        "GitHub Actions run 44527653554 — both Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs passed on exact head 348cac515723105e246db6f42550c5934add226d; transcript schema, provider-neutral port, cross-field validator, and offline adapter contract tests were included."
       ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0022",
+      "title": "Evaluate speech-to-text providers and implement the first adapter",
+      "phase": 2,
+      "priority": 14,
+      "status": "planned",
+      "depends_on": [
+        "VP-0021"
+      ],
+      "acceptance_criteria": [
+        "At least three viable local or hosted STT approaches are compared using current official documentation and a reproducible evaluation plan.",
+        "Evaluation covers Persian and multilingual quality evidence, word timestamps, diarization, supported formats, latency, privacy/data handling, deployment, licensing, and total cost.",
+        "Provider selection is recorded in an ADR and does not assume paid inference or external data transfer without explicit authorization.",
+        "The selected adapter implements SpeechToTextPort without leaking vendor SDK types into application contracts.",
+        "Provider errors map to stable VoxPipe transcription error codes with retryability and bounded retry-after semantics.",
+        "Offline contract tests cover request options, result validation, provenance binding, and provider failure mapping; any live integration test is opt-in and does not require secrets in CI."
+      ],
+      "evidence": [],
       "blocked_reason": null
     }
   ]
