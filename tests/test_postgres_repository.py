@@ -246,8 +246,12 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertEqual(len(created["segments"][0]["words"]), 2)
         self.assertEqual(str(created["speakers"][0]["speaker_id"]), speaker_id)
         self.assertIsNone(self.repository.get_transcript_revision(str(uuid4()), transcript_id))
+        repeated = self.repository.create_transcript_revision(transcript)
+        self.assertEqual(repeated["revision"], created["revision"])
+        self.assertEqual(repeated["text"], created["text"])
+        conflicting = {**transcript, "text": "متن متفاوت"}
         with self.assertRaises(IngestionRepositoryConflict):
-            self.repository.create_transcript_revision(transcript)
+            self.repository.create_transcript_revision(conflicting)
 
         second_revision = {
             **transcript,
@@ -288,16 +292,14 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             }],
         }
 
-        def attempt(_: int) -> str:
-            try:
-                self.repository.create_transcript_revision(transcript)
-                return "created"
-            except IngestionRepositoryConflict:
-                return "conflict"
+        def attempt(_: int):
+            return self.repository.create_transcript_revision(transcript)
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            outcomes = list(executor.map(attempt, (1, 2)))
-        self.assertCountEqual(outcomes, ["created", "conflict"])
+            results = list(executor.map(attempt, (1, 2)))
+        self.assertEqual(results[0]["revision"], 1)
+        self.assertEqual(results[1]["revision"], 1)
+        self.assertEqual(results[0]["text"], results[1]["text"])
         stored = self.repository.get_transcript_revision(tenant_id, transcript["transcript_id"])
         self.assertEqual(stored["revision"], 1)
         self.assertEqual(stored["text"], transcript["text"])
