@@ -364,7 +364,8 @@ class PostgresIngestionRepository:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                 """,
                 (str(uuid.uuid4()), tenant_id, session_id, asset_id, event_type, outcome,
-                 sanitize_audit_error_code(error_code),\n                 json.dumps(sanitize_audit_metadata(metadata), ensure_ascii=False, sort_keys=True)),
+                 sanitize_audit_error_code(error_code),
+                 json.dumps(sanitize_audit_metadata(metadata), ensure_ascii=False, sort_keys=True)),
             )
 
     def list_expired_assets(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]:
