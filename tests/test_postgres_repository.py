@@ -111,7 +111,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                 "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
             )
             connection.execute(
-                "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words TO voxpipe_app"
+                "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
             )
 
         cls.repository = PostgresIngestionRepository(cls.app_dsn)
@@ -121,7 +121,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_transcript_storage_is_append_only_tenant_scoped_and_searchable(self) -> None:
         import psycopg

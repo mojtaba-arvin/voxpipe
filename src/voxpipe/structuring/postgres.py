@@ -15,7 +15,8 @@ class PostgresStructuredIntelligenceRepository:
         payload=asdict(result); payload["provenance"]["extracted_at"]=result.provenance.extracted_at.isoformat()
         encoded=json.dumps(payload,ensure_ascii=False,sort_keys=True)
         import psycopg
-        with psycopg.connect(self._dsn) as conn:
+        from psycopg.rows import dict_row
+        with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
             conn.execute("SELECT set_config('voxpipe.tenant_id',%s,true)",(tenant,))
             row=conn.execute("""INSERT INTO structured_extractions
               (tenant_id,extraction_id,document_id,asset_id,transcript_id,transcript_revision,idempotency_key,result)
