@@ -613,7 +613,7 @@
       "title": "Implement structured extraction pipeline",
       "phase": 3,
       "priority": 28,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Extract typed entities, events, topics, relations and action items behind a provider-neutral port.",
@@ -621,8 +621,12 @@
         "Measure precision/recall/F1 on a human-reviewed evaluation set; abstain when evidence is insufficient.",
         "Persist model/prompt/schema versions and avoid unsupported inferred claims."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/structuring/ports.py — provider-neutral extraction port separates model/provider SDKs from the application boundary.",
+        "src/voxpipe/structuring/service.py — immutable source-segment snapshot, provider provenance binding, document/transcript/revision binding and exact evidence validation before returning any extraction.",
+        "tests/test_structuring_contracts.py — tests valid extraction, fabricated evidence rejection, provider/document mismatch and immutable source snapshot; no concrete LLM adapter, structured-output persistence or prompt-injection defenses at provider prompt boundary are claimed."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0029",
