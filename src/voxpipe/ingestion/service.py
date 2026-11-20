@@ -387,17 +387,21 @@ class IngestionService:
         return resolved, size_bytes
 
     def _cleanup_artifacts(self, tenant_id: str, asset_id: str, object_key: str) -> bool:
-        failed = False
-        try:
-            self._repository.delete_asset(tenant_id, asset_id)
-        except Exception:
-            failed = True
+        """Delete object bytes before metadata so failures remain retryable.
+
+        If object deletion fails, retain the metadata pointer for reconciliation.
+        If metadata deletion fails after object deletion, a retry is safe because
+        object-store deletion is idempotent for missing keys.
+        """
         try:
             self._object_store.delete(object_key)
         except Exception:
-            failed = True
-        return failed
-
+            return True
+        try:
+            self._repository.delete_asset(tenant_id, asset_id)
+        except Exception:
+            return True
+        return False
     def _completed_result(self, tenant_id: str, session: dict[str, Any]) -> IngestionResult:
         asset = self._repository.get_asset(tenant_id, session["asset_id"])
         if asset is None:
