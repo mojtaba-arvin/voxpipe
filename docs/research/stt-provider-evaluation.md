@@ -88,9 +88,11 @@ These are list-price snapshots, not quotes or total-cost guarantees. Confirm cur
 - OpenAI Whisper multilingual model card: https://huggingface.co/openai/whisper-large-v3
 - Google Chirp 3 features, languages, timestamps and diarization limits: https://docs.cloud.google.com/speech-to-text/docs/models/chirp-3
 - Google V2 language availability: https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
-- Google audio encodings: https://docs.cloud.google.com/speech-to-text/docs/encoding\n- Google Speech-to-Text pricing: https://cloud.google.com/speech-to-text/pricing
+- Google audio encodings: https://docs.cloud.google.com/speech-to-text/docs/encoding
+- Google Speech-to-Text pricing: https://cloud.google.com/speech-to-text/pricing
 - Deepgram Nova-3 model/language matrix: https://developers.deepgram.com/docs/models-languages-overview
-- Deepgram supported formats: https://developers.deepgram.com/docs/supported-audio-formats\n- Deepgram diarization: https://developers.deepgram.com/docs/diarization
+- Deepgram supported formats: https://developers.deepgram.com/docs/supported-audio-formats
+- Deepgram diarization: https://developers.deepgram.com/docs/diarization
 - Deepgram pricing: https://deepgram.com/pricing
 - OpenAI current speech-to-text workflow/deprecations and 25 MB file limit: https://developers.openai.com/api/docs/guides/speech-to-text
 - OpenAI transcription model pricing: https://developers.openai.com/api/docs/pricing
