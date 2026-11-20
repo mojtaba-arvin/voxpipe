@@ -107,5 +107,5 @@ CREATE POLICY transcript_words_tenant_isolation ON transcript_words
     WITH CHECK (tenant_id = nullif(current_setting('voxpipe.tenant_id', true), '')::uuid);
 
 -- Application role receives append/read access only. No UPDATE/DELETE prevents
--- rewriting history; parent asset deletion remains available to retention workers.
+-- rewriting history. Parent asset deletion remains available to retention workers.
 -- Cascading FK actions perform source-linked deletion under PostgreSQL's FK machinery.
