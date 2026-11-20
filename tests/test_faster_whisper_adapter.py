@@ -60,6 +60,7 @@ class FasterWhisperTests(unittest.TestCase):
         self.assertTrue(model.exists_during_call)
         self.assertFalse(model.audio_path.exists())
         self.assertEqual(model.calls[0]["language"], "fa")
+        self.assertTrue(model.calls[0]["vad_filter"])
 
     def test_word_timestamps_can_be_disabled(self):
         model = FakeModel()
