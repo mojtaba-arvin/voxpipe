@@ -69,7 +69,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 5 — Adaptive Model Intelligence
 
-- [ ] Build model/provider capability registry (VP-0032).
+- [ ] Build model/provider capability registry (VP-0032; immutable provider/model/version metadata and deterministic filtering by language, feature, locality, declared cost and audio limits are implemented; verified deployment capability population and persistence remain).
 - [ ] Implement policy-based adaptive routing with quality floors, privacy and budget controls (VP-0033).
 - Add structural and semantic quality gates.
 - Measure latency, cost, availability, and quality per task/model.
