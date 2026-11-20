@@ -1,0 +1,1 @@
+# Optional local STT runtime; model weights are provisioned separately.\nfaster-whisper>=1.1,<2\n
