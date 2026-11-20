@@ -66,8 +66,8 @@ def _uuid(value: str, field: str) -> None:
 
 
 def _version(value: str, field: str) -> None:
-    if not isinstance(value, str) or not _VERSION.fullmatch(value):
-        raise StructuredIntelligenceValidationError(f"{field} must be a bounded version identifier")
+    if not isinstance(value, str) or not value.strip() or len(value) > 256 or any(ord(char) < 32 for char in value):
+        raise StructuredIntelligenceValidationError(f"{field} must be a non-empty bounded identifier")
 
 
 def validate_structured_intelligence(
