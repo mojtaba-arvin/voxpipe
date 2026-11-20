@@ -103,13 +103,13 @@ class ProviderCapabilityRegistry:
             ):
                 continue
             if audio_duration_ms is not None and (
-                capability.max_audio_duration_ms is not None
-                and audio_duration_ms > capability.max_audio_duration_ms
+                capability.max_audio_duration_ms is None
+                or audio_duration_ms > capability.max_audio_duration_ms
             ):
                 continue
             if audio_bytes is not None and (
-                capability.max_audio_bytes is not None
-                and audio_bytes > capability.max_audio_bytes
+                capability.max_audio_bytes is None
+                or audio_bytes > capability.max_audio_bytes
             ):
                 continue
             matches.append(capability)
