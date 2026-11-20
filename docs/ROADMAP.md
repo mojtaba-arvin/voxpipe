@@ -41,37 +41,36 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 2 — Speech Intelligence
 
 - [x] Define transcript, segment, speaker, timing, confidence, and provenance contracts (VP-0021; schema, provider-neutral port, validator, and offline contract tests completed).
-- [ ] Evaluate STT providers and implement the first selected adapter (VP-0022; faster-whisper selected for local inference, with provider comparison, ADR, offline adapter tests, and WER/CER/RTF scoring harness; real Persian corpus benchmark remains pending).
-- Evaluate VAD, diarization, language identification, and enhancement independently.
-- Build multilingual evaluation datasets with consent and provenance.
-- Benchmark local and hosted providers under reproducible conditions.
+- [ ] Evaluate STT providers and implement the first selected adapter (VP-0022; faster-whisper selected; offline adapter and scorer exist; real Persian corpus inference remains pending).
+- [ ] Evaluate and implement VAD independently (VP-0023).
+- [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024).
+- [ ] Implement language identification with calibrated abstention (VP-0025).
+- [ ] Establish consent/provenance-managed corpus governance (VP-0026).
+- [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
+- [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
 
 **Exit gate:** Speech outputs are timestamped, attributable where supported, quality-scored, and traceable to source audio.
 
 ## Phase 3 — Structured Intelligence
 
-- Define user/domain profile and extraction schema contracts.
-- Implement schema compilation and versioning.
-- Extract entities, events, topics, relations, and action items.
-- Preserve evidence spans and source references for every extracted claim.
-- Add deterministic validation and semantic quality gates.
+- [ ] Define versioned extraction schemas and evidence/provenance contracts (VP-0027).
+- [ ] Implement structured extraction pipeline and quality gates (VP-0028).
 
 **Exit gate:** Structured outputs pass schema and provenance checks, with measurable extraction quality.
 
 ## Phase 4 — Knowledge and Retrieval
 
-- Define document/chunk/index lifecycle and tenancy boundaries.
-- Implement lexical, vector, and hybrid retrieval ports.
+- [ ] Implement tenant-isolated transcript persistence and lifecycle (VP-0029).
+- [ ] Implement lexical transcript search (VP-0030).
+- [ ] Implement hybrid/semantic retrieval with measured relevance and tenant isolation (VP-0031).
 - Evaluate PostgreSQL/pgvector and dedicated vector engines on representative workloads.
-- Add filters for tenant, source, time, speaker, and entity.
-- Expose stable API and MCP capabilities with authorization.
 
 **Exit gate:** Queries return relevant, permission-filtered results with provenance and repeatable retrieval metrics.
 
 ## Phase 5 — Adaptive Model Intelligence
 
-- Introduce model/provider registry and capability metadata.
-- Add policy-based routing, semantic cache, and bounded fallback.
+- [ ] Build model/provider capability registry (VP-0032).
+- [ ] Implement policy-based adaptive routing with quality floors, privacy and budget controls (VP-0033).
 - Add structural and semantic quality gates.
 - Measure latency, cost, availability, and quality per task/model.
 - Calibrate routing from evaluation evidence; keep policy changes auditable.
@@ -80,11 +79,13 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 6 — Autonomous Operations
 
-- Add durable workflow orchestration and agent task execution.
+- [ ] Implement durable workflow orchestration (VP-0034).
 - Add bounded self-healing for known transient failures.
 - Detect regressions and open evidence-rich remediation tasks.
+- [ ] Add production alerting and SLOs (VP-0035).
+- [ ] Implement release, canary and rollback automation (VP-0036).
+- [ ] Add bounded autonomous maintenance workflows (VP-0037).
 - Automate dependency/security updates and compatibility checks.
-- Add canary, rollback, and release verification workflows.
 
 **Exit gate:** Routine maintenance and recovery can be performed autonomously within explicit blast-radius and spending limits.
 
