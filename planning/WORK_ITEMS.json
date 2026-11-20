@@ -629,16 +629,22 @@
       "title": "Implement tenant-isolated transcript persistence",
       "phase": 4,
       "priority": 29,
-      "status": "planned",
-      "depends_on": [],
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0021"
+      ],
       "acceptance_criteria": [
         "Persist transcript revisions, segments, words, speakers and provenance in PostgreSQL.",
         "Apply forced RLS and tenant-scoped foreign keys to all transcript-derived records.",
         "Enforce idempotent writes, immutable source linkage and retention/deletion propagation.",
         "Test cross-tenant reads/writes and concurrent revision creation."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "migrations/postgres/0006_create_tenant_transcripts.sql — tenant-composite transcript revision, speaker, segment and word tables; forced RLS on every derived table; GIN full-text index; asset-deletion cascades; append-only app grants.",
+        "tests/test_postgres_repository.py — PostgreSQL integration coverage for missing/cross-tenant context, append-only enforcement, lexical search and asset-deletion propagation.",
+        "scripts/prepare_test_database.py — grants read/insert only to the application role for transcript-derived rows."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0030",
