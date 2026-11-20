@@ -340,6 +340,42 @@ class BatchIngestionServiceTests(unittest.TestCase):
         with self.assertRaises(ObjectNotFoundError):
             self.object_store.head(f"tenant/{self.tenant_id}/assets/{session['asset_id']}/source")
 
+    def test_compensation_deletes_object_before_asset_metadata(self) -> None:
+        events = []
+
+        class OrderedRepository:
+            def delete_asset(self, tenant_id, asset_id):
+                events.append("metadata")
+                return True
+
+        class OrderedObjectStore:
+            def delete(self, key):
+                events.append("object")
+                return True
+
+        self.service._repository = OrderedRepository()
+        self.service._object_store = OrderedObjectStore()
+        self.assertFalse(self.service._cleanup_artifacts(self.tenant_id, "asset-id", "object-key"))
+        self.assertEqual(events, ["object", "metadata"])
+
+    def test_compensation_retains_metadata_when_object_delete_fails(self) -> None:
+        events = []
+
+        class RecordingRepository:
+            def delete_asset(self, tenant_id, asset_id):
+                events.append("metadata")
+                return True
+
+        class FailingObjectStore:
+            def delete(self, key):
+                events.append("object")
+                raise StorageIOError("simulated object deletion failure")
+
+        self.service._repository = RecordingRepository()
+        self.service._object_store = FailingObjectStore()
+        self.assertTrue(self.service._cleanup_artifacts(self.tenant_id, "asset-id", "object-key"))
+        self.assertEqual(events, ["object"])
+
     def test_completed_session_and_asset_survive_repository_reopen(self) -> None:
         result = self.service.ingest(self.request())
         reopened = SQLiteIngestionRepository(self.database)

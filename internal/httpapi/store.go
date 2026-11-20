@@ -180,9 +180,37 @@ func (s *PostgresStore) RecordAuditEvent(ctx context.Context, tenantID, sessionI
 	return tx.Commit(ctx)
 }
 
+func sanitizeAuditMetadata(metadata map[string]any) map[string]any {
+	safe := make(map[string]any)
+	for key, value := range metadata {
+		switch key {
+		case "from", "to", "prior_state", "retention_expires_at":
+			if text, ok := value.(string); ok && len(text) <= 64 {
+				safe[key] = text
+			}
+		case "staging_deleted", "asset_deleted", "object_deleted":
+			if flag, ok := value.(bool); ok {
+				safe[key] = flag
+			}
+		}
+	}
+	return safe
+}
+
+func sanitizeAuditErrorCode(value string) string {
+	if value == "" { return "" }
+	if len(value) > 64 { return "AUDIT_ERROR_REDACTED" }
+	for _, char := range value {
+		if !((char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '_') {
+			return "AUDIT_ERROR_REDACTED"
+		}
+	}
+	return value
+}
+
 func insertAuditEvent(ctx context.Context, tx pgx.Tx, tenantID, sessionID, assetID, eventType, outcome, errorCode string, metadata map[string]any) error {
-	if metadata == nil { metadata = map[string]any{} }
-	payload, err := json.Marshal(metadata); if err != nil { return err }
+	payload, err := json.Marshal(sanitizeAuditMetadata(metadata)); if err != nil { return err }
+	errorCode = sanitizeAuditErrorCode(errorCode)
 	eventID, err := newUUID(); if err != nil { return err }
 	_, err = tx.Exec(ctx, `
 		INSERT INTO ingestion_audit_events (event_id, tenant_id, session_id, asset_id, event_type, outcome, error_code, metadata, occurred_at)

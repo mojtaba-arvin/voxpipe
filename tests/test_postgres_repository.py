@@ -23,10 +23,41 @@ from voxpipe.ingestion import (
     PostgresIngestionRepository,
     apply_migrations,
 )
+from voxpipe.ingestion.postgres import sanitize_audit_error_code, sanitize_audit_metadata
 
 
 ADMIN_DSN = os.environ.get("VOXPIPE_TEST_POSTGRES_ADMIN_DSN")
 APP_DSN = "postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test"
+
+
+
+class AuditMetadataRedactionTests(unittest.TestCase):
+    def test_only_allowlisted_non_sensitive_metadata_is_persistable(self) -> None:
+        self.assertEqual(
+            sanitize_audit_metadata({
+                "from": "receiving",
+                "to": "cancelled",
+                "staging_deleted": True,
+                "object_deleted": True,
+                "access_token": "secret",
+                "authorization": "Bearer secret",
+                "transcript": "private text",
+                "audio": "private bytes",
+                "storage_path": "/private/path",
+                "nested": {"token": "secret"},
+            }),
+            {
+                "from": "receiving",
+                "to": "cancelled",
+                "staging_deleted": True,
+                "object_deleted": True,
+            },
+        )
+
+    def test_error_code_must_be_a_bounded_machine_code(self) -> None:
+        self.assertEqual(sanitize_audit_error_code("INGESTION_CLEANUP_FAILED"), "INGESTION_CLEANUP_FAILED")
+        self.assertEqual(sanitize_audit_error_code("token=secret"), "AUDIT_ERROR_REDACTED")
+        self.assertIsNone(sanitize_audit_error_code(None))
 
 
 @unittest.skipUnless(ADMIN_DSN, "PostgreSQL integration DSN is not configured")
