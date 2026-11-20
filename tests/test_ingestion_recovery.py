@@ -140,6 +140,27 @@ class IngestionRecoveryTests(unittest.TestCase):
         self.assertIsNotNone(third)
         self.assertEqual(third["lease"]["attempt"], 2)
 
+
+    def test_recovery_ignores_created_sessions_with_incomplete_uploads(self) -> None:
+        tenant_id = "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10"
+        session_id = str(uuid4())
+        self.repository.create_or_get_session({
+            "session_id": session_id,
+            "tenant_id": tenant_id,
+            "idempotency_key": "unfinished-upload-session-0001",
+            "state": "created",
+            "updated_at": "2026-11-19T00:00:00.000Z",
+            "upload": {
+                "expected_size_bytes": 1024,
+                "received_size_bytes": 0,
+                "expected_sha256": "a" * 64,
+            },
+        })
+        recoverable = self.repository.list_recoverable_sessions(
+            "2026-11-19T01:00:00.000Z", limit=10, tenant_id=tenant_id
+        )
+        self.assertNotIn(session_id, [item["session_id"] for item in recoverable])
+
     def test_expired_session_lease_is_recovered_without_duplicate_asset(self) -> None:
         original = self.service.ingest(self.request())
         stale = self.make_processing_session_with_expired_lease()
@@ -281,6 +302,65 @@ class IngestionRecoveryTests(unittest.TestCase):
         with self.assertRaises(ObjectNotFoundError):
             self.object_store.head(result.asset["storage"]["object_key"])
 
+    def test_reconciler_removes_completed_staging_but_retains_asset(self) -> None:
+        result = self.service.ingest(self.request())
+        self.assertTrue(self.path.exists())
+        reconciler = IngestionOrphanReconciler(
+            repository=self.repository,
+            object_store=self.object_store,
+            staging_root=self.staging,
+        )
+        report = reconciler.run(limit=10)
+        self.assertEqual(report.cleaned, 1)
+        self.assertFalse(self.path.exists())
+        self.assertIsNotNone(self.repository.get_asset(result.session["tenant_id"], result.asset["asset_id"]))
+        self.assertEqual(self.object_store.head(result.asset["storage"]["object_key"]).sha256,
+                         result.asset["integrity"]["digest"])
+        cleaned = self.repository.get_session(result.session["tenant_id"], result.session["session_id"])
+        self.assertIn("staging_cleanup_completed_at", cleaned)
+
+    def test_reconciler_expires_stale_unfinalized_session(self) -> None:
+        result = self.service.ingest(self.request())
+        session = dict(result.session)
+        session["state"] = "created"
+        session["expires_at"] = "2000-01-01T00:00:00.000Z"
+        self.repository.update_session(session["tenant_id"], session["session_id"], "completed", session)
+        report = IngestionOrphanReconciler(
+            repository=self.repository, object_store=self.object_store, staging_root=self.staging
+        ).run(limit=10)
+        expired = self.repository.get_session(session["tenant_id"], session["session_id"])
+        self.assertEqual(expired["state"], "expired")
+        self.assertEqual(report.cleaned, 1)
+        self.assertFalse(self.path.exists())
+        self.assertIsNone(self.repository.get_asset(session["tenant_id"], session["asset_id"]))
+
+    def test_retention_expiry_deletes_object_metadata_and_audits(self) -> None:
+        import json
+        import sqlite3
+
+        result = self.service.ingest(self.request())
+        asset = dict(result.asset)
+        asset["retention_policy_id"] = "test-short-retention"
+        asset["retention_expires_at"] = "2000-01-01T00:00:00.000Z"
+        with sqlite3.connect(self.database) as connection:
+            connection.execute(
+                "UPDATE audio_assets SET payload_json = ? WHERE tenant_id = ? AND asset_id = ?",
+                (json.dumps(asset), asset["tenant_id"], asset["asset_id"]),
+            )
+        report = IngestionOrphanReconciler(
+            repository=self.repository, object_store=self.object_store, staging_root=self.staging
+        ).run(limit=10)
+        self.assertEqual(report.retention_deleted, 1)
+        self.assertEqual(report.errors, 0)
+        self.assertIsNone(self.repository.get_asset(asset["tenant_id"], asset["asset_id"]))
+        with self.assertRaises(ObjectNotFoundError):
+            self.object_store.head(asset["storage"]["object_key"])
+        with sqlite3.connect(self.database) as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM ingestion_audit_events WHERE event_type = 'asset.retention_deleted'"
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
+
     def test_orphan_reconciler_cleans_failed_session_artifacts(self) -> None:
         result = self.service.ingest(self.request())
         session = dict(result.session)
@@ -297,6 +377,7 @@ class IngestionRecoveryTests(unittest.TestCase):
         reconciler = IngestionOrphanReconciler(
             repository=self.repository,
             object_store=self.object_store,
+            staging_root=self.staging,
         )
         report = reconciler.run(limit=10)
 

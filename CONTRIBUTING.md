@@ -9,6 +9,7 @@
 ## Local requirements
 
 - Python 3.11+ (3.12 is pinned in `.python-version`)
+- Go 1.25+ (public HTTP API)
 - Make
 
 Create and activate an isolated environment, then run all checks:
@@ -17,11 +18,12 @@ Create and activate an isolated environment, then run all checks:
 make bootstrap
 . .venv/bin/activate
 make check
+make go-check
 ```
 
 The test runner uses Python's standard-library `unittest`; contract validation uses `jsonschema` from `requirements-dev.txt`. No paid services or production credentials are required.
 
-The validation currently uses only the Python standard library.
+The repository validator and unit suite use Python's standard library plus declared development dependencies. Go validation is read-only and runs module drift checks, formatting checks, vet, and race-enabled tests. CI runs Python and Go/PostgreSQL checks independently.
 
 ## Branches and commits
 
@@ -40,5 +42,7 @@ Every pull request must:
 - Describe compatibility, security, privacy, and operational implications.
 - Identify limitations and follow-up work.
 - Update the work ledger and documentation when behavior or project state changes.
+
+Use matching repository skills from `.agents/skills/` for repeatable workflows. When supported, request read-only specialist reviews from `.codex/agents/` for security, CI failures, and cross-runtime contracts.
 
 A green CI run is necessary but not sufficient. Review the diff and verify the acceptance criteria.

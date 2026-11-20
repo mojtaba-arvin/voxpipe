@@ -15,6 +15,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Define threat model, data classification, and audio retention defaults (design-stage requirements documented; implementation gates remain for each feature).
 - [x] Compare orchestration approaches for durable agent/task execution (selection deferred to a measured proof of concept).
 - [x] Create a reproducible local development environment and validator test suite.
+- [x] Add repository-scoped skills, specialist read-only agents, and an auditable agent execution protocol.
 
 **Exit gate:** A clean checkout can validate itself; a new agent can identify the next unblocked task, execute it, and leave auditable progress without relying on chat history.
 
@@ -28,15 +29,19 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add object-storage abstraction and local filesystem development implementation.
 - [x] Add lease-based stale-session recovery and failed/expired-session orphan reconciliation.
 - [x] Add PostgreSQL metadata repository, versioned migrations, and forced tenant RLS.
-- Implement authenticated batch upload API and PostgreSQL-backed durable job queue.
-- Add cancellation, bounded retry/dead-letter policy, retention, deletion, and audit events.
+- [x] Complete authenticated batch upload API and PostgreSQL-backed durable job queue (VP-0015 accepted; Python and Go/PostgreSQL CI passed on the implementation head).
+- [x] Implement queue cancellation, bounded retries, dead-letter handling, and tenant-scoped job status.
+- [x] Expose authenticated ingestion and asset-metadata capabilities through MCP (VP-0016 accepted; search is metadata-only, not transcript or semantic retrieval).
+- [x] Reconcile staged-source expiry and enforce retention/deletion/audit propagation (VP-0018; upload leases, tenant audit events, terminal staging cleanup, configurable asset expiry; CI run 44469883406).
+- [x] Add production identity, per-tenant quotas, rate limits, and upload deadlines (VP-0019).
+- [x] Harden worker supervision, lease-loss handling, and queue observability (VP-0020).
 
 **Exit gate:** An audio asset can be ingested, validated, stored, processed asynchronously, and traced end-to-end with deterministic tests.
 
 ## Phase 2 — Speech Intelligence
 
-- Define transcript, segment, speaker, timing, and confidence contracts.
-- Implement provider-neutral STT adapter.
+- [ ] Define transcript, segment, speaker, timing, confidence, and provenance contracts (VP-0021).
+- [ ] Implement provider-neutral STT adapter and provider evaluation.
 - Evaluate VAD, diarization, language identification, and enhancement independently.
 - Build multilingual evaluation datasets with consent and provenance.
 - Benchmark local and hosted providers under reproducible conditions.

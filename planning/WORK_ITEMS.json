@@ -303,7 +303,7 @@
       "title": "Expose authenticated batch upload API and durable ingestion job queue",
       "phase": 1,
       "priority": 8,
-      "status": "ready",
+      "status": "done",
       "depends_on": [
         "VP-0012",
         "VP-0013",
@@ -316,7 +316,20 @@
         "API requests return durable session/job identifiers and do not hold HTTP connections open for media processing.",
         "Integration tests cover duplicate upload requests, interrupted transfers, worker restart, cancellation races, tenant isolation, and retry exhaustion."
       ],
-      "evidence": [],
+      "evidence": [
+        "migrations/postgres/0003_create_durable_ingestion_jobs.sql — tenant-scoped queue schema, composite tenant/session foreign key, lease invariants, claim index, and forced RLS",
+        "src/voxpipe/ingestion/jobs.py — idempotent enqueue, atomic SKIP LOCKED claims, expiring leases, heartbeat, stale-owner fencing, bounded retry/dead-letter, and atomic session/job cancellation",
+        "src/voxpipe/ingestion/worker.py and scripts/run_ingestion_worker.py — per-tenant execution, background lease heartbeat, session resume integration, bounded exponential retry, stale-lease acknowledgement fencing, and explicit tenant allowlist",
+        "contracts/openapi/ingestion.v1.yaml — versioned upload initiation, streamed content, finalization, status, cancellation, and error contracts",
+        "cmd/voxpipe-api/main.go and internal/httpapi/*.go — Go HTTP API, hashed bearer-token authentication with tenant/scopes, PostgreSQL RLS store, streamed checksum-verified atomic staging, idempotency, and transactionally enqueued jobs",
+        "tests/test_postgres_repository.py — queue idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner rejection, retry exhaustion, cancellation, and RLS coverage",
+        "tests/test_ingestion_worker.py — worker success, retry classification, dead-letter, stale lease, and tenant/worker identity tests",
+        "internal/httpapi/server_test.go and store_integration_test.go — API lifecycle, idempotent retries, interrupted upload, checksum failure, authorization scopes, tenant isolation, cancellation cleanup, and PostgreSQL transaction tests",
+        "docs/architecture/durable-ingestion-queue.md, docs/architecture/upload-api.md, and ADR-0004 — queue semantics, Go/Python boundary, auth model, single-node staging constraints, and deployment guidance",
+        "tests/test_postgres_repository.py and tests/test_ingestion_worker.py — PostgreSQL 16 integration coverage for idempotency, tenant isolation, concurrent claims, lease expiry/reclaim, stale-owner fencing, retry exhaustion, cancellation, RLS, worker recovery, and failure classification",
+        "internal/httpapi/server_test.go — duplicate upload, interrupted transfer, client-controlled retention rejection, upload/cancellation race with no orphaned staged bytes, authorization, and API lifecycle tests",
+        "GitHub Actions run 44457381351 — both independent jobs passed on exact head 53d91d1a: Python/PostgreSQL 16 suite; Go module drift, gofmt, go vet, race-enabled tests, and Go/PostgreSQL integration"
+      ],
       "blocked_reason": null
     },
     {
@@ -324,7 +337,7 @@
       "title": "Expose ingestion and search capabilities through MCP and agent skill contracts",
       "phase": 1,
       "priority": 9,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0015"
       ],
@@ -334,7 +347,148 @@
         "Contract tests exercise an external agent client against the MCP surface.",
         "The same capability contracts can generate CLI/SDK documentation without duplicating business logic."
       ],
-      "evidence": [],
+      "evidence": [
+        "contracts/mcp/capabilities.v1.json — versioned MCP tool contracts with input/output schemas, required scopes, HTTP mappings, stable errors, and retry semantics.",
+        "src/voxpipe/mcp/server.py — MCP stdio adapter for create_ingestion, get_ingestion_status, get_asset, and search_assets; delegates to the authenticated Go API and does not accept tenant IDs or access PostgreSQL directly.",
+        "internal/httpapi/server.go and internal/httpapi/store.go — tenant-scoped asset lookup and bounded metadata search under forced RLS; public projection omits tenant identifiers, external references, declared_by, and private storage keys.",
+        "contracts/openapi/ingestion.v1.yaml — documented asset lookup and metadata-search endpoints.",
+        ".agents/skills/voxpipe-ingestion and .agents/skills/voxpipe-asset-discovery — agent-facing usage and least-privilege guidance.",
+        "tests/test_mcp_server.py, internal/httpapi/server_test.go, and internal/httpapi/store_integration_test.go — external JSON-RPC client, tool discovery/calls, invalid arguments, authorization, response redaction, and tenant-scoped PostgreSQL lookup/search coverage.",
+        "scripts/generate_mcp_docs.py and docs/architecture/mcp-capabilities.md — deterministic capability documentation generation; make check rejects documentation drift.",
+        "GitHub Actions run 44466238591 — Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs both passed on exact head 45cb773640fb9f2901f36129a8141a6a82264c85."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0017",
+      "title": "Standardize autonomous agent workflows, skills, and independent CI gates",
+      "phase": 0,
+      "priority": 10,
+      "status": "done",
+      "depends_on": [
+        "VP-0001",
+        "VP-0002",
+        "VP-0006"
+      ],
+      "acceptance_criteria": [
+        "Repository skills under .agents/skills define reusable task execution, CI triage, PostgreSQL reliability, and cross-runtime contract workflows with valid discovery metadata.",
+        "Project-scoped read-only specialist agents exist for CI triage, security review, and cross-runtime contract review.",
+        "AGENTS.md and the execution protocol explain skill selection, safe delegation, reviewer independence, and fallback behavior when subagents are unavailable.",
+        "Repository validation checks skill and custom-agent metadata so malformed or missing agent assets fail locally and in CI.",
+        "Python and Go CI gates run independently; superseded feature-branch runs are cancelled rather than duplicated.",
+        "Go validation is read-only and checks module drift, formatting, vet, and race-enabled tests.",
+        "A successful CI run on the exact PR head SHA provides evidence for all required gates."
+      ],
+      "evidence": [
+        ".agents/skills/ — task execution, CI triage, PostgreSQL reliability, and contract evolution skills",
+        ".codex/agents/ — read-only CI triager, security reviewer, and contract reviewer; .codex/config.toml configures bounded parallelism",
+        "AGENTS.md and docs/operations/agent-execution-protocol.md — durable skill/subagent use and evidence loop",
+        "Makefile and .github/workflows/validate.yml — read-only Go checks and independent Python/Go PostgreSQL CI jobs",
+        ".codex/config.toml — registered three project roles with descriptions/config_file references; each role file uses sandbox_mode=read-only and developer_instructions",
+        "scripts/validate_repo.py and tests/test_validate_repo.py — validate skill discovery metadata, registered Codex roles, config-file paths, read-only sandbox settings, and negative cases",
+        "GitHub Actions run 44457381351 — Python and Go/PostgreSQL jobs both passed on exact head 53d91d1a"
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0018",
+      "title": "Reconcile staged uploads and enforce retention and deletion",
+      "phase": 1,
+      "priority": 10,
+      "status": "done",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "A bounded, tenant-scoped reconciler identifies abandoned temporary uploads and staged sources using database state and explicit retention policy.",
+        "The reconciler never deletes bytes for a session with an active upload or valid worker lease; row locking and state checks make cleanup race-safe.",
+        "Terminal cancellation, expiry, permanent failure, and successful object publication have explicit staging cleanup rules.",
+        "Retention and deletion propagate across staging, object storage, metadata, and derived artifacts with idempotent retries.",
+        "Every cleanup/deletion outcome emits an auditable event without logging transcript or audio contents.",
+        "PostgreSQL integration tests cover process crashes, concurrent upload/finalize/cancel, expired sessions, partial files, repeated cleanup, and deletion failures."
+      ],
+      "evidence": [
+        "Migration 0004 adds forced-RLS upload leases and tenant-scoped audit events.",
+        "API upload leases fence concurrent transfers and finalization; lease duration exceeds session expiry and expired leases fence cleanup.",
+        "Reconciliation expires stale unfinalized sessions, removes completed/terminal staging and interrupted parts, and deletes retained objects before metadata.",
+        "VOXPIPE_DEFAULT_RETENTION_DAYS assigns server-authoritative asset expiry; 0 disables automatic asset expiry.",
+        "Python unit/PostgreSQL integration and Go race/PostgreSQL integration passed on CI run 44469883406 (head 2604e32ebd438e98cb505529cc9e3082fb02bc53)."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0019",
+      "title": "Harden production identity and upload abuse controls",
+      "phase": 1,
+      "priority": 11,
+      "status": "done",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "Production authentication validates trusted issuer, audience, expiry, not-before, signing-key rotation, tenant mapping, and scopes; invalid or unavailable identity metadata fails closed.",
+        "Per-tenant quotas bound concurrent uploads, total staged bytes, and ingestion rate.",
+        "Upload body reads have explicit duration/inactivity bounds without breaking legitimate large streaming transfers.",
+        "Rate limits and resource limits are enforced before expensive media processing and return stable retryable error codes.",
+        "Retention policy, storage keys, and filesystem paths remain server-authoritative.",
+        "Security tests cover expired/revoked tokens, wrong audience/issuer, key rotation, cross-tenant tokens, slow uploads, quota exhaustion, and concurrent abuse."
+      ],
+      "evidence": [
+        "internal/httpapi/oidc.go and oidc_test.go — RS256 JWKS validation, exact issuer/audience and time claims, UUID tenant mapping, allowlisted scopes, active-token introspection/revocation checks, key rotation refresh, and fail-closed provider errors.",
+        "internal/httpapi/store.go — PostgreSQL advisory-lock reservations for staged bytes and rolling ingestion rate, plus concurrent upload lease quotas; terminal staging reservations remain counted until cleanup reconciliation records completion.",
+        "internal/httpapi/upload_limits.go and server.go — resettable inactivity and absolute upload deadlines, stable 408/429 errors, and server-authoritative limits.",
+        "internal/httpapi/store_integration_test.go, upload_limits_test.go, and server_test.go — staged-byte, rate, concurrent-upload, slow-body, OIDC claims/revocation/rotation, and server-authoritative policy coverage.",
+        "GitHub Actions run 44525504449 — both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs passed on exact PR head 68e35212d8f94a0c64f7cbb0b3a2659bbd4aa08b."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0020",
+      "title": "Harden worker supervision and queue observability",
+      "phase": 1,
+      "priority": 12,
+      "status": "done",
+      "depends_on": [
+        "VP-0015"
+      ],
+      "acceptance_criteria": [
+        "Transient database/network failures during claim, heartbeat, failure recording, and completion do not silently terminate the worker process; retries use bounded backoff and jitter.",
+        "Heartbeat failure tracking stops processing or fences acknowledgement when the worker can no longer prove lease ownership.",
+        "Queue depth, oldest pending age, active leases, retry counts, dead-letter counts, and processing duration are observable per tenant without exposing audio or transcript content.",
+        "Worker shutdown is graceful and leaves jobs recoverable after process termination.",
+        "Failure-injection tests cover database outages, heartbeat loss, lease expiry during processing, worker restart, and graceful shutdown."
+      ],
+      "evidence": [
+        "src/voxpipe/ingestion/worker.py — heartbeat safety-window fencing, bounded exponential retry with jitter, tenant-scoped counters, and supervised polling across transient claim/failure/completion outages.",
+        "src/voxpipe/ingestion/jobs.py and migration 0005 — durable tenant-scoped queue health metrics and per-attempt started_at timestamps for processing-duration measurement.",
+        "scripts/run_ingestion_worker.py — signal-driven graceful stop; scripts/inspect_ingestion_queue.py — tenant-scoped operator CLI for queue depth, age, active leases, retries, dead letters, and processing duration.",
+        "tests/test_ingestion_worker.py and tests/test_postgres_repository.py — heartbeat loss, claim/failure/completion outages, shutdown, lease reclaim, tenant metrics, retries, and dead-letter coverage.",
+        "GitHub Actions run 44525504449 — both independent Python/PostgreSQL 16 and Go/PostgreSQL 16 jobs passed on exact PR head 68e35212d8f94a0c64f7cbb0b3a2659bbd4aa08b."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0021",
+      "title": "Define canonical transcript contract and provider-neutral speech-to-text port",
+      "phase": 2,
+      "priority": 13,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0019",
+        "VP-0020"
+      ],
+      "acceptance_criteria": [
+        "A versioned transcript schema defines asset linkage, language, ordered segments, optional word timestamps, speaker references, confidence, and provider/model/audio-hash provenance.",
+        "A provider-neutral SpeechToTextPort accepts an extracted readable audio stream and explicit language/word-timing/diarization options without filesystem paths, tenant IDs, or vendor SDK types.",
+        "A shared validator enforces timestamp ordering/duration bounds, speaker references, unique IDs, confidence ranges, timezone-aware provenance, and requested asset binding.",
+        "Stable transcription error codes expose retryability and optional retry-after without raw provider payloads or secrets.",
+        "Schema fixtures and offline adapter contract tests run without external providers, model downloads, or paid inference."
+      ],
+      "evidence": [
+        "contracts/schemas/transcript.v1.schema.json and contracts/examples/transcript.valid.json — canonical transcript wire contract and valid fixture.",
+        "src/voxpipe/speech/contracts.py, ports.py, and service.py — immutable provider-neutral request/result types, stable errors, adapter protocol, and output validation.",
+        "tests/test_speech_contracts.py and tests/test_contract_schemas.py — offline validation and adapter boundary tests."
+      ],
       "blocked_reason": null
     }
   ]

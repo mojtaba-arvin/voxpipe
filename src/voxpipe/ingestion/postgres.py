@@ -94,6 +94,16 @@ class PostgresIngestionRepository:
                 ),
             ).fetchone()
             if row is not None:
+                import uuid
+                connection.execute(
+                    """
+                    INSERT INTO ingestion_audit_events
+                        (event_id, tenant_id, session_id, asset_id, event_type, outcome, metadata)
+                    VALUES (%s, %s, %s, %s, 'ingestion.created', 'succeeded', %s::jsonb)
+                    """,
+                    (str(uuid.uuid4()), tenant_id, session["session_id"], session.get("asset_id"),
+                     json.dumps({"state": session["state"]})),
+                )
                 return self._payload(row["payload"]), True
 
             existing = connection.execute(
@@ -161,6 +171,17 @@ class PostgresIngestionRepository:
             ).fetchone()
             if row is None:
                 raise IngestionRepositoryConflict("session state changed concurrently")
+            if expected_state != updated_session["state"]:
+                import uuid
+                connection.execute(
+                    """
+                    INSERT INTO ingestion_audit_events
+                        (event_id, tenant_id, session_id, asset_id, event_type, outcome, metadata)
+                    VALUES (%s, %s, %s, %s, 'ingestion.state_transition', 'succeeded', %s::jsonb)
+                    """,
+                    (str(uuid.uuid4()), tenant_id, session_id, updated_session.get("asset_id"),
+                     json.dumps({"from": expected_state, "to": updated_session["state"]})),
+                )
         return updated_session
 
     def create_asset(self, asset: dict[str, Any]) -> dict[str, Any]:
@@ -172,7 +193,7 @@ class PostgresIngestionRepository:
                 """
                 INSERT INTO audio_assets (asset_id, tenant_id, payload, updated_at)
                 VALUES (%s, %s, %s::jsonb, %s::timestamptz)
-                ON CONFLICT (asset_id) DO NOTHING
+                ON CONFLICT DO NOTHING
                 RETURNING payload
                 """,
                 (
@@ -281,6 +302,19 @@ class PostgresIngestionRepository:
                 SELECT payload FROM ingestion_sessions
                 WHERE tenant_id = %s
                   AND state = ANY(%s)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM ingestion_jobs AS job
+                    WHERE job.tenant_id = ingestion_sessions.tenant_id
+                      AND job.session_id = ingestion_sessions.session_id
+                  )
+                  AND (
+                    state <> 'created'
+                    OR (
+                        COALESCE((payload #>> '{upload,received_size_bytes}')::bigint, 0) > 0
+                        AND (payload #>> '{upload,received_size_bytes}')::bigint =
+                            (payload #>> '{upload,expected_size_bytes}')::bigint
+                    )
+                  )
                   AND (
                     payload #>> '{lease,expires_at}' IS NULL
                     OR (payload #>> '{lease,expires_at}')::timestamptz <= %s::timestamptz
@@ -289,6 +323,62 @@ class PostgresIngestionRepository:
                 LIMIT %s
                 """,
                 (tenant, ["created", "receiving", "finalizing", "queued", "processing"], now, limit),
+            ).fetchall()
+        return [self._payload(row["payload"]) for row in rows]
+
+    def record_audit_event(self, tenant_id: str, session_id: str | None, asset_id: str | None,
+                           event_type: str, outcome: str, error_code: str | None = None,
+                           metadata: dict[str, Any] | None = None) -> None:
+        import uuid
+        with self._tenant_connection(tenant_id) as connection:
+            connection.execute(
+                """
+                INSERT INTO ingestion_audit_events
+                    (event_id, tenant_id, session_id, asset_id, event_type, outcome, error_code, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                """,
+                (str(uuid.uuid4()), tenant_id, session_id, asset_id, event_type, outcome,
+                 error_code, json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True)),
+            )
+
+    def list_expired_assets(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        tenant = self._required_tenant(tenant_id)
+        with self._tenant_connection(tenant) as connection:
+            rows = connection.execute(
+                """
+                SELECT payload FROM audio_assets
+                WHERE tenant_id = %s AND payload->>'retention_expires_at' <= %s
+                ORDER BY payload->>'retention_expires_at' ASC
+                LIMIT %s
+                """,
+                (tenant, now, limit),
+            ).fetchall()
+        return [self._payload(row["payload"]) for row in rows]
+
+    def list_expired_sessions(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]:
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        tenant = self._required_tenant(tenant_id)
+        with self._tenant_connection(tenant) as connection:
+            rows = connection.execute(
+                """
+                SELECT payload FROM ingestion_sessions
+                WHERE tenant_id = %s AND state IN ('created', 'receiving')
+                  AND payload->>'expires_at' <= %s
+                  AND COALESCE(payload #>> '{lease,expires_at}', '') <= %s
+                  AND payload->>'staging_cleanup_completed_at' IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM ingestion_upload_leases AS upload
+                    WHERE upload.tenant_id = ingestion_sessions.tenant_id
+                      AND upload.session_id = ingestion_sessions.session_id
+                      AND upload.lease_expires_at > now()
+                  )
+                ORDER BY updated_at ASC
+                LIMIT %s
+                """,
+                (tenant, now, now, limit),
             ).fetchall()
         return [self._payload(row["payload"]) for row in rows]
 
@@ -306,6 +396,13 @@ class PostgresIngestionRepository:
                 """
                 SELECT payload FROM ingestion_sessions
                 WHERE tenant_id = %s AND state = %s
+                  AND payload->>'staging_cleanup_completed_at' IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM ingestion_upload_leases AS upload
+                    WHERE upload.tenant_id = ingestion_sessions.tenant_id
+                      AND upload.session_id = ingestion_sessions.session_id
+                      AND upload.lease_expires_at > now()
+                  )
                 ORDER BY updated_at ASC
                 LIMIT %s
                 """,

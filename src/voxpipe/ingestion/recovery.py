@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from voxpipe.ingestion.repository import IngestionRepositoryPort
@@ -13,6 +14,7 @@ from voxpipe.ingestion.service import (
     IngestionService,
 )
 from voxpipe.storage.ports import ObjectStoragePort
+from voxpipe.storage.staging import remove_staged_source
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,71 +87,163 @@ class ReconciliationItem:
     asset_deleted: bool
     object_deleted: bool
     error_code: str | None = None
+    staging_deleted: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class ReconciliationReport:
     items: tuple[ReconciliationItem, ...]
+    retention_deleted: int = 0
+    retention_errors: int = 0
 
     @property
     def cleaned(self) -> int:
-        return sum(item.error_code is None and (item.asset_deleted or item.object_deleted) for item in self.items)
+        return sum(item.error_code is None and (item.asset_deleted or item.object_deleted or item.staging_deleted) for item in self.items) + self.retention_deleted
 
     @property
     def errors(self) -> int:
-        return sum(item.error_code is not None for item in self.items)
+        return sum(item.error_code is not None for item in self.items) + self.retention_errors
 
 
 class IngestionOrphanReconciler:
-    """Cleans session-associated artifacts left by failed compensation.
-
-    This reconciler intentionally scopes cleanup to failed ingestion sessions;
-    it never performs a broad object-store prefix deletion.
-    """
+    """Reconcile terminal session artifacts and server-assigned asset retention."""
 
     def __init__(
         self,
         *,
         repository: IngestionRepositoryPort,
         object_store: ObjectStoragePort,
+        staging_root: str | Path,
     ) -> None:
         self._repository = repository
         self._object_store = object_store
+        self._staging_root = Path(staging_root).expanduser()
 
     def run(self, *, tenant_id: str | None = None, limit: int = 100) -> ReconciliationReport:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
-        failed_sessions = self._repository.list_sessions_by_state("failed", limit, tenant_id=tenant_id)
-        remaining = max(0, limit - len(failed_sessions))
-        expired_sessions = self._repository.list_sessions_by_state("expired", remaining, tenant_id=tenant_id) if remaining else []
-        sessions = failed_sessions + expired_sessions
-        items: list[ReconciliationItem] = []
+        now = datetime.now(timezone.utc)
+        now_text = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        expired_candidates = self._repository.list_expired_sessions(now_text, limit, tenant_id)
+        for candidate in expired_candidates:
+            expired = dict(candidate)
+            prior_state = expired["state"]
+            expired["state"] = "expired"
+            expired.pop("lease", None)
+            expired["updated_at"] = now_text
+            try:
+                self._repository.update_session(
+                    expired["tenant_id"], expired["session_id"], prior_state, expired
+                )
+                self._repository.record_audit_event(
+                    expired["tenant_id"], expired["session_id"], expired.get("asset_id"),
+                    "ingestion.expired", "succeeded", "INGESTION_SESSION_EXPIRED",
+                    {"prior_state": prior_state},
+                )
+            except Exception:
+                continue
 
+        sessions: list[dict] = []
+        seen: set[str] = set()
+        for state in ("failed", "expired", "cancelled", "completed"):
+            remaining = limit - len(sessions)
+            if remaining <= 0:
+                break
+            for session in self._repository.list_sessions_by_state(state, remaining, tenant_id=tenant_id):
+                if session["session_id"] not in seen:
+                    seen.add(session["session_id"])
+                    sessions.append(session)
+
+        items: list[ReconciliationItem] = []
         for session in sessions:
-            tenant_id = session["tenant_id"]
+            tenant = session["tenant_id"]
+            session_id = session["session_id"]
             asset_id = session["asset_id"]
-            object_key = f"tenant/{tenant_id}/assets/{asset_id}/source"
+            completed = session["state"] == "completed"
+            object_key = f"tenant/{tenant}/assets/{asset_id}/source"
             asset_deleted = False
             object_deleted = False
+            staging_deleted = False
             error_code: str | None = None
 
             try:
-                asset_deleted = self._repository.delete_asset(tenant_id, asset_id)
+                reference = session.get("staging_reference")
+                if reference:
+                    staging_deleted = remove_staged_source(
+                        self._staging_root, tenant, session_id, reference,
+                        include_temporary=True,
+                    )
             except Exception:
-                error_code = "INGESTION_RECONCILE_METADATA_FAILED"
+                error_code = "INGESTION_RECONCILE_STAGING_FAILED"
+
+            if not completed:
+                try:
+                    existing_asset = self._repository.get_asset(tenant, asset_id)
+                    if existing_asset:
+                        object_key = (existing_asset.get("storage") or {}).get("object_key") or object_key
+                except Exception:
+                    error_code = error_code or "INGESTION_RECONCILE_METADATA_FAILED"
+                if error_code is None:
+                    try:
+                        object_deleted = self._object_store.delete(object_key)
+                    except Exception:
+                        error_code = "INGESTION_RECONCILE_OBJECT_FAILED"
+                if error_code is None:
+                    try:
+                        asset_deleted = self._repository.delete_asset(tenant, asset_id)
+                    except Exception:
+                        error_code = "INGESTION_RECONCILE_METADATA_FAILED"
 
             try:
-                object_deleted = self._object_store.delete(object_key)
-            except Exception:
-                error_code = error_code or "INGESTION_RECONCILE_OBJECT_FAILED"
-
-            items.append(
-                ReconciliationItem(
-                    session_id=session["session_id"],
-                    asset_deleted=asset_deleted,
-                    object_deleted=object_deleted,
-                    error_code=error_code,
+                self._repository.record_audit_event(
+                    tenant, session_id, asset_id, "ingestion.cleanup",
+                    "failed" if error_code else "succeeded", error_code,
+                    {"staging_deleted": staging_deleted, "asset_deleted": asset_deleted,
+                     "object_deleted": object_deleted},
                 )
-            )
+            except Exception:
+                error_code = error_code or "INGESTION_AUDIT_WRITE_FAILED"
 
-        return ReconciliationReport(tuple(items))
+            if error_code is None:
+                cleaned = dict(session)
+                cleaned["staging_cleanup_completed_at"] = now_text
+                cleaned["updated_at"] = now_text
+                try:
+                    self._repository.update_session(tenant, session_id, session["state"], cleaned)
+                except Exception:
+                    error_code = "INGESTION_CLEANUP_STATE_UPDATE_FAILED"
+
+            items.append(ReconciliationItem(
+                session_id=session_id, asset_deleted=asset_deleted,
+                object_deleted=object_deleted, error_code=error_code,
+                staging_deleted=staging_deleted,
+            ))
+
+        retention_deleted = 0
+        retention_errors = 0
+        for asset in self._repository.list_expired_assets(now_text, limit, tenant_id=tenant_id):
+            tenant = asset["tenant_id"]
+            asset_id = asset["asset_id"]
+            object_key = (asset.get("storage") or {}).get("object_key")
+            try:
+                if object_key:
+                    self._object_store.delete(object_key)
+                self._repository.delete_asset(tenant, asset_id)
+                self._repository.record_audit_event(
+                    tenant, asset.get("session_id"), asset_id,
+                    "asset.retention_deleted", "succeeded", None,
+                    {"retention_expires_at": asset.get("retention_expires_at")},
+                )
+                retention_deleted += 1
+            except Exception:
+                retention_errors += 1
+                try:
+                    self._repository.record_audit_event(
+                        tenant, asset.get("session_id"), asset_id,
+                        "asset.retention_deleted", "failed",
+                        "ASSET_RETENTION_DELETE_FAILED", {},
+                    )
+                except Exception:
+                    pass
+
+        return ReconciliationReport(tuple(items), retention_deleted, retention_errors)
