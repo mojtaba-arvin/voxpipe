@@ -482,8 +482,15 @@ class PostgresIngestionRepository:
         if model_version is not None and (not isinstance(model_version, str) or len(model_version) > 256):
             raise ValueError("model_version must be a bounded string or null")
         generated_at = transcript["generated_at"]
+        from datetime import datetime
         if not isinstance(generated_at, str) or not generated_at.strip():
             raise ValueError("generated_at must be an ISO-8601 timestamp")
+        try:
+            generated_at_value = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("generated_at must be an ISO-8601 timestamp") from None
+        if generated_at_value.tzinfo is None or generated_at_value.utcoffset() is None:
+            raise ValueError("generated_at must include a timezone")
         speakers = transcript.get("speakers", [])
         segments = transcript.get("segments", [])
         if not isinstance(speakers, list) or not isinstance(segments, list):
@@ -593,7 +600,7 @@ class PostgresIngestionRepository:
                     (tenant_id, transcript["transcript_id"], transcript["asset_id"],
                      revision, transcript["language"], transcript["text"],
                      transcript["provider"], transcript["model"], model_version,
-                     audio_sha256, generated_at),
+                     audio_sha256, generated_at_value),
                 )
                 for speaker in normalized_speakers:
                     connection.execute(
@@ -624,7 +631,67 @@ class PostgresIngestionRepository:
                              word["end_ms"], word["text"], word["confidence"]),
                         )
         except psycopg.errors.UniqueViolation as exc:
-            raise IngestionRepositoryConflict("transcript revision already exists") from exc
+            existing = self.get_transcript_revision(
+                tenant_id, str(transcript["transcript_id"]), revision,
+            )
+            if existing is not None:
+                existing_speakers = [
+                    {
+                        "speaker_id": str(row["speaker_id"]),
+                        "label": row["label"],
+                        "confidence": row["confidence"],
+                    }
+                    for row in existing["speakers"]
+                ]
+                expected_speakers = sorted(normalized_speakers, key=lambda row: row["speaker_id"])
+                existing_segments = []
+                for row in existing["segments"]:
+                    existing_segments.append({
+                        "segment_id": str(row["segment_id"]),
+                        "start_ms": row["start_ms"], "end_ms": row["end_ms"],
+                        "text": row["text"], "confidence": row["confidence"],
+                        "speaker_id": str(row["speaker_id"]) if row["speaker_id"] else None,
+                        "words": [
+                            {
+                                "word_index": word["word_index"],
+                                "start_ms": word["start_ms"], "end_ms": word["end_ms"],
+                                "text": word["text"], "confidence": word["confidence"],
+                            }
+                            for word in row["words"]
+                        ],
+                    })
+                expected_segments = [
+                    {
+                        "segment_id": row["segment_id"],
+                        "start_ms": row["start_ms"], "end_ms": row["end_ms"],
+                        "text": row["text"], "confidence": row["confidence"],
+                        "speaker_id": row["speaker_id"],
+                        "words": sorted(row["words"], key=lambda word: word["word_index"]),
+                    }
+                    for row in sorted(
+                        normalized_segments,
+                        key=lambda item: (item["start_ms"], item["segment_id"]),
+                    )
+                ]
+                if (
+                    str(existing["tenant_id"]) == tenant_id
+                    and str(existing["transcript_id"]) == str(transcript["transcript_id"])
+                    and str(existing["asset_id"]) == str(transcript["asset_id"])
+                    and existing["revision"] == revision
+                    and existing["language"] == transcript["language"]
+                    and existing["text"] == transcript["text"]
+                    and existing["provider"] == transcript["provider"]
+                    and existing["model"] == transcript["model"]
+                    and existing["model_version"] == model_version
+                    and existing["audio_sha256"].strip() == audio_sha256
+                    and existing["generated_at"] == generated_at_value
+                    and existing_speakers == expected_speakers
+                    and existing_segments == expected_segments
+                ):
+                    return existing
+            raise IngestionRepositoryConflict(
+                "transcript revision already exists with different content"
+            ) from exc
         return self.get_transcript_revision(tenant_id, str(transcript["transcript_id"]), revision)
 
     def get_transcript_revision(
