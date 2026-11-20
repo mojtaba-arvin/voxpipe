@@ -391,7 +391,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
@@ -703,6 +703,43 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with psycopg.connect(self.app_dsn) as connection:
             rows = connection.execute("SELECT job_id FROM ingestion_jobs").fetchall()
         self.assertEqual(rows, [])
+
+
+    def test_structured_extraction_persistence_is_idempotent_tenant_scoped_and_append_only(self) -> None:
+        import psycopg
+        from voxpipe.structuring.contracts import EvidenceSpan, ExtractionProvenance, StructuredClaim, StructuredIntelligence
+        from voxpipe.structuring.postgres import PostgresStructuredIntelligenceRepository
+
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "b" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript_id, segment_id = str(uuid4()), str(uuid4())
+        self.repository.create_transcript_revision({
+            "tenant_id": tenant_id, "transcript_id": transcript_id, "asset_id": asset["asset_id"],
+            "revision": 1, "language": "fa-IR", "text": "سلام", "provider": "fixture",
+            "model": "test-model", "model_version": "1", "audio_sha256": "b" * 64,
+            "generated_at": self.now(), "speakers": [],
+            "segments": [{"segment_id": segment_id, "start_ms": 0, "end_ms": 500,
+                          "text": "سلام", "confidence": 0.99, "speaker_id": None, "words": []}],
+        })
+        result = StructuredIntelligence(
+            document_id=str(uuid4()), asset_id=asset["asset_id"], transcript_id=transcript_id,
+            transcript_revision=1,
+            provenance=ExtractionProvenance("fixture", "test-model", "1", "prompt-v1", "1.0.0",
+                                             datetime.now(timezone.utc)),
+            entities=(StructuredClaim(str(uuid4()), {"name": "سلام"}, (EvidenceSpan(segment_id, 0, 4, "سلام"),), 0.9),),
+        )
+        store = PostgresStructuredIntelligenceRepository(self.app_dsn)
+        first = store.create_or_get(tenant_id, "extract-0001", result)
+        repeated = store.create_or_get(tenant_id, "extract-0001", result)
+        self.assertEqual(first, repeated)
+        self.assertEqual(store.get(tenant_id, first["extraction_id"]), first)
+        self.assertIsNone(store.get(str(uuid4()), first["extraction_id"]))
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_id,))
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                connection.execute("UPDATE structured_extractions SET result='{}'::jsonb WHERE extraction_id=%s",
+                                   (first["extraction_id"],))
 
 
 if __name__ == "__main__":
