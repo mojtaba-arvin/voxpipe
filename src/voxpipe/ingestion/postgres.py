@@ -448,8 +448,8 @@ class PostgresIngestionRepository:
                      speaker_id?, words=[{word_index, start_ms, end_ms,
                      text, confidence?}]}]
 
-        Revision numbers are caller-assigned and never updated in place. A
-        duplicate revision is a conflict, even when the payload is identical.
+        Revision numbers are caller-assigned and never updated in place.
+        Identical retries return the stored revision; conflicting content fails.
         """
         import re
         import uuid
@@ -610,7 +610,7 @@ class PostgresIngestionRepository:
                         """INSERT INTO transcript_speakers
                         (tenant_id, transcript_id, revision, speaker_id, label, confidence)
                         VALUES (%s,%s,%s,%s,%s,%s)""",
-                        (tenant_id, transcript["transcript_id"], revision,
+                        (tenant_id, transcript_id, revision,
                          speaker["speaker_id"], speaker["label"], speaker["confidence"]),
                     )
                 for segment in normalized_segments:
