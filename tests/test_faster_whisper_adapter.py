@@ -103,12 +103,16 @@ class FasterWhisperTests(unittest.TestCase):
 
     def test_model_loader_refuses_network_downloads_by_default(self):
         loaded = FakeModel()
-        module = SimpleNamespace(WhisperModel=lambda *args, **kwargs: loaded)
+        options = {}
+        def load_model(*args, **kwargs):
+            options.update(kwargs)
+            return loaded
+        module = SimpleNamespace(WhisperModel=load_model)
         with patch("voxpipe.speech.faster_whisper.importlib.import_module", return_value=module):
             adapter = FasterWhisperAdapter(download_root="/offline/model-cache")
             self.assertIs(adapter._get_model(), loaded)
-        self.assertTrue(adapter.local_files_only)
-        self.assertEqual(adapter.download_root, "/offline/model-cache")
+        self.assertTrue(options["local_files_only"])
+        self.assertEqual(options["download_root"], "/offline/model-cache")
 
     def test_missing_local_runtime_maps_to_stable_error(self):
         adapter = FasterWhisperAdapter(model_name="not-cached")
