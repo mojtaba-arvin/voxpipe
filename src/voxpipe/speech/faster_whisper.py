@@ -37,6 +37,7 @@ class FasterWhisperAdapter:
         self.local_files_only = local_files_only
         self.max_audio_bytes = max_audio_bytes
         self.beam_size = beam_size
+        self.vad_filter = vad_filter
         self._model = model
 
     def _get_model(self) -> Any:
