@@ -145,7 +145,9 @@ make check
 make go-check
 ```
 
-The optional local STT runtime is installed separately with `pip install -r requirements-stt.txt`; provision and pin model weights before offline use. `FasterWhisperAdapter` defaults to local-only model loading, CPU int8, and no diarization. See [the STT evaluation](docs/research/stt-provider-evaluation.md) and [ADR-0022](docs/decisions/ADR-0022-first-stt-adapter.md). The benchmark scorer accepts JSONL results from a consented corpus: `python scripts/benchmark_stt.py results.jsonl`.\n\nMedia integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
+The optional local STT runtime is installed separately with `pip install -r requirements-stt.txt`; provision and pin model weights before offline use. `FasterWhisperAdapter` defaults to local-only model loading, CPU int8, and no diarization. See [the STT evaluation](docs/research/stt-provider-evaluation.md) and [ADR-0022](docs/decisions/ADR-0022-first-stt-adapter.md). The benchmark scorer accepts JSONL results from a consented corpus: `python scripts/benchmark_stt.py results.jsonl`.
+
+Media integration tests require FFmpeg/ffprobe on the system. PostgreSQL integration tests run when `VOXPIPE_TEST_POSTGRES_ADMIN_DSN` is configured; CI provisions PostgreSQL 16 and a non-superuser RLS application role.
 
 Run the authenticated MCP stdio adapter with `PYTHONPATH=src python -m voxpipe.mcp.server`; configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`. See [MCP capabilities](docs/architecture/mcp-capabilities.md).
 
