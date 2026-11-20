@@ -24,7 +24,7 @@ class FasterWhisperAdapter:
         self, model_name: str = "small", *, device: str = "cpu",
         compute_type: str = "int8", download_root: str | Path | None = None,
         local_files_only: bool = True, max_audio_bytes: int = 512 * 1024 * 1024,
-        beam_size: int = 5, model: Any | None = None,
+        beam_size: int = 5, vad_filter: bool = True, model: Any | None = None,
     ) -> None:
         if not model_name or len(model_name) > 512:
             raise ValueError("model_name must be non-empty and bounded")
@@ -108,7 +108,7 @@ class FasterWhisperAdapter:
             provider_iter, info = model.transcribe(
                 str(audio_path), language=self._language_code(request.language_hint),
                 beam_size=self.beam_size, word_timestamps=request.word_timestamps,
-                vad_filter=False,
+                vad_filter=self.vad_filter,
             )
             provider_segments = list(provider_iter)
             language = getattr(info, "language", None) or self._language_code(request.language_hint)
