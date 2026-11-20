@@ -13,6 +13,32 @@ from typing import Any, Iterator
 
 from voxpipe.ingestion.repository import IngestionRepositoryConflict
 
+_AUDIT_STRING_FIELDS = frozenset({"from", "to", "prior_state", "retention_expires_at"})
+_AUDIT_BOOLEAN_FIELDS = frozenset({"staging_deleted", "asset_deleted", "object_deleted"})
+
+
+def sanitize_audit_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    """Keep only bounded, non-sensitive lifecycle facts in audit metadata."""
+    safe: dict[str, Any] = {}
+    for key, value in (metadata or {}).items():
+        if key in _AUDIT_STRING_FIELDS and isinstance(value, str) and len(value) <= 64:
+            safe[key] = value
+        elif key in _AUDIT_BOOLEAN_FIELDS and isinstance(value, bool):
+            safe[key] = value
+    return safe
+
+
+def sanitize_audit_error_code(error_code: str | None) -> str | None:
+    if error_code is None or error_code == "":
+        return error_code
+    if len(error_code) > 64 or any(
+        not (char.isascii() and (char.isupper() or char.isdigit() or char == "_"))
+        for char in error_code
+    ):
+        return "AUDIT_ERROR_REDACTED"
+    return error_code
+
+
 
 def apply_migrations(
     dsn: str,
@@ -338,7 +364,7 @@ class PostgresIngestionRepository:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                 """,
                 (str(uuid.uuid4()), tenant_id, session_id, asset_id, event_type, outcome,
-                 error_code, json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True)),
+                 sanitize_audit_error_code(error_code),\n                 json.dumps(sanitize_audit_metadata(metadata), ensure_ascii=False, sort_keys=True)),
             )
 
     def list_expired_assets(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]:
