@@ -605,7 +605,8 @@
         "contracts/schemas/structured-intelligence.v1.schema.json — Draft 2020-12 contract for entity/event/topic/relation/action-item claims with exact segment evidence spans and extraction provenance.",
         "src/voxpipe/structuring/contracts.py — provider-neutral immutable data contracts and deterministic asset/transcript/revision/evidence/quote/provenance validation.",
         "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — offline validation tests added; full CI verification pending.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c."
+        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
       ],
       "blocked_reason": null
     },
@@ -626,7 +627,8 @@
         "src/voxpipe/structuring/ports.py — provider-neutral extraction port separates model/provider SDKs from the application boundary.",
         "src/voxpipe/structuring/service.py — immutable source-segment snapshot, provider provenance binding, document/transcript/revision binding and exact evidence validation before returning any extraction.",
         "tests/test_structuring_contracts.py — tests valid extraction, fabricated evidence rejection, provider/document mismatch and immutable source snapshot; no concrete LLM adapter, structured-output persistence or prompt-injection defenses at provider prompt boundary are claimed.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c."
+        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
       ],
       "blocked_reason": null
     },
@@ -635,7 +637,7 @@
       "title": "Implement tenant-isolated transcript persistence",
       "phase": 4,
       "priority": 29,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0021"
       ],
@@ -647,9 +649,10 @@
       ],
       "evidence": [
         "migrations/postgres/0006_create_tenant_transcripts.sql — tenant-scoped immutable transcript revisions, speakers, segments and words; forced RLS; append-only app grants; source-asset deletion cascade.",
-        "src/voxpipe/ingestion/postgres.py — create_transcript_revision atomically validates and inserts a complete revision; identical retries return the existing revision while conflicting content is rejected; get_transcript_revision reads an explicit or latest revision under transaction-local tenant context.",
-        "tests/test_postgres_repository.py — PostgreSQL integration tests cover idempotent identical writes, conflicting revision rejection, concurrent same-revision writers, revision reads/latest selection, nested word/speaker retrieval, cross-tenant invisibility, unknown speaker rejection and deletion propagation.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c; the latest idempotency refinement still requires a new run."
+        "src/voxpipe/ingestion/postgres.py — create_transcript_revision atomically validates and inserts a complete revision; identical retries return the stored revision while conflicting content is rejected; get_transcript_revision reads an explicit or latest revision under transaction-local tenant context.",
+        "src/voxpipe/ingestion/repository.py and src/voxpipe/ingestion/__init__.py — provider-neutral TranscriptRepositoryPort exported separately from the SQLite ingestion repository.",
+        "tests/test_postgres_repository.py — PostgreSQL integration coverage for identical retries, conflicting writes, concurrent same-revision writers, explicit/latest revision reads, words/speakers, no-context RLS write denial, cross-tenant source-asset FK rejection, cross-tenant reads and deletion propagation.",
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
       ],
       "blocked_reason": null
     },
@@ -670,7 +673,8 @@
         "migrations/postgres/0006_create_tenant_transcripts.sql — tenant-scoped transcript/segment schema with generated PostgreSQL full-text vector, forced RLS and source-asset deletion cascade.",
         "src/voxpipe/ingestion/postgres.py — search_transcript_segments uses websearch_to_tsquery/ts_rank under transaction-local tenant context; supports transcript, language, speaker, time and bounded pagination filters and returns revision/asset/audio/model provenance.",
         "tests/test_postgres_repository.py — PostgreSQL integration test covers matching results, relative term-frequency ranking, stable pagination, source provenance, tenant isolation, invalid query/pagination, RLS and asset-deletion cascade. Broader multi-revision query behavior remains to be tested.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c."
+        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
       ],
       "blocked_reason": null
     },
@@ -707,7 +711,8 @@
         "src/voxpipe/speech/capabilities.py — immutable provider/model/version capability records and deterministic registry lookup/filtering for language, features, locality, cost and declared audio limits.",
         "tests/test_provider_capabilities.py — covers duplicate registration, capability filtering, unknown-cost and unknown-audio-limit fail-closed behavior and invalid metadata.",
         "The registry is intentionally not populated with guessed provider claims; deployment configuration must supply verified capabilities. Adaptive routing remains a separate VP-0033 item.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c."
+        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
       ],
       "blocked_reason": null
     },
