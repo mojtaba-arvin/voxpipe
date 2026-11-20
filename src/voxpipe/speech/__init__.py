@@ -1,5 +1,6 @@
 """Provider-neutral speech intelligence contracts."""
 
+from voxpipe.speech.capabilities import ProviderCapability, ProviderCapabilityRegistry
 from voxpipe.speech.contracts import (
     Transcript,
     TranscriptProvenance,
@@ -18,6 +19,8 @@ from voxpipe.speech.service import SpeechToTextService
 
 __all__ = [
     "FasterWhisperAdapter",
+    "ProviderCapability",
+    "ProviderCapabilityRegistry",
     "SpeechToTextPort",
     "SpeechToTextService",
     "Transcript",
