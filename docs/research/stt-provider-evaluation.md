@@ -22,6 +22,15 @@ No accuracy scores are fabricated. VoxPipe currently has no approved consented P
 | **Deepgram Nova-3 Multilingual** | Official model/language table explicitly lists Persian (fa). This is support evidence, not an independent Persian WER result. | Word-level timestamps in transcription response. | Diarization supported for Nova batch models; verify exact model/version and Persian behavior on a test set. | Hosted API; audio leaves deployment. Review plan, region, DPA, retention and training-use terms. Self-hosted offerings have separate operational requirements. | Public pay-as-you-go Nova-3 Multilingual list price $0.0092/minute; optional features may cost extra. Proprietary service. |
 | **OpenAI Audio Transcriptions (gpt-transcribe)** | Current docs recommend gpt-transcribe for recorded audio and support language hints. Public docs do not establish a Persian-specific WER guarantee. | Current recommended workflow does not document the legacy word-timestamp contract. Timestamp examples use deprecated whisper-1. | Existing diarization example uses deprecated gpt-4o-transcribe-diarize; deprecated models are scheduled to shut down 2027-02-26. | Hosted API; audio is sent to OpenAI. Review current API data controls, retention, region eligibility and contractual terms. | Published estimate $0.0045/minute. Proprietary API; do not start a new integration on deprecated models. |
 
+## 2.1 Audio format and input constraints
+
+- **faster-whisper:** accepts a local path or file-like input through PyAV decoding; practical containers/codecs depend on the installed PyAV/FFmpeg build. VoxPipe stages common WAV, MP3, M4A/MP4, FLAC, Ogg/Opus and WebM MIME types, but deployments must validate actual decoder support.
+- **Google Chirp 3:** Cloud Speech-to-Text documents WAV/LINEAR16, FLAC, Ogg/Opus and WebM/Opus among its encoding/container combinations; supported encodings and sample-rate constraints are explicit and must match the media header.
+- **Deepgram:** documents common MP3, MP4, MP2, AAC, WAV, FLAC, PCM, M4A, Ogg, Opus and WebM inputs; pre-recorded API limits include a 2 GB file size ceiling and request-duration limits.
+- **OpenAI:** the current file transcription guide documents FLAC, MP3, MP4, MPEG, MPGA, M4A, OGG, WAV and WEBM, with a 25 MB upload limit.
+
+These lists are provider input constraints, not guarantees that every codec/build combination is suitable. VoxPipe should normalize only after media inspection and should benchmark with the same source audio.
+
 ## 3. Selection
 
 **Select faster-whisper as the first adapter**, with model identifier small and CPU int8 as conservative defaults. This is a privacy/operability-first selection, not a claim that it has the best Persian accuracy.
@@ -79,9 +88,9 @@ These are list-price snapshots, not quotes or total-cost guarantees. Confirm cur
 - OpenAI Whisper multilingual model card: https://huggingface.co/openai/whisper-large-v3
 - Google Chirp 3 features, languages, timestamps and diarization limits: https://docs.cloud.google.com/speech-to-text/docs/models/chirp-3
 - Google V2 language availability: https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
-- Google Speech-to-Text pricing: https://cloud.google.com/speech-to-text/pricing
+- Google audio encodings: https://docs.cloud.google.com/speech-to-text/docs/encoding\n- Google Speech-to-Text pricing: https://cloud.google.com/speech-to-text/pricing
 - Deepgram Nova-3 model/language matrix: https://developers.deepgram.com/docs/models-languages-overview
-- Deepgram diarization: https://developers.deepgram.com/docs/diarization
+- Deepgram supported formats: https://developers.deepgram.com/docs/supported-audio-formats\n- Deepgram diarization: https://developers.deepgram.com/docs/diarization
 - Deepgram pricing: https://deepgram.com/pricing
-- OpenAI current speech-to-text workflow/deprecations: https://developers.openai.com/api/docs/guides/speech-to-text
+- OpenAI current speech-to-text workflow/deprecations and 25 MB file limit: https://developers.openai.com/api/docs/guides/speech-to-text
 - OpenAI transcription model pricing: https://developers.openai.com/api/docs/pricing
