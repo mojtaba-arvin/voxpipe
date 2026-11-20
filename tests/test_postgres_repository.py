@@ -267,6 +267,41 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertEqual(original["revision"], 1)
         self.assertEqual(original["text"], "سلام جلسه شروع شد")
 
+    def test_concurrent_transcript_revision_writes_allow_exactly_one_winner(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "c" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": str(uuid4()),
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "یک متن آزمایشی",
+            "provider": "fixture",
+            "model": "test-model",
+            "audio_sha256": "c" * 64,
+            "generated_at": self.now(),
+            "segments": [{
+                "segment_id": str(uuid4()), "start_ms": 0, "end_ms": 500,
+                "text": "یک متن آزمایشی",
+            }],
+        }
+
+        def attempt(_: int) -> str:
+            try:
+                self.repository.create_transcript_revision(transcript)
+                return "created"
+            except IngestionRepositoryConflict:
+                return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = list(executor.map(attempt, (1, 2)))
+        self.assertCountEqual(outcomes, ["created", "conflict"])
+        stored = self.repository.get_transcript_revision(tenant_id, transcript["transcript_id"])
+        self.assertEqual(stored["revision"], 1)
+        self.assertEqual(stored["text"], transcript["text"])
+
     def test_transcript_repository_rejects_unknown_speakers_before_writing(self) -> None:
         tenant_id = str(uuid4())
         asset = self.asset(tenant_id)
