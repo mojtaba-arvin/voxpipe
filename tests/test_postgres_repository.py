@@ -244,7 +244,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertEqual(created["revision"], 1)
         self.assertEqual(created["segments"][0]["text"], "سلام جلسه شروع شد")
         self.assertEqual(len(created["segments"][0]["words"]), 2)
-        self.assertEqual(created["speakers"][0]["speaker_id"], speaker_id)
+        self.assertEqual(str(created["speakers"][0]["speaker_id"]), speaker_id)
         self.assertIsNone(self.repository.get_transcript_revision(str(uuid4()), transcript_id))
         with self.assertRaises(IngestionRepositoryConflict):
             self.repository.create_transcript_revision(transcript)
