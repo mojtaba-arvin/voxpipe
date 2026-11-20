@@ -210,6 +210,89 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
             self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
 
+    def test_transcript_repository_creates_reads_and_preserves_immutable_revisions(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "a" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript_id = str(uuid4())
+        speaker_id = str(uuid4())
+        segment_id = str(uuid4())
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": transcript_id,
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "سلام جلسه شروع شد",
+            "provider": "fixture",
+            "model": "test-model",
+            "model_version": "1",
+            "audio_sha256": "a" * 64,
+            "generated_at": self.now(),
+            "speakers": [{"speaker_id": speaker_id, "label": "speaker_1", "confidence": 0.98}],
+            "segments": [{
+                "segment_id": segment_id, "start_ms": 0, "end_ms": 1200,
+                "text": "سلام جلسه شروع شد", "confidence": 0.99,
+                "speaker_id": speaker_id,
+                "words": [
+                    {"word_index": 0, "start_ms": 0, "end_ms": 300, "text": "سلام"},
+                    {"word_index": 1, "start_ms": 350, "end_ms": 700, "text": "جلسه"},
+                ],
+            }],
+        }
+        created = self.repository.create_transcript_revision(transcript)
+        self.assertEqual(created["revision"], 1)
+        self.assertEqual(created["segments"][0]["text"], "سلام جلسه شروع شد")
+        self.assertEqual(len(created["segments"][0]["words"]), 2)
+        self.assertEqual(created["speakers"][0]["speaker_id"], speaker_id)
+        self.assertIsNone(self.repository.get_transcript_revision(str(uuid4()), transcript_id))
+        with self.assertRaises(IngestionRepositoryConflict):
+            self.repository.create_transcript_revision(transcript)
+
+        second_revision = {
+            **transcript,
+            "revision": 2,
+            "text": "سلام جلسه شروع شد و تمام شد",
+            "segments": [{
+                **transcript["segments"][0],
+                "segment_id": str(uuid4()),
+                "end_ms": 1800,
+                "text": "سلام جلسه شروع شد و تمام شد",
+            }],
+        }
+        self.repository.create_transcript_revision(second_revision)
+        latest = self.repository.get_transcript_revision(tenant_id, transcript_id)
+        original = self.repository.get_transcript_revision(tenant_id, transcript_id, 1)
+        self.assertEqual(latest["revision"], 2)
+        self.assertEqual(original["revision"], 1)
+        self.assertEqual(original["text"], "سلام جلسه شروع شد")
+
+    def test_transcript_repository_rejects_unknown_speakers_before_writing(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "b" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": str(uuid4()),
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "متن",
+            "provider": "fixture",
+            "model": "test-model",
+            "audio_sha256": "b" * 64,
+            "generated_at": self.now(),
+            "segments": [{
+                "segment_id": str(uuid4()), "start_ms": 0, "end_ms": 100,
+                "text": "متن", "speaker_id": str(uuid4()),
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "unknown speaker"):
+            self.repository.create_transcript_revision(transcript)
+        self.assertIsNone(
+            self.repository.get_transcript_revision(tenant_id, transcript["transcript_id"])
+        )
+
     def tearDown(self) -> None:
         pass
 
