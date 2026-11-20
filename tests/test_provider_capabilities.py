@@ -52,6 +52,12 @@ class ProviderCapabilityRegistryTests(unittest.TestCase):
         registry = ProviderCapabilityRegistry([unknown])
         self.assertEqual(registry.find(max_cost_per_minute_usd=1.0), ())
 
+    def test_unknown_audio_limits_do_not_pass_explicit_constraints(self):
+        unknown = self.capability(max_audio_duration_ms=None, max_audio_bytes=None)
+        registry = ProviderCapabilityRegistry([unknown])
+        self.assertEqual(registry.find(audio_duration_ms=60_000), ())
+        self.assertEqual(registry.find(audio_bytes=1024), ())
+
     def test_rejects_invalid_cost_and_audio_limits(self):
         with self.assertRaises(ValueError):
             self.capability(estimated_cost_per_minute_usd=float("nan"))
