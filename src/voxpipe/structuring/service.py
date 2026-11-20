@@ -80,3 +80,12 @@ class StructuredExtractionService:
         if result.document_id != request.document_id:
             raise StructuredIntelligenceValidationError("document binding mismatch")
         return result
+
+    def extract_and_persist(self, request: StructuredExtractionRequest, *,
+                            tenant_id: str, idempotency_key: str, repository):
+        """Persist a validated result under the caller's authenticated tenant scope.
+
+        tenant_id must come from authenticated request context, never transcript data.
+        """
+        result = self.extract(request)
+        return repository.create_or_get(tenant_id, idempotency_key, result)
