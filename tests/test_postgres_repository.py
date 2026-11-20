@@ -173,6 +173,31 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT count(*) FROM transcript_segments").fetchone()[0], 0)
             self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
 
+        # RLS must also reject writes without a tenant context.
+        with psycopg.connect(self.app_dsn) as connection:
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                with connection.transaction():
+                    connection.execute(
+                        """INSERT INTO transcripts
+                        (tenant_id, transcript_id, asset_id, revision, language, text,
+                         provider, model, audio_sha256, generated_at)
+                        VALUES (%s,%s,%s,1,'fa-IR','unauthorized','fixture','test-model',%s,%s)""",
+                        (tenant_a, str(uuid4()), asset_a, "a" * 64, now),
+                    )
+
+        # A tenant cannot attach its transcript to another tenant's source asset.
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_b,))
+            with self.assertRaises(psycopg.errors.ForeignKeyViolation):
+                with connection.transaction():
+                    connection.execute(
+                        """INSERT INTO transcripts
+                        (tenant_id, transcript_id, asset_id, revision, language, text,
+                         provider, model, audio_sha256, generated_at)
+                        VALUES (%s,%s,%s,1,'fa-IR','cross-tenant','fixture','test-model',%s,%s)""",
+                        (tenant_b, str(uuid4()), asset_a, "a" * 64, now),
+                    )
+
         with psycopg.connect(self.app_dsn) as connection:
             connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_b,))
             self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
