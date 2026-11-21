@@ -11,10 +11,8 @@ CREATE TABLE structured_extractions (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  PRIMARY KEY (tenant_id,extraction_id),
  UNIQUE (tenant_id,idempotency_key),
- FOREIGN KEY (tenant_id,transcript_id,transcript_revision)
-   REFERENCES transcripts(tenant_id,transcript_id,revision) ON DELETE CASCADE,
- FOREIGN KEY (tenant_id,asset_id)
-   REFERENCES audio_assets(tenant_id,asset_id) ON DELETE CASCADE
+ FOREIGN KEY (tenant_id,transcript_id,transcript_revision,asset_id)
+   REFERENCES transcripts(tenant_id,transcript_id,revision,asset_id) ON DELETE CASCADE
 );
 CREATE INDEX idx_structured_extractions_source ON structured_extractions(tenant_id,transcript_id,transcript_revision,created_at DESC);
 ALTER TABLE structured_extractions ENABLE ROW LEVEL SECURITY;
