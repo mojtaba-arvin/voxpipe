@@ -19,7 +19,9 @@ DER/JER evaluation supports a configurable reference-boundary collar, optional o
 
 SpeechBrain VoxLingua107 ECAPA is Apache-2.0 and includes Persian among its 107 language classes. The model card reports 6.7% error on its development set (1,609 manually checked clips from 33 languages); that result is not a VoxPipe result and does not establish Persian F1. VoxPipe loads a pre-provisioned local model, returns an explicit `und` outcome below a configurable threshold, and supports sliding windows for code-switch investigation.
 
-The evaluator reports accuracy, macro-F1, per-class precision/recall/F1, a confusion matrix, and expected calibration error. Thresholds must be calibrated on representative Persian, English, code-switched, short, noisy and out-of-inventory samples before production use.
+A first CPU benchmark ran on 60 pinned FLEURS test samples (20 each from fa_ir, en_us and de_de; dataset revision `6989e5bd2dc37546a93ae5d857bc04325e6a3738`). SpeechBrain VoxLingua107 model revision `0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9` achieved 95.0% accuracy and 0.7297 strict macro-F1 across the union of reference and predicted classes; expected calibration error was 0.0445. Persian precision/recall/F1 were all 1.0 (20/20), English scores were all 1.0 (20/20), and German recall was 0.85 (17/20); three German clips were incorrectly labelled Romanian, introducing a prediction-only class and lowering strict macro-F1. This was run with threshold 0.0 (no abstention), no code-switch samples, and only 20 examples per language. These figures are a small benchmark, not production calibration.
+
+The evaluator reports accuracy, macro-F1, per-class precision/recall/F1, a confusion matrix, and expected calibration error. Thresholds still require calibration on larger representative Persian, English, code-switched, short, noisy and out-of-inventory samples before production use.
 
 ## Reproducibility and privacy
 
@@ -29,4 +31,4 @@ Optional runtimes are listed in `requirements-speech.txt`. Model files must be s
 
 - VAD: no approved frame-labelled Persian corpus; report synthetic/fixture tests separately from real speech/non-speech metrics.
 - Diarization: controlled read-speech speaker-clustering metrics are available; natural conversational DER/JER, overlap handling and production attribution remain unverified.
-- Language ID: adapter and metrics exist; a pinned multilingual gold benchmark is still required for measured macro-F1 and calibration.
+- Language ID: a pinned 3-language FLEURS smoke benchmark exists; larger per-language samples, code-switch evaluation and calibrated abstention remain outstanding.
