@@ -1,0 +1,916 @@
+{
+  "schema_version": "1.0.0",
+  "task": "asr",
+  "dataset_id": "google/fleurs",
+  "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+  "config": "fa_ir",
+  "split": "test",
+  "license": "cc-by-4.0",
+  "attribution": "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech; Google FLEURS dataset, CC BY 4.0.",
+  "consent_basis": "public-dataset-license",
+  "consent_note": "This public split exposes no speaker/session consent metadata; no speaker identity is inferred.",
+  "source_file_sha256": "e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36",
+  "generated_at": "2026-11-21T01:27:00.660320+00:00",
+  "items": [
+    {
+      "sample_id": "0:1665",
+      "audio_sha256": "392a5bb8819cdc1c056ccd2e5d7edf19acdb6092fc6e2cd0a48b0843c21a619d",
+      "reference_sha256": "e2c1ae5c67e42a2f48fc0f25ec710a4afd10f861a0e263d0311558667a567b99",
+      "language": "fa-IR",
+      "duration_ms": 16980,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "1:1966",
+      "audio_sha256": "41f59b02714adaedcf9f3dfb6fcb7ca6843df254c634762f718bba76f743c255",
+      "reference_sha256": "3a2ffafd7e0d930aba1235dc75fa2a0b658ccb4741eaae8baa486791f0305028",
+      "language": "fa-IR",
+      "duration_ms": 11220,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "2:1903",
+      "audio_sha256": "a6440a41b640c7a5abbba6f5d2c94b91d64755d115b827114544900baa9600b3",
+      "reference_sha256": "4ba006b712eb2f95504ba8fceb56298fc67e25d8c23e20fc3d83d5ca5ecfb2f2",
+      "language": "fa-IR",
+      "duration_ms": 13800,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "3:1812",
+      "audio_sha256": "d2ec9a7f5317c6585b9672b58f7b05a3dfca8a514c2d8bb1cda35b29a93c3fe8",
+      "reference_sha256": "4a7590606961f7cb85ab0652020725a61f2fa478086368b10b1a92d8c13ce543",
+      "language": "fa-IR",
+      "duration_ms": 18840,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "4:1943",
+      "audio_sha256": "67af315df27212c1494be0dfd1d194119de452011bd23c7c193f18cf38aeac57",
+      "reference_sha256": "9648d73fc267ad73f4c303da137cb013f156ef928e8c73fe554cb37fe956278a",
+      "language": "fa-IR",
+      "duration_ms": 14040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "5:1766",
+      "audio_sha256": "e7912420a56f285719600d6c13db1d0383cd42281a7b42f805ec51481e05e013",
+      "reference_sha256": "8454a4d76ccd1605938843aea80a72e7981e2401d565c5758cf5f1b42e09e8f1",
+      "language": "fa-IR",
+      "duration_ms": 10740,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "6:1822",
+      "audio_sha256": "5ec6835a8277096c58dcca8efb7afc9f29eb28ded87a7b0ab94d7837505d6ad3",
+      "reference_sha256": "02fc8c1408bd3716756cb8db89bffe6252beb5fed8908544620bf5cd59b1c4b4",
+      "language": "fa-IR",
+      "duration_ms": 18660,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "7:1794",
+      "audio_sha256": "8b3efaac33a675033560a19db1de10a107876783e376042991710d9df1996f63",
+      "reference_sha256": "1bb69032d387a02099013b6ed96b57dee467d5e0a72446b7d8a2b2ec6d3c59a9",
+      "language": "fa-IR",
+      "duration_ms": 13020,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "8:1727",
+      "audio_sha256": "02668b6f30dc712054f895dfd5cdcb04d9366f4a17e3acd7221a9d75bb8053eb",
+      "reference_sha256": "3c917ac5cb00432f8bbc1ef8ed8aa640f68fce27dd9f7f4eceb9b390870133ff",
+      "language": "fa-IR",
+      "duration_ms": 15060,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "9:1897",
+      "audio_sha256": "ed023c4b1a9f64507a17853a08a5324a7327da0734836023373f0a34c6307409",
+      "reference_sha256": "adfeb2bbdcf81229c8ca2cf718b079da1abd433ffadab5f9699dc9a9aa501aad",
+      "language": "fa-IR",
+      "duration_ms": 13800,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "10:1897",
+      "audio_sha256": "bafe077a98dc1d6171cb467bc6820c6f525a9f301487da3f053854ac1067c795",
+      "reference_sha256": "adfeb2bbdcf81229c8ca2cf718b079da1abd433ffadab5f9699dc9a9aa501aad",
+      "language": "fa-IR",
+      "duration_ms": 13200,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "11:1691",
+      "audio_sha256": "590761c85fb2c1145f53740d9e9ac271a756a0eba5c3c7ae6a9868a768843e32",
+      "reference_sha256": "777dc2937d5b07e45e767b601cca8df0b0ba42f7a9ed4eb17338df6c11aca9e6",
+      "language": "fa-IR",
+      "duration_ms": 14520,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "12:1967",
+      "audio_sha256": "5798a997dfe01b64615cd2236e9a45499211e3ab399773622b486922199aaf14",
+      "reference_sha256": "4b329a3d886a4474b432f6d8dcf420a44944b94f8e2b69f95c94dcba37139770",
+      "language": "fa-IR",
+      "duration_ms": 17640,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "13:1757",
+      "audio_sha256": "73a6bb4adff97f1db8ea53d5175a6cf366ef7ddb057d2546e75ee0169bdb69bb",
+      "reference_sha256": "71815ed80a460f78065b79529d06800286725c8694fd16eb513147c8f6e0258e",
+      "language": "fa-IR",
+      "duration_ms": 13620,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "14:1763",
+      "audio_sha256": "1fdf0e7a9447cdea06daba90cfb5bf1a4160792a2be5c7555cd98aedc05958af",
+      "reference_sha256": "9ae75e1c23496e7623f6ca8073c7070d724c0dd78be63718a5a9c6348aa4ad19",
+      "language": "fa-IR",
+      "duration_ms": 11760,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "15:1948",
+      "audio_sha256": "9dab027289bc7fca7ba03f0cf03d51ded7fe91ed7a36cf60a8597e330125cbf6",
+      "reference_sha256": "4b7437d7beebe8c610133efec277cca5a0614747f3fc17cd98ee86f4d65a1f7d",
+      "language": "fa-IR",
+      "duration_ms": 20040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "16:1691",
+      "audio_sha256": "e5ded1764a310d4d8302ea4c593c48516a86629f82122cdd4e4bcf0e5a3bcef3",
+      "reference_sha256": "777dc2937d5b07e45e767b601cca8df0b0ba42f7a9ed4eb17338df6c11aca9e6",
+      "language": "fa-IR",
+      "duration_ms": 10440,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "17:1963",
+      "audio_sha256": "44691653ad77e8a65d49fd1095da1c3817c6defc3d2294320d0d534ebcdc8bda",
+      "reference_sha256": "5ce54dc0c747e1af100cb309c241b8cfd77c34a3796ebbc0e63c7d5a5b7d95b7",
+      "language": "fa-IR",
+      "duration_ms": 17820,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "18:1993",
+      "audio_sha256": "5ef5d2562e86b5344cf83b094a46ecb22506a4cbf5cae9af252e2e91a8a53366",
+      "reference_sha256": "7b32b13b003aa5d109f627095f760400383be624e27e2b973cef34b72ee3cb46",
+      "language": "fa-IR",
+      "duration_ms": 14760,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "19:1782",
+      "audio_sha256": "3b7706ae28fabe751979491907d06d1fef793f78bac932fe2648cd64430aab87",
+      "reference_sha256": "435abdd2950172d73c6fd6284b4bc860371d68bf4e829a208976d3a594d8c43c",
+      "language": "fa-IR",
+      "duration_ms": 16920,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "20:1704",
+      "audio_sha256": "fd822ea0facdc6fec836a05391cd0c9755b9587b8eb67b82056dc7869a21dd39",
+      "reference_sha256": "60606ca486d22540b16ee5562bd27e7140dc3df51ba1c155beed027ec4f8ad7e",
+      "language": "fa-IR",
+      "duration_ms": 14640,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "21:1936",
+      "audio_sha256": "34626c08bd53b8d24a57c81f3366f59b9608629508e734496a461c1ca5da7dbd",
+      "reference_sha256": "9a9ef844be44406e4c047cfff0885526a5dcdc09f1b50bf734a99d9d8e94b694",
+      "language": "fa-IR",
+      "duration_ms": 27120,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "22:1971",
+      "audio_sha256": "743dbe996d490a574f4145575416a39028849cb537ab423458756b21afd45639",
+      "reference_sha256": "ae020fc2a7d0fcf4de1d362e6028a75c9372e8fd0d338c04b4942df083fef936",
+      "language": "fa-IR",
+      "duration_ms": 22020,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "23:1948",
+      "audio_sha256": "8125a8eda0e9f8e2a864c2c75627791b5f68d578ecb15566cbc3b008ebc68c69",
+      "reference_sha256": "4b7437d7beebe8c610133efec277cca5a0614747f3fc17cd98ee86f4d65a1f7d",
+      "language": "fa-IR",
+      "duration_ms": 18480,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "24:1888",
+      "audio_sha256": "f4d24829406926f8d65ee57732d92303373b81bbd54d09ceec73a65c120a637f",
+      "reference_sha256": "38fa9107a57afe911fc7842d2715e004dc127d8e42f1d5a05e93e7d2fe10ea5f",
+      "language": "fa-IR",
+      "duration_ms": 13320,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "25:1787",
+      "audio_sha256": "10a832caabeac61705539287d282a71c1eb487b539a873c87b65c0cfa1913b7f",
+      "reference_sha256": "0965f4f6215bc7e815e4e01a0db7641af25610c316f59cfd64f07592e9883a55",
+      "language": "fa-IR",
+      "duration_ms": 14520,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "26:1975",
+      "audio_sha256": "11053d92a3568ea7794ad4958c13c2a83fab8572907959bf7bc879d32d88657a",
+      "reference_sha256": "7e4103819998d11d49d9210acaf46a2f8cc14bdb6f4e19ea95fdcb6edd5da0e2",
+      "language": "fa-IR",
+      "duration_ms": 14280,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "27:1719",
+      "audio_sha256": "e46e845e7b16d61434c60d4ca91dadd8c882ebe7622365ebbb3e2eac196bfcbc",
+      "reference_sha256": "9266474d0956dcd13a1950b11521dd3f38f72aa9db0d0f6e191eb015afd01ed4",
+      "language": "fa-IR",
+      "duration_ms": 17880,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "28:1713",
+      "audio_sha256": "01ba09494d2d382a30739cc56e6c4e97b7b0f8708cd8a9687efecb0b1c078e20",
+      "reference_sha256": "a1fc9e5c4c768edb59287471e161579afc8f2f227b2ff4403a24ea547cd96b69",
+      "language": "fa-IR",
+      "duration_ms": 19320,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "29:1803",
+      "audio_sha256": "35bbcb2017ae8830843becc55626e6ffa5be7f3cf74c442638be7bc9e965f357",
+      "reference_sha256": "019383299b4d5cf662698d805e5ecfe4a29c67b8d397c2d2ebf08da415beb19d",
+      "language": "fa-IR",
+      "duration_ms": 13260,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "30:1997",
+      "audio_sha256": "93a14dee8ee171996796ecf484dd3fb578a52ffb2a77d6f84d95d72385da1532",
+      "reference_sha256": "e17eecf5f079788579c77e92671182ced9ac042ee47d92a1ae2e3ecc1e833103",
+      "language": "fa-IR",
+      "duration_ms": 21000,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "31:1696",
+      "audio_sha256": "23c6957441c7917690bcbd54bc44fe53bdbe52c9cb5e088a5b4ab1ad69ad07a6",
+      "reference_sha256": "2ca058976f1354a3a1af5e07146fb4dfdd6469e23835905687efc8165fb50f6f",
+      "language": "fa-IR",
+      "duration_ms": 13200,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "32:1699",
+      "audio_sha256": "75068d830e760ba0e3f8ebc63bbd3dfa0dc26ae9232585c56f28d806d7e44dd4",
+      "reference_sha256": "db63168e48e8565fd33ef4357b075461070db5e9ca0072a9c4bb758f54940afc",
+      "language": "fa-IR",
+      "duration_ms": 14160,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "33:1901",
+      "audio_sha256": "f03db37e9f82c0ef1187af0e458124998a1ed7bea8174e5afcfdc19117ab8749",
+      "reference_sha256": "9cbe2add7ab9f1b05979d49266f67843f93d0efab9718dedd38546370560a799",
+      "language": "fa-IR",
+      "duration_ms": 26220,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "34:1757",
+      "audio_sha256": "9661b9d2c06d8eefa1ffc917eda4eb3b7f9b16972952746d1543619bd74e4599",
+      "reference_sha256": "71815ed80a460f78065b79529d06800286725c8694fd16eb513147c8f6e0258e",
+      "language": "fa-IR",
+      "duration_ms": 14580,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "35:1866",
+      "audio_sha256": "e1f9d4402ed34a18f5911a37b999c69b54bdc5fee46bb8a14a3a4dd8feac6ca0",
+      "reference_sha256": "4762750be15d53fc4f43f29718488fb6ee8c1c1660ce76d927c810db014886d0",
+      "language": "fa-IR",
+      "duration_ms": 11400,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "36:1984",
+      "audio_sha256": "ff23c3270ba470c98a73d35f11f5c7ec2c7affa85de8c0f519485feb007883a5",
+      "reference_sha256": "558855aa3abb4a04e935929b85aee05ca62a93916b2457a25b7d24286695a8cc",
+      "language": "fa-IR",
+      "duration_ms": 17520,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "37:1838",
+      "audio_sha256": "e4329916ae5db1580e05eb150264e2288506c07de896384d8972fb8e8e3c68d2",
+      "reference_sha256": "cdedee7ceb39fbf3989669791929d0516b0b2008841204d935fb1ca3bfb2e592",
+      "language": "fa-IR",
+      "duration_ms": 10080,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "38:1924",
+      "audio_sha256": "97eaa15534272bc39911906521d9cb76d0407afeae7241656504448c9e6cbbde",
+      "reference_sha256": "a2990db44897345d7768cce16bdb0f984d6e01376bfc852e9f27212fde9d4c9f",
+      "language": "fa-IR",
+      "duration_ms": 17580,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "39:1682",
+      "audio_sha256": "d244081c10f9ab2dda4fbea4b4694512d7a3d89b5e7ef8e101ca7b988ca75e0a",
+      "reference_sha256": "324466256d85ea5a9b308f42efe6e4e4ddcacaab64d506e78ad5797784ad03ec",
+      "language": "fa-IR",
+      "duration_ms": 26520,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "40:1886",
+      "audio_sha256": "1ea71c9356b9b5ff84518009f4ac43187ea52473f1961e596a06bfc4015e1eb2",
+      "reference_sha256": "d8e2520d1a4544be18e1291cf3e1d4fc0bdd449f427790771469fc550afb2e73",
+      "language": "fa-IR",
+      "duration_ms": 15540,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "41:1956",
+      "audio_sha256": "a1e7e5c0e89d78b3e4e65c625010ffeb4f83fdd4493a347c5f6bf4ec9b58590f",
+      "reference_sha256": "5875540710ccbd23854e1b5614375cf36eec19bfa77a716fb921085fbef130d4",
+      "language": "fa-IR",
+      "duration_ms": 12900,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "42:1858",
+      "audio_sha256": "3a7f8337e2d3a65eba3ba513a691c9ccefc29ca344ff003c24cb4d3b4c0ce68f",
+      "reference_sha256": "606acecafb19e1d1569fa0a61513fed81d85f7c3742eda921b5dae0cfffd936c",
+      "language": "fa-IR",
+      "duration_ms": 21300,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "43:1733",
+      "audio_sha256": "24a3bac4a40c5f8f735c97673833a41d4aa32e531dfba0a0a6436658c1e3bc37",
+      "reference_sha256": "d5e12186370a2f8648780c594ad8134642be142d586dcc68e071f9664f406606",
+      "language": "fa-IR",
+      "duration_ms": 22380,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "44:1676",
+      "audio_sha256": "61e3610724cf2c59a694ea6685efc6b7a69c22f12f7a0550243eb1a9b0a2cf0d",
+      "reference_sha256": "05ca61a35e54ee6ac94c30d2274a58f48a850d385f1d76ad9267d7b0e70f07e3",
+      "language": "fa-IR",
+      "duration_ms": 10920,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "45:1734",
+      "audio_sha256": "c6ac59e441387f2a897298e0d1241a78329133b832c3203397bcb15c4b7de09a",
+      "reference_sha256": "5b0cda3059f80e6927b19f27b31d5b47b607063433aed32d919dd76fc1efb07d",
+      "language": "fa-IR",
+      "duration_ms": 14040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "46:1777",
+      "audio_sha256": "cad8c12e741d6d196264a666ae467570a0fe32cbdec4f288ec0a3af95387450b",
+      "reference_sha256": "d1c0023780dd80972dfdaf972f68eee0a37f43df002622da615947f412f67e62",
+      "language": "fa-IR",
+      "duration_ms": 17040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "47:1799",
+      "audio_sha256": "871b7672c40e89d792708e096cf851102409b78af83efb40e862b267262ddcfb",
+      "reference_sha256": "bfe78034966581606c8c8e59241450466afbaa973285c9f03a2bdc2d117d7275",
+      "language": "fa-IR",
+      "duration_ms": 10320,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "48:1826",
+      "audio_sha256": "cd2301d72cac17d9f9a7de805a53c19a42c6f67361cf5a136016c934a776cfc4",
+      "reference_sha256": "060231d5c883fb130d6805028b303672e6f4d3c491ca0a18a32e3297d01ce77b",
+      "language": "fa-IR",
+      "duration_ms": 8760,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "49:1750",
+      "audio_sha256": "6c0665d90327fa20e18a56d017e4d2cf0887139bdef52a784e35f24b0f6cfbdd",
+      "reference_sha256": "65075525549b974c099fed6e0036ed3866e7f7d0cb2e7e49d4cb0fd85a0d67cc",
+      "language": "fa-IR",
+      "duration_ms": 9840,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "50:1738",
+      "audio_sha256": "d602f21ed2d3f87b7339dd8f5d40a5dee7bfc066cb507cb43b5312ff87545885",
+      "reference_sha256": "52e315a0d14f8731283b77f214f4b898e798c4f7810f35e4e7b30e987a221fec",
+      "language": "fa-IR",
+      "duration_ms": 13080,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "51:1712",
+      "audio_sha256": "45270f8e250e717f6fef707cbfdae1b3853466cc9e837f2f82ed0527f1504d78",
+      "reference_sha256": "8fb53a1b9c54c17da6787d20d3a690a34af94e3d7ac678aeb82c011eca898cb0",
+      "language": "fa-IR",
+      "duration_ms": 17160,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "52:1793",
+      "audio_sha256": "a326353dce42cd4da8ec056695fde9823f30b6bb0af9a590416914da21c568a9",
+      "reference_sha256": "ebe0cce3a4de21cc08f4982dda28fdc8aba23ea34a4b480360128f87d87ca880",
+      "language": "fa-IR",
+      "duration_ms": 13560,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "53:1828",
+      "audio_sha256": "b215d43c02ed1c7fe4f6fea237d0a42ecf60c010b25f2f5e1947df7b44f2305e",
+      "reference_sha256": "c3957f9dd92963611a34d616b1526e466cb6ac46253b5872156d10c470806627",
+      "language": "fa-IR",
+      "duration_ms": 10080,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "54:1745",
+      "audio_sha256": "823ef1063b309f38893f00ed974b44f7688d13289163322ed9ec4602612ce12f",
+      "reference_sha256": "ab5f818cda7662d3e7838566e6923ad184133c5ab20456530ab7b223a9c019f0",
+      "language": "fa-IR",
+      "duration_ms": 18540,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "55:1700",
+      "audio_sha256": "2f50d2a706df4c90e4b56d2fed22250f9de8eb7f6cba06f4822627e625e679d9",
+      "reference_sha256": "ba6184e8778d0b0bac5940960948d8e2618ae78b265f18ffd6833cb6db5a4f80",
+      "language": "fa-IR",
+      "duration_ms": 8280,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "56:1701",
+      "audio_sha256": "bb5b6d6b1473316cd52e18b7319c237b64b9badca425615f8204834fb41e1535",
+      "reference_sha256": "15eb6c4de9352ddf9394fad341a69226075e45fb8d09003a2021962404cfa23d",
+      "language": "fa-IR",
+      "duration_ms": 11100,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "57:1689",
+      "audio_sha256": "c1c605c5ade813a131212eba9f1dd211a6f3e992c03cdeee88ef668594bbcd7b",
+      "reference_sha256": "e738f1c2d856455a8d53545842ada24f172121a4cfe23b78e5634df7c612aa24",
+      "language": "fa-IR",
+      "duration_ms": 19140,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "58:1892",
+      "audio_sha256": "3c3b0807321476f23160aedc48c24689e917d5c623faec15d98dda0fc31de452",
+      "reference_sha256": "5a4f5611ab438ccc42ad4fce6126f57fef6a0e5d6d7423fbbd27a1ff7909075b",
+      "language": "fa-IR",
+      "duration_ms": 11880,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "59:1879",
+      "audio_sha256": "daa625334a9fff105735fe2950d0c342ba05bb3fff9a722f168343d4d94497d0",
+      "reference_sha256": "9eed0c73f75b091cd044a665e97684f9f5396bcc8bbdcfd70d4b388f3e57b520",
+      "language": "fa-IR",
+      "duration_ms": 10380,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "60:1919",
+      "audio_sha256": "210aa5a8bfc5cdf8bd448fcc91163d8a01366e226761dfcfa9788475d859a900",
+      "reference_sha256": "f9cc4148e9db19d0d4f7cf061dabded5c7631565826ea000e5d6937a90a0c826",
+      "language": "fa-IR",
+      "duration_ms": 17160,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "61:1860",
+      "audio_sha256": "b83663720cc9d1455f05d85b54c2a5f9d128649fe27102b02cd6e0e698cf3e0c",
+      "reference_sha256": "82859a9798f6ed3a716533011ff3abba7eeb04dbeac82cdf8c94ad3773adc977",
+      "language": "fa-IR",
+      "duration_ms": 11580,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "62:1987",
+      "audio_sha256": "71d9aeb3241c52f5f3cbb25af5080225a9be07ba4d517256f5f6286bc3ee4530",
+      "reference_sha256": "0f2e9714def3b884f9424a9ebfe3fd62ffb4bad62ed0b9471c527fbcc37680ef",
+      "language": "fa-IR",
+      "duration_ms": 10260,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "63:1795",
+      "audio_sha256": "c2674390252c28a86aed3d96c276d2868a2e6aacca775d204ba6bbd61b70bdaf",
+      "reference_sha256": "affb3aa5e7d968b12b39b8b8c510e26babf46a34662feacc42517838b05970be",
+      "language": "fa-IR",
+      "duration_ms": 21420,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "64:1993",
+      "audio_sha256": "041adb921a7c2167950f95777d2657762389c97bc6d8f0b3fd31952ddb348cc2",
+      "reference_sha256": "7b32b13b003aa5d109f627095f760400383be624e27e2b973cef34b72ee3cb46",
+      "language": "fa-IR",
+      "duration_ms": 14340,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "65:1743",
+      "audio_sha256": "eca3552c82870609807328eb2c853e4b7955fd1a38a553e3849721be2fcb67fa",
+      "reference_sha256": "24bafdcd6e3bd7a95a576e38f5fc8f19dfee97a989d2852af926485280b8ce57",
+      "language": "fa-IR",
+      "duration_ms": 26280,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "66:1974",
+      "audio_sha256": "4a1080d38c64478f0b84fea96d3326b9c551371a57494d64600c53a234d479fe",
+      "reference_sha256": "224129274495c66377fe10881237ef3047b9fa882a0f11bee986a5710b616125",
+      "language": "fa-IR",
+      "duration_ms": 12900,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "67:1890",
+      "audio_sha256": "47d2d4c4c93585aca8a10c272df6a2ec4deaef117be0d82efa1107a990dc3f65",
+      "reference_sha256": "2a432487006cdcfcd02cd25ee23aff4147b1eb5bfe510ff620afa35284abc902",
+      "language": "fa-IR",
+      "duration_ms": 11880,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "68:1691",
+      "audio_sha256": "e358f42dec2cfcdd40f8525996a25ac395df72ad51233bac47f3ed60191bd75f",
+      "reference_sha256": "777dc2937d5b07e45e767b601cca8df0b0ba42f7a9ed4eb17338df6c11aca9e6",
+      "language": "fa-IR",
+      "duration_ms": 11640,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "69:1911",
+      "audio_sha256": "1bae7d8ecffeeab643c2535bd95d9b7e882a6778471c0c90b8e1f7cfe2523c92",
+      "reference_sha256": "fe6cac267d3255bd6aec709d7fa5d484c378bdc2b83a6a481f9f2cd940056643",
+      "language": "fa-IR",
+      "duration_ms": 19320,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "70:1916",
+      "audio_sha256": "cda27bf2dc92caf953be38dc75f5a8039d83a4273e6a6408634e9c7f2261d169",
+      "reference_sha256": "7599c6f114b7e20a760e04f079d444eaddcf41a6f30c4e2ee619a541a59b57f0",
+      "language": "fa-IR",
+      "duration_ms": 18360,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "71:1746",
+      "audio_sha256": "351619e5cbe27f27b0ae08efae78eff0feaf6c071c976ab8e6736fcebe76f4c4",
+      "reference_sha256": "ad30a925736ae3e5f80dc8f65cf70b6675cc018c429b11a56c7dbcfab35e0f59",
+      "language": "fa-IR",
+      "duration_ms": 11040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "72:1785",
+      "audio_sha256": "248d01c7f22d56267af934c09c482dfa5f2ba8046dae5d27ae73912343ffdf5b",
+      "reference_sha256": "a71ccd496b496303c43ce210138b5a9668dac0b1421ded4df555d4066b3fb179",
+      "language": "fa-IR",
+      "duration_ms": 18840,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "73:1952",
+      "audio_sha256": "91403240ee892b6e793b25b7e276bdb502d8de84500c340d6829949413032cac",
+      "reference_sha256": "2debfa499a9f31539b53cb72fb7f346c80eea29b3467528df06c816e1357c0db",
+      "language": "fa-IR",
+      "duration_ms": 14280,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "74:1779",
+      "audio_sha256": "dc27f58619f150d51301f92994277bc5d5796be1f22b1b00079def487bc3b3a2",
+      "reference_sha256": "d6861dd2b1ed9b0d84500de3e4a2934b7806220a0afac4089ed510144fb25d1b",
+      "language": "fa-IR",
+      "duration_ms": 10440,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "75:1899",
+      "audio_sha256": "9ea2232330f9a131f43616b83b51d90b6aac0566419aca84d76a99a08948f3da",
+      "reference_sha256": "e3c12b8877c38d44cd2ac5c53916dccbbe433d77dea55baa14ac1c25268d1b22",
+      "language": "fa-IR",
+      "duration_ms": 16260,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "76:1715",
+      "audio_sha256": "696b108aaa6a197481d435718ae06a5292b8ce6668afd092f17e2cf6fb611a03",
+      "reference_sha256": "d23538159c4063818f6a2b0c943cbed23688c7a76073a1f331e7a997522000b6",
+      "language": "fa-IR",
+      "duration_ms": 22020,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "77:1759",
+      "audio_sha256": "52e536b8b4c3cda2daf80ff4ff6dd31d35e1b1a6ed0c6a9a67b722f2097d519c",
+      "reference_sha256": "a53cebbe28252487468bcb886417cdfd9a7e0c67e7f8c800f13fd8fed459d142",
+      "language": "fa-IR",
+      "duration_ms": 25860,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "78:1988",
+      "audio_sha256": "a48d5a4e8ac53beccf38260f3435f6ce0ebd127c060caf1525a585ad7eadb57e",
+      "reference_sha256": "40fc315964ff6a218f2d402a67f1c5be44943cee92b05f571a2d18ee63020815",
+      "language": "fa-IR",
+      "duration_ms": 11940,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "79:1752",
+      "audio_sha256": "fa347df59fcec6c24505eb11d9fbcc52fd9549d7515605137e2cca8414d780cd",
+      "reference_sha256": "eeb9243c0cc6a45570be194cdb637e0119a93090530fc9214f8e4d0403ae122c",
+      "language": "fa-IR",
+      "duration_ms": 17040,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "80:1928",
+      "audio_sha256": "7f83506339f9860723a54e57276c8852a083459315bd3d71e5b9b9dc5a3e542a",
+      "reference_sha256": "bdf6ae4dec0d33f399adfa1a07cd9e6ddd72a0ac76b3d76cde770afcfe474ee0",
+      "language": "fa-IR",
+      "duration_ms": 10980,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "81:1740",
+      "audio_sha256": "fa75612b5530fc52e5cda3a4bc6564ba3c1c849d0787ece8bbe9101c3ffb1927",
+      "reference_sha256": "956f07cf77f6bde2d914b3edfef3d8370974cdea0c0f3863d1fde2542aed9542",
+      "language": "fa-IR",
+      "duration_ms": 9960,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "82:1810",
+      "audio_sha256": "238ca0db2324bef81f5c8a7372910259af9ff8d2dab18e0e420eb8a85c84aa17",
+      "reference_sha256": "56d33e9ecebb0bbc9c0fedc4429f3866345def3203f34bd32b7b028d79c2ac2b",
+      "language": "fa-IR",
+      "duration_ms": 21720,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "83:1742",
+      "audio_sha256": "8d44236dabbe57706569b8b10a223f6e2aa2c5e4e530246e943989df70325502",
+      "reference_sha256": "a3ebc350db2d8275d094cab057abe64ed9a46ce9665391f6e2a9b3fb79f42183",
+      "language": "fa-IR",
+      "duration_ms": 12600,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "84:1815",
+      "audio_sha256": "81f2600b043db79d9a29c45034cfcf83fa78528759c18431d94fb5493d19cbbf",
+      "reference_sha256": "34e6e69aafc7ca281d07e8d537da605bb09f18933954310bf264c68320a5ab08",
+      "language": "fa-IR",
+      "duration_ms": 12600,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "85:1713",
+      "audio_sha256": "301a60e799f9d7500145b7795a385725d37a5664ccae6bc4e3da4d18ae9bebf9",
+      "reference_sha256": "a1fc9e5c4c768edb59287471e161579afc8f2f227b2ff4403a24ea547cd96b69",
+      "language": "fa-IR",
+      "duration_ms": 18360,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "86:1898",
+      "audio_sha256": "8fd6d68413bba4dde571360b0959fb651eb3a4522196096daa060526db359b5f",
+      "reference_sha256": "9054c6d17dabb15d517427246477f4245876347cef4793d7e77a5c6c481d7300",
+      "language": "fa-IR",
+      "duration_ms": 21780,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "87:1857",
+      "audio_sha256": "fbedd4a2d64ccc81f170415c77299dcae1ab4d6740b4502beab198956896fa65",
+      "reference_sha256": "ce263395490185290416cf4313cd199eebf192282b4f960ab58e33e7d881cce0",
+      "language": "fa-IR",
+      "duration_ms": 18900,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "88:1752",
+      "audio_sha256": "de3835feb786d9b50e65d787f559f93a71cd020c18ed9dbcd702b4ef9b490da5",
+      "reference_sha256": "eeb9243c0cc6a45570be194cdb637e0119a93090530fc9214f8e4d0403ae122c",
+      "language": "fa-IR",
+      "duration_ms": 16440,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "89:1836",
+      "audio_sha256": "4fe5e67e4f43017933160912c57555bf0ce47940d9b41a481fa680985d59a5f5",
+      "reference_sha256": "b9d4b6c356f818dfb251169371fd6a9f7b86d9b90e3a0037432f71fb6b365b0e",
+      "language": "fa-IR",
+      "duration_ms": 20160,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "90:1931",
+      "audio_sha256": "abce6f6c28a72a9643833645209e4195bf3e56d2eb6f2a186e47d5db96cfd8a4",
+      "reference_sha256": "eef6711c184c8cabbbefe491ea356218935492fc9787431a2b37e5aa66ba346f",
+      "language": "fa-IR",
+      "duration_ms": 14700,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "91:1749",
+      "audio_sha256": "ebefc1cb0f43fb9c37262fc64b850f98adae250d69055c7b45430c8151e33f45",
+      "reference_sha256": "08a19047abe72497dd1978b99321e0102eef3366cbd161d23c03fc4838c49fab",
+      "language": "fa-IR",
+      "duration_ms": 17280,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "92:1682",
+      "audio_sha256": "89aae9f18ef8a4f05dd67a46e261af70206a8af21834593cdb99ee917188b4d8",
+      "reference_sha256": "324466256d85ea5a9b308f42efe6e4e4ddcacaab64d506e78ad5797784ad03ec",
+      "language": "fa-IR",
+      "duration_ms": 18840,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "93:1760",
+      "audio_sha256": "e273f6a040cbf6ae03843885d1b89c01ab717d26c084849413179aaf5b45cce3",
+      "reference_sha256": "ddf7c17b6f112a1ac8d01b6e921a7a78eebca505dec05c172cb043887440369c",
+      "language": "fa-IR",
+      "duration_ms": 13620,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "94:1835",
+      "audio_sha256": "9eb3c8395f70be161f7782a65b9507e01ac84e2977890910782d3f20f6ae83cb",
+      "reference_sha256": "84bbb284f6d14dc90ad68e9385d8d00097601486a611e084c8afd8a72dac8c39",
+      "language": "fa-IR",
+      "duration_ms": 16860,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "95:1975",
+      "audio_sha256": "bcedc6d39c80a36c8e9045a5defb27430e9119ede63ceb8f4eaca17c9c78faab",
+      "reference_sha256": "7e4103819998d11d49d9210acaf46a2f8cc14bdb6f4e19ea95fdcb6edd5da0e2",
+      "language": "fa-IR",
+      "duration_ms": 16560,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "96:1932",
+      "audio_sha256": "e9c27f28d39302b5bcc35508a99e077df70e401865ae60bcb44c4984f1de8d85",
+      "reference_sha256": "9baa5f5d941510f041d0e785dfea53b373f4b49723815f08247da71d2be00542",
+      "language": "fa-IR",
+      "duration_ms": 30060,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "97:1674",
+      "audio_sha256": "bc503108abe4869e041961874b34f56eb6161e9ebc6da4f656a2c79a4c54be85",
+      "reference_sha256": "443f90370b4ef2210f569039f9f0abbef4588e73072a8e88b8b40acfe4302758",
+      "language": "fa-IR",
+      "duration_ms": 10200,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "98:1989",
+      "audio_sha256": "739e848fd31375e2442f27aea1e5befd4e237db291ba1be507c71e5f1a6fea89",
+      "reference_sha256": "6cee7b739a5b7806e4e6d3983bff2a491d63bc98afa23849c28eb2f1b6380bb7",
+      "language": "fa-IR",
+      "duration_ms": 25020,
+      "speaker_id": null,
+      "session_id": null
+    },
+    {
+      "sample_id": "99:1810",
+      "audio_sha256": "bfac5f705c8e7731c3dbd44dc70053a39ab26ba13efeace5393816432edb1541",
+      "reference_sha256": "56d33e9ecebb0bbc9c0fedc4429f3866345def3203f34bd32b7b028d79c2ac2b",
+      "language": "fa-IR",
+      "duration_ms": 18720,
+      "speaker_id": null,
+      "session_id": null
+    }
+  ]
+}
