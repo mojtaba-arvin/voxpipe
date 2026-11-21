@@ -58,7 +58,7 @@ def run(max_samples: int, output_dir: Path) -> dict:
         elapsed=time.perf_counter()-started
         duration=len(waveform)/sample_rate
         audio_hash=hashlib.sha256(raw).hexdigest()
-        sample_id=str(row.get("id",len(rows)))
+        sample_id=f"{len(rows)}:{row.get('id',len(rows))}"
         rows.append({"sample_id":sample_id,"reference":reference,"hypothesis":hypothesis,
                      "audio_duration_seconds":duration,"inference_seconds":elapsed,
                      "audio_sha256":audio_hash,"dataset_revision":DATASET_REVISION,
@@ -80,10 +80,11 @@ def run(max_samples: int, output_dir: Path) -> dict:
         "consent_note":"This public split exposes no speaker/session consent metadata; no speaker identity is inferred.",
         "source_file_sha256":DATASET_FILE_SHA256,
         "generated_at":datetime.now(timezone.utc).isoformat(),"items":manifest_items}
+    manifest_path=output_dir/"corpus-manifest.json"
+    manifest_path.write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
     schema=json.loads(Path("contracts/schemas/speech-corpus-manifest.v1.schema.json").read_text(encoding="utf-8"))
     from validate_corpus_manifest import validate_manifest
     validate_manifest(manifest,schema)
-    (output_dir/"corpus-manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
     summary={"dataset":{"id":DATASET_ID,"config":DATASET_CONFIG,"split":DATASET_SPLIT,
                 "revision":DATASET_REVISION,"file_sha256":DATASET_FILE_SHA256,
                 "license":"CC BY 4.0","samples":len(rows)},
