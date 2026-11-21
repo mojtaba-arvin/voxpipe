@@ -500,7 +500,7 @@
       "title": "Evaluate speech-to-text providers and implement the first adapter",
       "phase": 2,
       "priority": 14,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0021"
       ],
@@ -514,13 +514,13 @@
         "A repeatable scoring harness reports normalized Persian-aware WER/CER, real-time factor, and optional estimated API cost from versioned per-file JSONL results; unmeasured model quality is not fabricated."
       ],
       "evidence": [
-        "docs/research/stt-provider-evaluation.md — three local/hosted approaches compared; local Faster-Whisper selected without hosted inference or customer-audio egress.",
-        "scripts/run_fleurs_stt_benchmark.py and scripts/benchmark_stt.py — pinned FLEURS fa_ir test harness, Persian normalization, per-file WER/CER/RTF and corpus manifest generation.",
-        "GitHub Actions run 44848225647 — 100 real FLEURS Persian test samples on Faster-Whisper Small CPU/INT8; normalized WER 52.24%, CER 16.43%, RTF 0.201; model and dataset revisions plus SHA-256 recorded.",
-        "GitHub Actions run 44848989871 — rerun with automatic commit of results.jsonl and corpus-manifest.json to benchmarks/results/fleurs-fa-ir-2026-11-21/ (run still in progress at ledger update).",
-        "Quality gate: the measured WER is too high for production; model comparisons and word-timestamp error remain outstanding."
+        "docs/research/stt-provider-evaluation.md and ADR-0022 — three viable local/hosted STT approaches compared using official documentation; local Faster-Whisper selected without hosted inference or customer-audio egress.",
+        "scripts/run_fleurs_stt_benchmark.py and scripts/benchmark_stt.py — pinned FLEURS fa_ir test harness, Persian normalization, per-file WER/CER/RTF, word timestamps and corpus manifest generation.",
+        "GitHub Actions run 44849751146 passed end-to-end: 100 FLEURS Persian test items, dataset revision 6989e5bd2dc37546a93ae5d857bc04325e6a3738, model revision 536b0662742c02347bc0e980a01041f333bce120, model.bin SHA-256 recorded.",
+        "benchmarks/results/fleurs-fa-ir-2026-11-21/ contains committed per-file results.jsonl, validated corpus-manifest.json and summary.json. Normalized WER 52.24%, CER 16.43%, RTF 0.1652, p50/p95 latency 2.52/3.78 seconds.",
+        "Quality warning: the measured WER is too high for production; model-quality improvement is a follow-up, not an unmeasured claim."
       ],
-      "blocked_reason": "Initial real Persian benchmark is complete, but measured WER is 52.24%; production-quality model selection, timestamp-error measurement and repeated latency/RSS study remain open."
+      "blocked_reason": null
     },
     {
       "id": "VP-0023",
@@ -625,7 +625,7 @@
         "src/voxpipe/structuring/contracts.py — required/allowed type-specific fields, immutable claim contracts, exact Unicode character evidence, optional word-index/timestamp evidence and provenance validation against source transcript revisions.",
         "src/voxpipe/structuring/service.py — immutable segment/word snapshots and asset/transcript/revision/provider binding before any result is returned.",
         "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — valid/invalid evidence, unsupported fields, word offsets and schema compatibility tests.",
-        "GitHub Actions validation run 44849032956 passed after the typed schemas, word evidence and provider-boundary validation were added; latest validation is running on current head."
+        "GitHub Actions validation run 44849821616 passed on commit 91858302688c092330a80d1ca8b1af9f684d81c0, including structured-contract, prompt-injection, persistence and local-endpoint tests."
       ],
       "blocked_reason": null
     },
@@ -648,9 +648,9 @@
         "migrations/postgres/0007_create_structured_extractions.sql and src/voxpipe/structuring/postgres.py — append-only tenant-RLS persistence, transcript revision/asset foreign keys and tenant-scoped idempotency.",
         "src/voxpipe/structuring/evaluation.py — per-type, micro and macro precision/recall/F1 evaluator; exact normalized value multiset matching.",
         "tests/test_structuring_adapter.py and tests/test_postgres_repository.py — injected prompt test, fabricated evidence rejection, loopback no-auth behavior, idempotency and cross-tenant isolation.",
-        "GitHub Actions local Ollama smoke run 44849025431 reached Qwen3 4B on CPU but exposed an optional-auth header bug; that bug has been fixed and rerun 44849260134 is in progress."
+        "GitHub Actions run 44849670885 completed but all four local Qwen3 requests failed at the transport boundary; diagnostics were added, and runs 44849816303 and 44850101698 are testing the verified local OpenAI-compatible endpoint with bounded CPU inference."
       ],
-      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 smoke run is synthetic and must pass evidence validation before it can serve as an integration result. No paid or hosted inference is authorized."
+      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. Local Qwen3 smoke inference has not yet produced validated claims; the adapter, persistence and offline safety tests pass. No paid or hosted inference is authorized."
     },
     {
       "id": "VP-0029",
