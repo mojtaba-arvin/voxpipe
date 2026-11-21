@@ -126,10 +126,19 @@ def evaluate_vad(reference, hypothesis, *, duration_ms: int, frame_ms: int=10) -
     precision=tp/(tp+fp) if tp+fp else 0.0
     recall=tp/(tp+fn) if tp+fn else 0.0
     f1=2*precision*recall/(precision+recall) if precision+recall else 0.0
-    pairs=list(zip(sorted(reference,key=lambda x:x.start_ms),sorted(hypothesis,key=lambda x:x.start_ms)))
+    refs=sorted(reference,key=lambda x:x.start_ms)
+    hyps=sorted(hypothesis,key=lambda x:x.start_ms)
+    remaining=set(range(len(hyps))); pairs=[]
+    for ref in refs:
+        if not remaining: break
+        best=max(remaining,key=lambda index:max(0,min(ref.end_ms,hyps[index].end_ms)-max(ref.start_ms,hyps[index].start_ms)))
+        overlap=max(0,min(ref.end_ms,hyps[best].end_ms)-max(ref.start_ms,hyps[best].start_ms))
+        if overlap>0:
+            pairs.append((ref,hyps[best]));remaining.remove(best)
     errors=[abs(a.start_ms-b.start_ms) for a,b in pairs]+[abs(a.end_ms-b.end_ms) for a,b in pairs]
     return {"precision":precision,"recall":recall,"f1":f1,
             "false_activation_seconds":fp*frame_ms/1000,
             "missed_speech_seconds":fn*frame_ms/1000,
             "mean_boundary_error_ms":sum(errors)/len(errors) if errors else None,
-            "matched_regions":len(pairs),"reference_regions":len(reference),"hypothesis_regions":len(hypothesis)}
+            "matched_regions":len(pairs),"reference_regions":len(refs),"hypothesis_regions":len(hyps),
+            "unmatched_reference_regions":len(refs)-len(pairs),"unmatched_hypothesis_regions":len(hyps)-len(pairs)}
