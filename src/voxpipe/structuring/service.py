@@ -10,6 +10,7 @@ from uuid import UUID
 from voxpipe.structuring.contracts import (
     StructuredIntelligence,
     StructuredIntelligenceValidationError,
+    TranscriptWordEvidence,
     validate_structured_intelligence,
 )
 
@@ -22,6 +23,7 @@ class StructuredExtractionRequest:
     transcript_revision: int
     language: str
     transcript_segments: Mapping[str, str]
+    transcript_words: Mapping[str, tuple[TranscriptWordEvidence, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for field in ("document_id", "asset_id", "transcript_id"):
@@ -96,6 +98,7 @@ class StructuredExtractionService:
             expected_transcript_id=request.transcript_id,
             expected_revision=request.transcript_revision,
             transcript_segments=request.transcript_segments,
+            transcript_words=request.transcript_words,
         )
         if result.document_id != request.document_id:
             raise StructuredIntelligenceValidationError("document binding mismatch")

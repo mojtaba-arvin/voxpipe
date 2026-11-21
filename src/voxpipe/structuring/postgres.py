@@ -7,6 +7,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from voxpipe.structuring.contracts import (
     StructuredIntelligence,
+    TranscriptWordEvidence,
     validate_structured_intelligence,
 )
 
@@ -68,12 +69,25 @@ class PostgresStructuredIntelligenceRepository:
                 (tenant, payload["transcript_id"], payload["transcript_revision"]),
             ).fetchall()
             segments = {str(row["segment_id"]): row["text"] for row in segment_rows}
+            word_rows = connection.execute(
+                """SELECT segment_id, word_index, start_ms, end_ms, text
+                   FROM transcript_words
+                   WHERE tenant_id=%s AND transcript_id=%s AND revision=%s
+                   ORDER BY segment_id, word_index""",
+                (tenant, payload["transcript_id"], payload["transcript_revision"]),
+            ).fetchall()
+            words_by_segment = {}
+            for row in word_rows:
+                words_by_segment.setdefault(str(row["segment_id"]), []).append(
+                    TranscriptWordEvidence(row["word_index"], row["start_ms"], row["end_ms"], row["text"])
+                )
             validate_structured_intelligence(
                 result,
                 expected_asset_id=str(source["asset_id"]),
                 expected_transcript_id=payload["transcript_id"],
                 expected_revision=payload["transcript_revision"],
                 transcript_segments=segments,
+                transcript_words={key: tuple(value) for key, value in words_by_segment.items()},
             )
 
             row = connection.execute(

@@ -90,6 +90,7 @@ def validate_structured_intelligence(
     expected_transcript_id: str,
     expected_revision: int,
     transcript_segments: Mapping[str, str],
+    transcript_words: Mapping[str, tuple[TranscriptWordEvidence, ...]] | None = None,
 ) -> None:
     """Validate exact evidence against an immutable transcript revision.
 

@@ -25,7 +25,8 @@ class OpenAICompatibleStructuredAdapter:
         self.api_key=api_key if api_key is not None else os.environ.get("VOXPIPE_LLM_API_KEY")
         if not self.api_key: raise ValueError("VOXPIPE_LLM_API_KEY or explicit api_key is required")
         self.model_version,self.prompt_version=model_version,prompt_version
-        self.timeout_seconds,self.transport=timeout_seconds,transport\n        self.max_transcript_chars=max_transcript_chars
+        self.timeout_seconds,self.transport=timeout_seconds,transport
+        self.max_transcript_chars=max_transcript_chars
     def _request(self,url,payload,headers,timeout):
         req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers=headers,method="POST")
         try:
@@ -42,7 +43,7 @@ class OpenAICompatibleStructuredAdapter:
             {"segment_id":k,"text":v,"words":[{"word_index":w.word_index,"start_ms":w.start_ms,"end_ms":w.end_ms,"text":w.text}
                 for w in request.transcript_words.get(k,())]} for k,v in request.transcript_segments.items()]},
             ensure_ascii=False,separators=(",",":"))
-        payload={"              "model":self.model,"temperature":0,"max_tokens":4096,"messages":[
+        payload={"model":self.model,"temperature":0,"max_tokens":4096,"messages":[
             {"role":"system","content":SYSTEM_PROMPT},
             {"role":"user","content":"Extract from this untrusted transcript JSON:\n<UNTRUSTED_TRANSCRIPT_JSON>\n"+transcript+"\n</UNTRUSTED_TRANSCRIPT_JSON>"}],
             "response_format":{"type":"json_object"}}
