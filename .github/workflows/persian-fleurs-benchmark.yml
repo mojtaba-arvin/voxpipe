@@ -49,6 +49,18 @@ jobs:
           set -euo pipefail
           jq -e '.dataset.id == "google/fleurs" and .dataset.config == "fa_ir" and .dataset.split == "test" and .dataset.samples == 100 and .metrics.files == 100 and (.dataset.file_sha256 | test("^[0-9a-f]{64}$")) and (.model.revision | test("^[0-9a-f]{40}$")) and (.dataset.revision | test("^[0-9a-f]{40}$"))' benchmark-results/fleurs-fa-ir/summary.json >/dev/null
           jq -s -e 'length == 100 and all(.[]; (.sample_id | type == "string") and (.audio_sha256 | test("^[0-9a-f]{64}$")) and (.hypothesis | type == "string"))' benchmark-results/fleurs-fa-ir/results.jsonl >/dev/null
+      - name: Attach immutable run provenance to summary
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          summary=benchmark-results/fleurs-fa-ir/summary.json
+          jq --arg commit "$SOURCE_COMMIT" --arg run "$SOURCE_RUN" --arg run_id "$SOURCE_RUN_ID" --arg attempt "$SOURCE_RUN_ATTEMPT" --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '. + {provenance: {source_commit: $commit, source_run: $run, source_run_id: ($run_id | tonumber), source_run_attempt: ($attempt | tonumber), generated_at: $generated_at}}' "$summary" > "$summary.tmp"
+          mv "$summary.tmp" "$summary"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         if: always()
         with:
@@ -56,64 +68,3 @@ jobs:
           path: benchmark-results/fleurs-fa-ir/
           if-no-files-found: warn
           retention-days: 30
-
-  commit-results:
-    name: Publish validated benchmark artifact to feature branch
-    needs: benchmark
-    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/feat/phase2-6-execution-foundation'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      # This job deliberately does not execute repository code or install dependencies.
-      # The write-capable token is available only to the final git fetch/push step.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          ref: ${{ github.ref_name }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
-        with:
-          name: persian-fleurs-cpu-benchmark
-          path: benchmark-results/fleurs-fa-ir
-      - name: Validate artifact and attach immutable run provenance
-        env:
-          SOURCE_COMMIT: ${{ github.sha }}
-          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SOURCE_RUN_ID: ${{ github.run_id }}
-          SOURCE_RUN_ATTEMPT: ${{ github.run_attempt }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          result_dir=benchmark-results/fleurs-fa-ir
-          test -s "$result_dir/summary.json"
-          test -s "$result_dir/corpus-manifest.json"
-          test -s "$result_dir/results.jsonl"
-          jq -e '.dataset.id == "google/fleurs" and .dataset.config == "fa_ir" and .dataset.samples == 100 and .metrics.files == 100' "$result_dir/summary.json" >/dev/null
-          jq -s -e 'length == 100' "$result_dir/results.jsonl" >/dev/null
-          jq --arg commit "$SOURCE_COMMIT" --arg run "$SOURCE_RUN" --arg run_id "$SOURCE_RUN_ID" --arg attempt "$SOURCE_RUN_ATTEMPT" --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '. + {provenance: {source_commit: $commit, source_run: $run, source_run_id: ($run_id | tonumber), source_run_attempt: ($attempt | tonumber), generated_at: $generated_at}}' "$result_dir/summary.json" > "$result_dir/summary.json.tmp"
-          mv "$result_dir/summary.json.tmp" "$result_dir/summary.json"
-      - name: Commit only the validated result files
-        env:
-          TARGET_BRANCH: ${{ github.ref_name }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          destination=benchmarks/results/fleurs-fa-ir-2026-11-21
-          mkdir -p "$destination"
-          cp benchmark-results/fleurs-fa-ir/summary.json "$destination/summary.json"
-          cp benchmark-results/fleurs-fa-ir/corpus-manifest.json "$destination/corpus-manifest.json"
-          cp benchmark-results/fleurs-fa-ir/results.jsonl "$destination/results.jsonl"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$destination"
-          if git diff --cached --quiet; then
-            echo "No benchmark result changes to commit."
-            exit 0
-          fi
-          git commit -m "bench(asr): record 100-sample Persian FLEURS result"
-          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
-          git -c http.extraheader="$auth_header" fetch origin "$TARGET_BRANCH"
-          git rebase FETCH_HEAD
-          git -c http.extraheader="$auth_header" push origin "HEAD:$TARGET_BRANCH"
