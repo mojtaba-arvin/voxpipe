@@ -1,0 +1,41 @@
+name: FLEURS VAD envelope benchmark
+
+on:
+  push:
+    branches: [feat/phase2-6-execution-foundation]
+    paths:
+      - "scripts/run_fleurs_vad_benchmark.py"
+      - "src/voxpipe/speech/vad.py"
+      - "requirements-vad.txt"
+      - ".github/workflows/fleurs-vad-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vad:
+    name: Silero and WebRTC VAD on pinned FLEURS
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: ".python-version"
+      - name: Install CPU-only PyTorch runtime
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio
+      - name: Install VAD benchmark dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-vad.txt
+      - name: Run VAD envelope benchmark
+        run: python scripts/run_fleurs_vad_benchmark.py --max-samples 20 --output-dir benchmark-results/fleurs-vad
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fleurs-vad-envelope-benchmark
+          path: benchmark-results/fleurs-vad/
+          if-no-files-found: warn
+          retention-days: 30
