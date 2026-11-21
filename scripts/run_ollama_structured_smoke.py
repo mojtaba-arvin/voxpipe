@@ -36,11 +36,23 @@ def ollama_model_digest(model_name):
     if model is None: raise RuntimeError(f"Ollama model {model_name} is not present")
     return model.get("digest") or model.get("model") or "digest-unavailable"
 
+
+def ollama_native_transport(_url,payload,_headers,timeout):
+    native={"model":payload["model"],"messages":payload["messages"],"stream":False,
+        "format":"json","think":False,
+        "options":{"temperature":payload.get("temperature",0),"num_predict":payload.get("max_tokens",512)}}
+    request=urllib.request.Request("http://127.0.0.1:11434/api/chat",
+        data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type":"application/json"},method="POST")
+    with urllib.request.urlopen(request,timeout=timeout) as response:
+        result=json.loads(response.read())
+    return {"choices":[{"message":{"content":result["message"]["content"]}}]}
+
 def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v1",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=512)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v1",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=512,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
