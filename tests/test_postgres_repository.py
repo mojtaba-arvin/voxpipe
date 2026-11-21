@@ -747,7 +747,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with self.assertRaises(StructuredIntelligenceValidationError):
             store.create_or_get(tenant_id, "fabricated-evidence", fabricated)
 
-        changed = replace(result, entities=(replace(original_claim, value={"name": "متفاوت"}),))
+        changed = replace(result, entities=(replace(original_claim, value={"name": "متفاوت", "entity_type": "phrase"}),))
         from voxpipe.structuring.postgres import StructuredExtractionConflict, StructuredExtractionSourceNotFound
         with self.assertRaises(StructuredExtractionConflict):
             store.create_or_get(tenant_id, "extract-0001", changed)
