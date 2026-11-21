@@ -11,6 +11,8 @@ class LanguagePrediction:
     confidence: float
     start_ms: int = 0
     end_ms: int | None = None
+    provider: str = "speechbrain-voxlingua107"
+    model_version: str = "unknown"
 
 class SpeechBrainLanguageIdentifier:
     """SpeechBrain VoxLingua107 adapter; model weights must already exist locally."""
@@ -27,6 +29,7 @@ class SpeechBrainLanguageIdentifier:
     @staticmethod
     def _label(value):
         label=str(value).strip()
+        if ":" in label: label = label.split(":",1)[0].strip()
         if label.startswith("__label__"): label=label[len("__label__"):]
         return label.lower()
     def identify(self, samples, *, sample_rate: int, start_ms: int=0) -> LanguagePrediction:
