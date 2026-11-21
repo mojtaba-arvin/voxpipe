@@ -25,7 +25,7 @@ def run(output_dir:Path,max_scan_rows:int=1000)->dict:
     from datasets import Audio,load_dataset
     from huggingface_hub import dataset_info,model_info,snapshot_download
     from voxpipe.speech.vad import SpeechRegion
-    from voxpipe.speech.diarization import ECAPADiarizationAdapter,SpeechTurn if False else SpeakerTurn,evaluate_diarization
+    from voxpipe.speech.diarization import ECAPADiarizationAdapter,SpeakerTurn,evaluate_diarization
 
     dataset_revision=dataset_info(DATASET_ID).sha
     model_revision=model_info(MODEL_ID).sha
