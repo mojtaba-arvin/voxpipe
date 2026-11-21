@@ -1,0 +1,65 @@
+{
+  "dataset": {
+    "id": "google/fleurs",
+    "revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "split": "test",
+    "license": "CC BY 4.0",
+    "attribution": "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech; Google FLEURS dataset, CC BY 4.0.",
+    "configs": {
+      "fa_ir": {"language": "fa", "parquet_sha256": "e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"},
+      "en_us": {"language": "en", "parquet_sha256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"},
+      "de_de": {"language": "de", "parquet_sha256": "3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"}
+    },
+    "samples_per_language": 20,
+    "total_samples": 60
+  },
+  "evaluation_basis": "synthetic utterance-envelope proxy",
+  "ground_truth_warning": "FLEURS provides utterance-level audio/text, not frame-level speech/non-speech labels. The full utterance envelope is treated as speech, so internal pauses are counted as misses; these are not gold frame-level VAD precision/recall scores.",
+  "models": {
+    "silero": {
+      "package_version": "6.2.3",
+      "threshold": 0.5,
+      "min_speech_duration_ms": 100,
+      "metrics": {
+        "precision": 1.0,
+        "recall": 0.7260804066488186,
+        "f1": 0.8370509456173042,
+        "mean_boundary_error_ms": 3889.9,
+        "envelope_boundary_error_ms": 1553.3666666666666,
+        "false_activation_seconds": 0.0,
+        "missed_speech_seconds": 220.75,
+        "runtime_seconds_total": 10.061901959999972,
+        "runtime_seconds_per_sample": 0.16769836599999952,
+        "missed_utterances": 0,
+        "sample_count": 60
+      }
+    },
+    "webrtc": {
+      "package_version": "2.0.14.post1",
+      "aggressiveness": 2,
+      "frame_duration_ms": 30,
+      "metrics": {
+        "precision": 0.9905112354933396,
+        "recall": 0.8130834907335714,
+        "f1": 0.8875897868795677,
+        "mean_boundary_error_ms": 3783.8333333333335,
+        "envelope_boundary_error_ms": 480.9166666666667,
+        "false_activation_seconds": 5.77,
+        "missed_speech_seconds": 153.3,
+        "runtime_seconds_total": 0.08465180799993277,
+        "runtime_seconds_per_sample": 0.001410863466665546,
+        "missed_utterances": 0,
+        "sample_count": 60
+      }
+    }
+  },
+  "process_peak_rss_bytes": 6931554304,
+  "environment": {
+    "python": "3.12.16",
+    "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+    "device": "cpu"
+  },
+  "generated_at": "2026-11-21T01:15:20.513503+00:00",
+  "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/44848923641",
+  "source_artifact_id": 14684297802
+}
