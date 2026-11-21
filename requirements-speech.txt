@@ -1,0 +1,4 @@
+# Optional local speech-intelligence runtimes; provision model weights separately.
+silero-vad>=6.2,<7
+webrtcvad-wheels>=2.0.14,<3
+speechbrain>=1.0.3,<2
