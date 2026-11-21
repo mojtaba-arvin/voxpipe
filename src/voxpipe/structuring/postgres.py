@@ -32,7 +32,8 @@ class PostgresStructuredIntelligenceRepository:
     def get(self,tenant_id,extraction_id):
         tenant,extraction=str(UUID(tenant_id)),str(UUID(extraction_id))
         import psycopg
-        with psycopg.connect(self._dsn) as conn:
+        from psycopg.rows import dict_row
+        with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
             conn.execute("SELECT set_config('voxpipe.tenant_id',%s,true)",(tenant,))
             row=conn.execute("SELECT extraction_id,result FROM structured_extractions WHERE tenant_id=%s AND extraction_id=%s",(tenant,extraction)).fetchone()
         return {"extraction_id":str(row["extraction_id"]),"result":row["result"]} if row else None
