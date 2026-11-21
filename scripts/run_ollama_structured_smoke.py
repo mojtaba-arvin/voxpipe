@@ -65,7 +65,10 @@ def run(model_name,output_dir):
                 "claims":{name:[asdict(claim) for claim in getattr(result,name)] for name in names},
                 "provenance":provenance})
         except Exception as exc:
-            rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,"error":str(exc)[:500]})
+            cause=getattr(exc,"__cause__",None)
+            rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,
+                "error":str(exc)[:500],"cause_type":type(cause).__name__ if cause else None,
+                "cause":str(cause)[:300] if cause else None})
             for name in names: gold[name].extend(sample["gold"].get(name,[]))
     metrics=evaluate_claims(predictions,gold)
     metrics["per_type"]={k:asdict(v) for k,v in metrics["per_type"].items()}

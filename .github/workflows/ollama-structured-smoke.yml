@@ -42,6 +42,8 @@ jobs:
             sleep 2
           done
           ollama pull qwen3:4b
+      - name: Verify OpenAI-compatible local endpoint
+        run: curl -fsS http://127.0.0.1:11434/v1/models
       - name: Run local-only structured extraction smoke test
         run: python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
       - uses: actions/upload-artifact@v4

@@ -44,7 +44,10 @@ class OpenAICompatibleStructuredAdapter:
             if len(raw)>2_000_000: raise LLMAdapterError("LLM response exceeded 2 MB")
             return json.loads(raw)
         except LLMAdapterError: raise
-        except Exception as exc: raise LLMAdapterError("LLM request failed") from exc
+        except Exception as exc:
+            status = getattr(exc, "code", None)
+            detail = f"HTTP {status}" if status is not None else type(exc).__name__
+            raise LLMAdapterError(f"LLM request failed ({detail})") from exc
     def extract(self, request: StructuredExtractionRequest) -> StructuredIntelligence:
         if sum(len(value) for value in request.transcript_segments.values()) > self.max_transcript_chars:
             raise LLMAdapterError("transcript exceeds configured character limit")
