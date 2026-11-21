@@ -10,6 +10,14 @@ class FakeVAD:
     def is_speech(self,frame,sample_rate): return frame[0] == 1
 
 class SpeechIntelligenceTests(unittest.TestCase):
+    def test_vad_boundary_matching_uses_best_overlapping_region(self):
+        from voxpipe.speech.vad import SpeechRegion, evaluate_vad
+        metrics = evaluate_vad([SpeechRegion(0, 1000)],
+            [SpeechRegion(0, 200), SpeechRegion(200, 1000)], duration_ms=1000)
+        self.assertEqual(metrics["matched_regions"], 1)
+        self.assertEqual(metrics["unmatched_hypothesis_regions"], 1)
+        self.assertEqual(metrics["mean_boundary_error_ms"], 100.0)
+
     def test_silero_vad_converts_sample_offsets_and_merges(self):
         def timestamps(wave,model,**kwargs):
             return [{"start":0,"end":1600},{"start":1500,"end":3200}]

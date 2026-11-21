@@ -24,7 +24,8 @@ def aggregate(records):
         "missed_speech_seconds":sum(r["missed_speech_seconds"] for r in records),
         "runtime_seconds_total":sum(r["runtime_seconds"] for r in records),
         "runtime_seconds_per_sample":mean([r["runtime_seconds"] for r in records]),
-        "missed_utterances":sum(r["missed_utterance"] for r in records),\n        "sample_count":len(records)}
+        "missed_utterances":sum(r["missed_utterance"] for r in records),
+        "sample_count":len(records)}
 def run(max_samples:int,output_dir:Path)->dict:
     import numpy as np
     import soundfile as sf
@@ -57,7 +58,8 @@ def run(max_samples:int,output_dir:Path)->dict:
                 result=adapter.detect(payload,sample_rate=16000,audio_sha256=audio_sha)
                 elapsed=time.perf_counter()-start
                 scores=evaluate_vad(expected,result.regions,duration_ms=duration_ms+1000,frame_ms=10)
-                row_metrics[name]={**scores,"envelope_boundary_error_ms":envelope_boundary_error(expected[0],result.regions),\n                    "missed_utterance":not bool(result.regions),"runtime_seconds":elapsed,
+                row_metrics[name]={**scores,"envelope_boundary_error_ms":envelope_boundary_error(expected[0],result.regions),
+                    "missed_utterance":not bool(result.regions),"runtime_seconds":elapsed,
                     "regions":[{"start_ms":x.start_ms,"end_ms":x.end_ms} for x in result.regions]}
                 records[name].append(row_metrics[name])
             rows.append({"sample_id":f"{config}:{len(rows)}:{row.get('id',len(rows))}",
