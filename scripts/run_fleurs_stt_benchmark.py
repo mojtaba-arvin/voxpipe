@@ -8,7 +8,7 @@ DATASET_ID="google/fleurs"
 DATASET_CONFIG="fa_ir"
 DATASET_SPLIT="test"
 DATASET_REVISION="6989e5bd2dc37546a93ae5d857bc04325e6a3738"
-DATASET_FILE_SHA256="e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"
+DATASET_FILE_SHA256="e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"\nDATASET_FILE_URL="https://huggingface.co/datasets/google/fleurs/resolve/6989e5bd2dc37546a93ae5d857bc04325e6a3738/fa_ir/test-00000-of-00001.parquet"
 MODEL_ID="Systran/faster-whisper-small"
 
 def sha256_file(path: Path) -> str:
