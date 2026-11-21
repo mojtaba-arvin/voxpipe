@@ -23,6 +23,6 @@ class AdapterTests(unittest.TestCase):
   req=StructuredExtractionRequest(DOC,ASSET,TRANSCRIPT,1,"fa-IR",{SEGMENT:TEXT})
   with self.assertRaises(ValueError): StructuredExtractionService(adapter).extract(req)
  def test_requires_https_and_key(self):
-  with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="http://x",model="m",api_key="x")
+  with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="http://remote.example/v1",model="m",model_version="v1",api_key="x")
   with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="https://x",model="m",model_version="test-1",api_key="")
   with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="https://x",model="m",api_key="x")

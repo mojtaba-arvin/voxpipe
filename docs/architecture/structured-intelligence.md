@@ -10,7 +10,7 @@ The application service is the authoritative gate: it binds document, asset, tra
 
 ## Provider configuration
 
-OpenAICompatibleStructuredAdapter requires an HTTPS endpoint, explicit model identifier, immutable model_version and VOXPIPE_LLM_API_KEY (or an explicitly supplied key). It bounds transcript size and requests a bounded JSON response. It does not call a provider at import time or in tests. Never place credentials in source control, logs, prompts or transcript metadata. Hosted inference and transcript egress must be separately authorized by deployment policy.
+OpenAICompatibleStructuredAdapter requires an explicit model identifier and immutable model_version. Remote providers require HTTPS and a key; loopback HTTP endpoints (localhost/127.0.0.1/::1) are allowed without credentials for local Ollama-compatible inference. It bounds transcript size and requests a bounded JSON response. It does not call a provider at import time or in tests. Never place credentials in source control, logs, prompts or transcript metadata. Hosted inference and transcript egress must be separately authorized by deployment policy.
 
 ## Persistence
 

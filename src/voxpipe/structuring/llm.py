@@ -1,6 +1,7 @@
 """OpenAI-compatible extraction adapter. Transcript content is untrusted data."""
 from __future__ import annotations
-import json, os, urllib.request
+import json, os, ipaddress, urllib.request
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from typing import Callable
 from uuid import UUID
@@ -15,7 +16,13 @@ class OpenAICompatibleStructuredAdapter:
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
                  prompt_version: str="structured-fa-v1", timeout_seconds: float=45, max_transcript_chars: int=200000,
                  transport: Callable|None=None):
-        if not endpoint.startswith("https://"): raise ValueError("LLM endpoint must use HTTPS")
+        parsed = urlparse(endpoint)
+        hostname = parsed.hostname or ""
+        is_loopback = hostname == "localhost"
+        try: is_loopback = is_loopback or ipaddress.ip_address(hostname).is_loopback
+        except ValueError: pass
+        if parsed.scheme != "https" and not (parsed.scheme == "http" and is_loopback):
+            raise ValueError("LLM endpoint must use HTTPS unless it is an explicit loopback address")
         if not model or len(model)>256: raise ValueError("model must be bounded and non-empty")
         if not isinstance(model_version,str) or not model_version.strip() or len(model_version)>128:
             raise ValueError("an immutable model_version is required for provenance")
@@ -23,7 +30,7 @@ class OpenAICompatibleStructuredAdapter:
         if not 1<=max_transcript_chars<=1000000: raise ValueError("max_transcript_chars must be between 1 and 1000000")
         self.endpoint,self.model=endpoint.rstrip("/"),model
         self.api_key=api_key if api_key is not None else os.environ.get("VOXPIPE_LLM_API_KEY")
-        if not self.api_key: raise ValueError("VOXPIPE_LLM_API_KEY or explicit api_key is required")
+        if not self.api_key and not is_loopback: raise ValueError("VOXPIPE_LLM_API_KEY or explicit api_key is required for remote providers")
         self.model_version,self.prompt_version=model_version,prompt_version
         self.timeout_seconds,self.transport=timeout_seconds,transport
         self.max_transcript_chars=max_transcript_chars
