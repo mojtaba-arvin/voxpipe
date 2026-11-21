@@ -625,7 +625,8 @@
         "src/voxpipe/structuring/contracts.py — required/allowed type-specific fields, immutable claim contracts, exact Unicode character evidence, optional word-index/timestamp evidence and provenance validation against source transcript revisions.",
         "src/voxpipe/structuring/service.py — immutable segment/word snapshots and asset/transcript/revision/provider binding before any result is returned.",
         "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — valid/invalid evidence, unsupported fields, word offsets and schema compatibility tests.",
-        "GitHub Actions validation run 44849821616 passed on commit 91858302688c092330a80d1ca8b1af9f684d81c0, including structured-contract, prompt-injection, persistence and local-endpoint tests."
+        "GitHub Actions validation run 44849821616 passed on commit 91858302688c092330a80d1ca8b1af9f684d81c0, including structured-contract, prompt-injection, persistence and local-endpoint tests.",
+        "GitHub Actions validation run 44850384374 passed on commit b8057445d0fe54dd61121625261fe3e6a7610dfa, including the latest structured adapter, schema, evidence, and persistence tests."
       ],
       "blocked_reason": null
     },
@@ -648,9 +649,11 @@
         "migrations/postgres/0007_create_structured_extractions.sql and src/voxpipe/structuring/postgres.py — append-only tenant-RLS persistence, transcript revision/asset foreign keys and tenant-scoped idempotency.",
         "src/voxpipe/structuring/evaluation.py — per-type, micro and macro precision/recall/F1 evaluator; exact normalized value multiset matching.",
         "tests/test_structuring_adapter.py and tests/test_postgres_repository.py — injected prompt test, fabricated evidence rejection, loopback no-auth behavior, idempotency and cross-tenant isolation.",
-        "GitHub Actions run 44849670885 completed but all four local Qwen3 requests failed at the transport boundary; diagnostics were added, and runs 44849816303 and 44850101698 are testing the verified local OpenAI-compatible endpoint with bounded CPU inference."
+        "Local Qwen3 4B CPU smoke run 44849025431 initially exposed the missing optional Authorization-header handling; fixed and covered by tests.",
+        "Runs 44849670885 and 44849816303 reached the local Ollama endpoint but timed out on all four model calls; no validated claims or meaningful synthetic F1 were produced.",
+        "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update."
       ],
-      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. Local Qwen3 smoke inference has not yet produced validated claims; the adapter, persistence and offline safety tests pass. No paid or hosted inference is authorized."
+      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. Local Qwen3 4B CPU inference has timed out before producing validated claims; a native Ollama JSON-mode retry is running. The adapter, persistence, evidence validation and offline safety tests pass. No paid or hosted inference is authorized."
     },
     {
       "id": "VP-0029",
