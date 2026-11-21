@@ -44,7 +44,12 @@ def apply_migrations(
     dsn: str,
     migrations_dir: str | Path | None = None,
 ) -> tuple[int, ...]:
-    """Apply ordered SQL migrations atomically and return newly applied versions."""
+    """Apply ordered SQL migrations atomically and return newly applied versions.
+
+    A transaction-scoped advisory lock serializes concurrent runners. Each SQL
+    file is sent to PostgreSQL as one complete script: splitting on semicolons
+    is not SQL-aware and corrupts dollar-quoted blocks and string literals.
+    """
     import psycopg
 
     directory = Path(migrations_dir) if migrations_dir else (
@@ -55,34 +60,35 @@ def apply_migrations(
 
     applied_now: list[int] = []
     with psycopg.connect(dsn, autocommit=True) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS voxpipe_schema_migrations (
-                version INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        with connection.transaction():
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended('voxpipe:postgres:migrations', 0))"
             )
-            """
-        )
-        for migration in sorted(directory.glob("[0-9][0-9][0-9][0-9]_*.sql")):
-            version = int(migration.name.split("_", 1)[0])
-            existing = connection.execute(
-                "SELECT 1 FROM voxpipe_schema_migrations WHERE version = %s",
-                (version,),
-            ).fetchone()
-            if existing:
-                continue
-            sql = migration.read_text(encoding="utf-8")
-            with connection.transaction():
-                for statement in sql.split(";"):
-                    statement = statement.strip()
-                    if statement:
-                        connection.execute(statement)
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS voxpipe_schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """
+            )
+            for migration in sorted(directory.glob("[0-9][0-9][0-9][0-9]_*.sql")):
+                version = int(migration.name.split("_", 1)[0])
+                existing = connection.execute(
+                    "SELECT 1 FROM voxpipe_schema_migrations WHERE version = %s",
+                    (version,),
+                ).fetchone()
+                if existing:
+                    continue
+
+                sql = migration.read_text(encoding="utf-8")
+                connection.execute(sql)
                 connection.execute(
                     "INSERT INTO voxpipe_schema_migrations (version, name) VALUES (%s, %s)",
                     (version, migration.name),
                 )
-            applied_now.append(version)
+                applied_now.append(version)
     return tuple(applied_now)
 
 
