@@ -14,6 +14,7 @@ class PostgresStructuredIntelligenceRepository:
         if not idempotency_key or len(idempotency_key)>256: raise ValueError("invalid idempotency key")
         payload=asdict(result); payload["provenance"]["extracted_at"]=result.provenance.extracted_at.isoformat()
         encoded=json.dumps(payload,ensure_ascii=False,sort_keys=True)
+        normalized=json.loads(encoded)
         import psycopg
         from psycopg.rows import dict_row
         with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
@@ -26,7 +27,7 @@ class PostgresStructuredIntelligenceRepository:
                payload["transcript_id"],payload["transcript_revision"],idempotency_key,encoded)).fetchone()
             if row is None:
                 row=conn.execute("SELECT extraction_id,result FROM structured_extractions WHERE tenant_id=%s AND idempotency_key=%s",(tenant,idempotency_key)).fetchone()
-                if row is None or row["result"]!=payload: raise StructuredExtractionConflict("idempotency key reused for different result")
+                if row is None or row["result"]!=normalized: raise StructuredExtractionConflict("idempotency key reused for different result")
             return {"extraction_id":str(row["extraction_id"]),"result":row["result"]}
     def get(self,tenant_id,extraction_id):
         tenant,extraction=str(UUID(tenant_id)),str(UUID(extraction_id))
