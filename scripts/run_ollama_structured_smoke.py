@@ -71,7 +71,7 @@ def run(model_name,output_dir):
     metrics["per_type"]={k:asdict(v) for k,v in metrics["per_type"].items()}
     metrics["micro"]=asdict(metrics["micro"])
     output_dir.mkdir(parents=True,exist_ok=True)
-    (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\\n" for row in rows),encoding="utf-8")
+    (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     summary={"model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v1"},
         "samples":len(SAMPLES),"validated_extractions":successes,"evidence_validation_rate":successes/len(SAMPLES),
         "prompt_injection_smoke":{"sample":"prompt-injection","passed":injection_pass,
