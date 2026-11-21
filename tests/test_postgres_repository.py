@@ -134,7 +134,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                 DO $migration$
                 BEGIN
                     INSERT INTO migration_parser_probe(value) VALUES ('left;right');
-                END
+                END;
                 $migration$;
                 """,
                 encoding="utf-8",
