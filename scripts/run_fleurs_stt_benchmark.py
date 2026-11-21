@@ -33,8 +33,8 @@ def run(max_samples: int, output_dir: Path) -> dict:
     model_hash=sha256_file(model_path/"model.bin")
     model=WhisperModel(str(model_path),device="cpu",compute_type="int8",local_files_only=True)
 
-    dataset=load_dataset(DATASET_ID,DATASET_CONFIG,split=DATASET_SPLIT,
-                         streaming=True,revision=DATASET_REVISION)
+    dataset=load_dataset("parquet",data_files={DATASET_SPLIT:DATASET_FILE_URL},
+                         split=DATASET_SPLIT,streaming=True)
     dataset=dataset.cast_column("audio",Audio(decode=False))
     rows=[]; manifest_items=[]
     for row in itertools.islice(dataset,max_samples):
