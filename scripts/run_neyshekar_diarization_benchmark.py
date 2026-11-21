@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 DATASET_ID="shekar-ai/Neyshekar"
 MODEL_ID="speechbrain/spkrec-ecapa-voxceleb"
 WINDOW_MS=1500
-THRESHOLDS=(0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90)
+THRESHOLDS=(0.05,0.10,0.15,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90)
 
 def sha256_file(path):
     digest=hashlib.sha256()

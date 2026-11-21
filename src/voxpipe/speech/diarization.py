@@ -44,7 +44,7 @@ class ECAPADiarizationAdapter:
     speech is not supported by this baseline and is never silently fabricated.
     """
     provider_name="speechbrain-ecapa-diarization"
-    def __init__(self,*,embedder=None,model_dir=None,window_ms=1500,similarity_threshold=0.72):
+    def __init__(self,*,embedder=None,model_dir=None,window_ms=1500,similarity_threshold: float):
         if window_ms<1000 or not 0<similarity_threshold<1: raise ValueError("invalid diarization options")
         if embedder is None:
             if model_dir is None: raise ValueError("provide local ECAPA model_dir or an embedder")
