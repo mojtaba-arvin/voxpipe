@@ -740,6 +740,19 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             with self.assertRaises(psycopg.errors.InsufficientPrivilege):
                 connection.execute("UPDATE structured_extractions SET result='{}'::jsonb WHERE extraction_id=%s",
                                    (first["extraction_id"],))
+        from dataclasses import replace
+        from voxpipe.structuring.contracts import StructuredIntelligenceValidationError
+        original_claim = result.entities[0]
+        fabricated = replace(result, entities=(replace(original_claim, evidence=(EvidenceSpan(segment_id, 0, 4, "جعل"),)),))
+        with self.assertRaises(StructuredIntelligenceValidationError):
+            store.create_or_get(tenant_id, "fabricated-evidence", fabricated)
+
+        changed = replace(result, entities=(replace(original_claim, value={"name": "متفاوت"}),))
+        from voxpipe.structuring.postgres import StructuredExtractionConflict, StructuredExtractionSourceNotFound
+        with self.assertRaises(StructuredExtractionConflict):
+            store.create_or_get(tenant_id, "extract-0001", changed)
+        with self.assertRaises(StructuredExtractionSourceNotFound):
+            store.create_or_get(str(uuid4()), "cross-tenant", result)
 
 
 if __name__ == "__main__":
