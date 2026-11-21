@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   persian-cpu-benchmark:
@@ -25,6 +25,8 @@ jobs:
       HF_HUB_DISABLE_PROGRESS_BARS: "1"
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version-file: ".python-version"
@@ -41,3 +43,21 @@ jobs:
           path: benchmark-results/fleurs-fa-ir/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Commit reproducible benchmark outputs
+        if: success()
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          destination=benchmarks/results/fleurs-fa-ir-2026-11-21
+          mkdir -p "$destination"
+          cp benchmark-results/fleurs-fa-ir-100/summary.json "$destination/summary.json"
+          cp benchmark-results/fleurs-fa-ir-100/corpus-manifest.json "$destination/corpus-manifest.json"
+          cp benchmark-results/fleurs-fa-ir-100/results.jsonl "$destination/results.jsonl"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$destination"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record measured 100-sample Persian FLEURS ASR benchmark"
+          git pull --rebase origin "$TARGET_BRANCH"
+          git push origin "HEAD:$TARGET_BRANCH"
