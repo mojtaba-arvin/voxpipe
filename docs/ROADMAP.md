@@ -41,10 +41,10 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 2 — Speech Intelligence
 
 - [x] Define transcript, segment, speaker, timing, confidence, and provenance contracts (VP-0021; schema, provider-neutral port, validator, and offline contract tests completed).
-- [ ] Evaluate STT providers and implement the first selected adapter (VP-0022; faster-whisper selected; offline adapter and scorer exist; real Persian corpus inference remains pending).
-- [ ] Evaluate and implement VAD independently (VP-0023).
-- [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024).
-- [ ] Implement language identification with calibrated abstention (VP-0025).
+- [x] Evaluate STT providers and implement the first selected adapter (VP-0022; local Faster-Whisper adapter and 100-item pinned FLEURS Persian test run completed; normalized WER 52.24%, CER 16.43%, RTF 0.1652. This is reproducible evidence, but WER remains below production quality).
+- [ ] Evaluate and implement VAD independently (VP-0023; WebRTC/Silero compared on 60 FLEURS utterances, but labels are utterance-envelope proxies rather than frame-level ground truth).
+- [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024; controlled six-clip synthetic Neyshekar split is reproducible, but natural overlapping conversation and explicit consent evidence remain missing).
+- [ ] Implement language identification with calibrated abstention (VP-0025; 60-sample Persian/English/German FLEURS run completed at 95% accuracy, but no code-switch set and no calibrated abstention threshold).
 - [ ] Establish consent/provenance-managed corpus governance (VP-0026).
 - [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
 - [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
@@ -54,7 +54,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 3 — Structured Intelligence
 
 - [ ] Define versioned extraction schemas and evidence/provenance contracts (VP-0027; v1 schema, provider-neutral data types and exact evidence validator are implemented; cross-tenant persistence integration and prompt-injection regression tests remain).
-- [ ] Implement structured extraction pipeline and quality gates (VP-0028; provider-neutral port, immutable transcript-source snapshot, provenance/document/revision binding and exact evidence validation are implemented; concrete LLM adapter, persisted outputs, prompt-boundary injection defenses and quality evaluation remain).
+- [ ] Implement structured extraction pipeline and quality gates (VP-0028; local Qwen3 4B endpoint and prompt-injection smoke complete, but the run produced zero validated extractions; concrete usable extraction output, persisted outputs, human-reviewed gold set and quality evaluation remain).
 
 **Exit gate:** Structured outputs pass schema and provenance checks, with measurable extraction quality.
 
