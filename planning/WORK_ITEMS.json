@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-20",
+  "updated_at": "2026-11-21",
   "items": [
     {
       "id": "VP-0001",
@@ -518,7 +518,8 @@
         "scripts/run_fleurs_stt_benchmark.py and scripts/benchmark_stt.py — pinned FLEURS fa_ir test harness, Persian normalization, per-file WER/CER/RTF, word timestamps and corpus manifest generation.",
         "GitHub Actions run 44849751146 passed end-to-end: 100 FLEURS Persian test items, dataset revision 6989e5bd2dc37546a93ae5d857bc04325e6a3738, model revision 536b0662742c02347bc0e980a01041f333bce120, model.bin SHA-256 recorded.",
         "benchmarks/results/fleurs-fa-ir-2026-11-21/ contains committed per-file results.jsonl, validated corpus-manifest.json and summary.json. Normalized WER 52.24%, CER 16.43%, RTF 0.1652, p50/p95 latency 2.52/3.78 seconds.",
-        "Quality warning: the measured WER is too high for production; model-quality improvement is a follow-up, not an unmeasured claim."
+        "Quality warning: the measured WER is too high for production; model-quality improvement is a follow-up, not an unmeasured claim.",
+        "Verified benchmark run 44911440709 on commit 614d7133d87e00a2c3e619258806ab957b85980a is re-running the 100-sample benchmark with immutable action pins and artifact provenance. Previous completed run 44849751146 on commit 43a57046abc31892034cbd587bfd0b8e82d33cfc measured normalized WER 52.24%, CER 16.43%, RTF 0.1652, and p50/p95 latency 2.52/3.78 seconds. This is reproducible evidence, but WER remains too high for production."
       ],
       "blocked_reason": null
     },
@@ -539,7 +540,8 @@
         "src/voxpipe/speech/vad.py — provider-neutral Silero and WebRTC adapters plus frame-level metric evaluator and overlap-aware region matching.",
         "tests/test_speech_intelligence.py — offline tests cover region conversion, frame metrics and best-overlap boundary matching.",
         "scripts/run_fleurs_vad_benchmark.py and benchmarks/results/fleurs-vad-2026-11-21/summary.json — 60 pinned FLEURS utterances compared on CPU; WebRTC envelope-proxy F1 0.888 and Silero 0.837, with boundary/runtime/false-activation/missed-speech/RSS measurements.",
-        "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark."
+        "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark.",
+        "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth."
       ],
       "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
     },
@@ -560,7 +562,8 @@
         "src/voxpipe/speech/diarization.py — provider-neutral diarization result, local ECAPA embeddings, deterministic cosine clustering and DER/JER evaluation.",
         "scripts/run_neyshekar_diarization_benchmark.py — threshold selected on Neyshekar validation speakers and evaluated on disjoint test speakers.",
         "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
-        "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels."
+        "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
+        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation."
       ],
       "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
     },
@@ -580,7 +583,8 @@
       "evidence": [
         "src/voxpipe/speech/language_id.py — local SpeechBrain VoxLingua107 adapter, threshold-based und outcome, sliding-window support and confidence-calibration evaluator.",
         "scripts/run_fleurs_lid_benchmark.py and benchmarks/results/fleurs-lid-2026-11-21/summary.json — pinned FLEURS fa_ir/en_us/de_de benchmark (20 samples per language); accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445; Persian and English 20/20, German 17/20.",
-        "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference."
+        "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
+        "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian."
       ],
       "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
     },
@@ -651,9 +655,10 @@
         "tests/test_structuring_adapter.py and tests/test_postgres_repository.py — injected prompt test, fabricated evidence rejection, loopback no-auth behavior, idempotency and cross-tenant isolation.",
         "Local Qwen3 4B CPU smoke run 44849025431 initially exposed the missing optional Authorization-header handling; fixed and covered by tests.",
         "Runs 44849670885 and 44849816303 reached the local Ollama endpoint but timed out on all four model calls; no validated claims or meaningful synthetic F1 were produced.",
-        "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update."
+        "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update.",
+        "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality."
       ],
-      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. Local Qwen3 4B CPU inference has timed out before producing validated claims; a native Ollama JSON-mode retry is running. The adapter, persistence, evidence validation and offline safety tests pass. No paid or hosted inference is authorized."
+      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
     },
     {
       "id": "VP-0029",
