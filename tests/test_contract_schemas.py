@@ -75,7 +75,7 @@ class ContractSchemaTests(unittest.TestCase):
             "entities": [], "events": [], "topics": [], "relations": [], "action_items": []
         }
         self.structured_validator.validate(structured)
-        structured["events"] = [{"claim_id": "b0f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0101", "value": {"type": "meeting"}, "confidence": 0.9, "evidence": [{"segment_id": "a0f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0101", "start_char": 0, "end_char": 5, "quote": "سلام"}]}]
+        structured["events"] = [{"claim_id": "b0f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0101", "value": {"name": "سلام", "event_type": "meeting"}, "confidence": 0.9, "evidence": [{"segment_id": "a0f7d9b8-0f7b-4b16-a2b2-2c0d9c8a0101", "start_char": 0, "end_char": 5, "quote": "سلام"}]}]
         self.structured_validator.validate(structured)
 
     def test_stream_session_contract_is_valid(self) -> None:

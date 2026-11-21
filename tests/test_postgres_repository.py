@@ -727,7 +727,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             transcript_revision=1,
             provenance=ExtractionProvenance("fixture", "test-model", "1", "prompt-v1", "1.0.0",
                                              datetime.now(timezone.utc)),
-            entities=(StructuredClaim(str(uuid4()), {"name": "سلام"}, (EvidenceSpan(segment_id, 0, 4, "سلام"),), 0.9),),
+            entities=(StructuredClaim(str(uuid4()), {"name": "سلام", "entity_type": "phrase"}, (EvidenceSpan(segment_id, 0, 4, "سلام"),), 0.9),),
         )
         store = PostgresStructuredIntelligenceRepository(self.app_dsn)
         first = store.create_or_get(tenant_id, "extract-0001", result)

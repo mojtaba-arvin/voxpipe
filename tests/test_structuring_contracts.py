@@ -22,7 +22,7 @@ def valid_result():
     return StructuredIntelligence(
         document_id=DOCUMENT, asset_id=ASSET, transcript_id=TRANSCRIPT, transcript_revision=3,
         provenance=ExtractionProvenance("local", "fixture", "1", "prompt-v1", "1.0.0", datetime.now(timezone.utc)),
-        events=(StructuredClaim(CLAIM, {"type": "meeting"}, (EvidenceSpan(SEGMENT, 0, 9, TEXT[:9]),), 0.95),),
+        events=(StructuredClaim(CLAIM, {"name": "جلسه", "event_type": "meeting"}, (EvidenceSpan(SEGMENT, 0, 9, TEXT[:9]),), 0.95),),
     )
 
 
@@ -62,11 +62,27 @@ class StructuredIntelligenceTests(unittest.TestCase):
 
     def test_rejects_duplicate_claim_ids_and_invalid_confidence(self):
         result = valid_result()
-        duplicate = replace(result.events[0], confidence=0.5)
+        duplicate = replace(result.events[0], value={"name": "جلسه", "entity_type": "concept"}, confidence=0.5)
         with self.assertRaises(StructuredIntelligenceValidationError):
             self.validate(replace(result, entities=(duplicate,)))
         with self.assertRaises(StructuredIntelligenceValidationError):
             self.validate(replace(result, events=(replace(result.events[0], confidence=float("nan")),)))
+
+
+    def test_word_evidence_is_bound_to_source_word_offsets_and_timestamps(self):
+        from voxpipe.structuring.contracts import TranscriptWordEvidence
+        words = (TranscriptWordEvidence(0, 0, 250, "فردا"), TranscriptWordEvidence(1, 250, 600, "جلسه"))
+        result = valid_result()
+        claim = result.events[0]
+        evidence = EvidenceSpan(SEGMENT, 0, 9, TEXT[:9], 0, 2, 0, 600)
+        result = replace(result, events=(replace(claim, evidence=(evidence,)),))
+        validate_structured_intelligence(result, expected_asset_id=ASSET, expected_transcript_id=TRANSCRIPT,
+            expected_revision=3, transcript_segments={SEGMENT: TEXT}, transcript_words={SEGMENT: words})
+        wrong_time = replace(evidence, end_ms=599)
+        with self.assertRaises(StructuredIntelligenceValidationError):
+            validate_structured_intelligence(replace(result, events=(replace(claim, evidence=(wrong_time,)),)),
+                expected_asset_id=ASSET, expected_transcript_id=TRANSCRIPT, expected_revision=3,
+                transcript_segments={SEGMENT: TEXT}, transcript_words={SEGMENT: words})
 
     def test_rejects_naive_extraction_timestamp(self):
         result = valid_result()

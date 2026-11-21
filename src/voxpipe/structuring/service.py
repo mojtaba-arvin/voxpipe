@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Mapping
 from uuid import UUID
@@ -47,6 +47,26 @@ class StructuredExtractionRequest:
                 raise ValueError("transcript segment text must be a string")
             snapshot[normalized_id] = text
         object.__setattr__(self, "transcript_segments", MappingProxyType(snapshot))
+        if not isinstance(self.transcript_words, Mapping):
+            raise ValueError("transcript_words must be a mapping")
+        word_snapshot = {}
+        for segment_id, words in self.transcript_words.items():
+            try: normalized_id = str(UUID(segment_id))
+            except (ValueError, TypeError, AttributeError): raise ValueError("transcript word keys must be UUIDs") from None
+            if normalized_id not in snapshot or not isinstance(words, (tuple, list)):
+                raise ValueError("transcript words must reference a source segment")
+            normalized_words = tuple(words)
+            previous_index, previous_end = -1, -1
+            for word in normalized_words:
+                if not isinstance(word, TranscriptWordEvidence):
+                    raise ValueError("transcript word entries must be TranscriptWordEvidence")
+                if (not isinstance(word.word_index,int) or isinstance(word.word_index,bool) or word.word_index<0 or word.word_index<=previous_index
+                    or not isinstance(word.start_ms,int) or isinstance(word.start_ms,bool) or not isinstance(word.end_ms,int) or isinstance(word.end_ms,bool)
+                    or word.start_ms<previous_end or word.end_ms<=word.start_ms or not isinstance(word.text,str) or not word.text.strip()):
+                    raise ValueError("transcript word timing/index/text is invalid")
+                previous_index, previous_end = word.word_index, word.end_ms
+            word_snapshot[normalized_id] = normalized_words
+        object.__setattr__(self, "transcript_words", MappingProxyType(word_snapshot))
 
 
 class StructuredExtractionService:

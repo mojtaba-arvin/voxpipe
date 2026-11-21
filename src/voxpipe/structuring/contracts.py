@@ -10,12 +10,29 @@ from uuid import UUID
 
 
 CLAIM_COLLECTIONS = ("entities", "events", "topics", "relations", "action_items")
+CLAIM_VALUE_REQUIRED_FIELDS = {
+    "entities": ("name", "entity_type"), "events": ("name", "event_type"),
+    "topics": ("name",), "relations": ("subject", "predicate", "object"),
+    "action_items": ("description",),
+}
 @dataclass(frozen=True, slots=True)
 class EvidenceSpan:
     segment_id: str
     start_char: int
     end_char: int
     quote: str
+    word_start_index: int | None = None
+    word_end_index: int | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptWordEvidence:
+    word_index: int
+    start_ms: int
+    end_ms: int
+    text: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +121,10 @@ def validate_structured_intelligence(
             seen_claim_ids.add(claim.claim_id)
             if not isinstance(claim.value, Mapping) or not claim.value:
                 raise StructuredIntelligenceValidationError("claim value must be a non-empty object")
+            for field in CLAIM_VALUE_REQUIRED_FIELDS[collection_name]:
+                value = claim.value.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    raise StructuredIntelligenceValidationError(f"{collection_name} claim requires non-empty string field {field}")
             if not isinstance(claim.confidence, (int, float)) or isinstance(claim.confidence, bool) or not math.isfinite(claim.confidence) or not 0 <= claim.confidence <= 1:
                 raise StructuredIntelligenceValidationError("claim confidence must be between 0 and 1")
             if not claim.evidence:
@@ -120,3 +141,26 @@ def validate_structured_intelligence(
                     raise StructuredIntelligenceValidationError("evidence offsets are outside the source segment")
                 if not isinstance(evidence.quote, str) or source_text[evidence.start_char:evidence.end_char] != evidence.quote:
                     raise StructuredIntelligenceValidationError("evidence quote does not exactly match transcript offsets")
+                word_fields = (evidence.word_start_index, evidence.word_end_index, evidence.start_ms, evidence.end_ms)
+                if any(value is not None for value in word_fields):
+                    if any(value is None for value in word_fields):
+                        raise StructuredIntelligenceValidationError("word evidence requires word indices and timestamps")
+                    if (not isinstance(evidence.word_start_index,int) or isinstance(evidence.word_start_index,bool)
+                        or not isinstance(evidence.word_end_index,int) or isinstance(evidence.word_end_index,bool)
+                        or evidence.word_start_index < 0 or evidence.word_end_index <= evidence.word_start_index
+                        or not isinstance(evidence.start_ms,int) or isinstance(evidence.start_ms,bool)
+                        or not isinstance(evidence.end_ms,int) or isinstance(evidence.end_ms,bool)
+                        or evidence.start_ms < 0 or evidence.end_ms <= evidence.start_ms):
+                        raise StructuredIntelligenceValidationError("word evidence indices/timestamps are invalid")
+                    source_words=(transcript_words or {}).get(evidence.segment_id,())
+                    selected=[word for word in source_words if evidence.word_start_index <= word.word_index < evidence.word_end_index]
+                    count=evidence.word_end_index-evidence.word_start_index
+                    if len(selected)!=count or not selected or selected[0].word_index!=evidence.word_start_index or selected[-1].word_index!=evidence.word_end_index-1:
+                        raise StructuredIntelligenceValidationError("word evidence is outside the immutable transcript")
+                    if evidence.start_ms!=selected[0].start_ms or evidence.end_ms!=selected[-1].end_ms:
+                        raise StructuredIntelligenceValidationError("word evidence timestamps do not match source word timings")
+                    cursor=0
+                    for word in selected:
+                        position=evidence.quote.find(word.text,cursor)
+                        if position<0: raise StructuredIntelligenceValidationError("word text is not present in cited quote")
+                        cursor=position+len(word.text)
