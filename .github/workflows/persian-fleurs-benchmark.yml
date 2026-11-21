@@ -51,9 +51,9 @@ jobs:
         run: |
           destination=benchmarks/results/fleurs-fa-ir-2026-11-21
           mkdir -p "$destination"
-          cp benchmark-results/fleurs-fa-ir-100/summary.json "$destination/summary.json"
-          cp benchmark-results/fleurs-fa-ir-100/corpus-manifest.json "$destination/corpus-manifest.json"
-          cp benchmark-results/fleurs-fa-ir-100/results.jsonl "$destination/results.jsonl"
+          cp benchmark-results/fleurs-fa-ir/summary.json "$destination/summary.json"
+          cp benchmark-results/fleurs-fa-ir/corpus-manifest.json "$destination/corpus-manifest.json"
+          cp benchmark-results/fleurs-fa-ir/results.jsonl "$destination/results.jsonl"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$destination"
