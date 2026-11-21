@@ -24,16 +24,23 @@ jobs:
       CUDA_VISIBLE_DEVICES: ""
       OLLAMA_NUM_GPU: "0"
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version-file: ".python-version"
-      - uses: actions/cache@v4
+      - uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0
         with:
           path: ~/.ollama/models
           key: ollama-qwen3-4b-${{ runner.os }}
-      - name: Install Ollama
-        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Install pinned Ollama runtime
+        run: |
+          set -euo pipefail
+          curl -fsSLo /tmp/ollama-install.sh https://github.com/ollama/ollama/releases/download/v0.40.17/install.sh
+          echo "eb510679f45de4a914d99953cd3deaada5dc73f9d585014df99d704449dd7dcc  /tmp/ollama-install.sh" | sha256sum --check -
+          sh /tmp/ollama-install.sh
+          ollama --version
       - name: Start local Ollama and pull model
         run: |
           nohup ollama serve >/tmp/ollama.log 2>&1 &
@@ -42,11 +49,13 @@ jobs:
             sleep 2
           done
           ollama pull qwen3:4b
+          mkdir -p benchmark-results/ollama-structured
+          ollama list | tee benchmark-results/ollama-structured/model-manifest.txt
       - name: Verify OpenAI-compatible local endpoint
         run: curl -fsS http://127.0.0.1:11434/v1/models
       - name: Run local-only structured extraction smoke test
         run: python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         if: always()
         with:
           name: ollama-structured-smoke
