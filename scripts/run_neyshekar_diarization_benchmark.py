@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse, hashlib, io, itertools, json, platform, sys
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 DATASET_ID="shekar-ai/Neyshekar"
 MODEL_ID="speechbrain/spkrec-ecapa-voxceleb"

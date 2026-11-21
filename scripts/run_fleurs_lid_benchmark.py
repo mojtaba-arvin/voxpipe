@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse, hashlib, io, itertools, json, platform, sys
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 REVISION="6989e5bd2dc37546a93ae5d857bc04325e6a3738"
 CONFIGS={
