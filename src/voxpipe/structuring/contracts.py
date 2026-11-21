@@ -15,6 +15,13 @@ CLAIM_VALUE_REQUIRED_FIELDS = {
     "topics": ("name",), "relations": ("subject", "predicate", "object"),
     "action_items": ("description",),
 }
+CLAIM_VALUE_ALLOWED_FIELDS = {
+    "entities": frozenset(("name", "entity_type", "aliases", "description")),
+    "events": frozenset(("name", "event_type", "start_time", "end_time", "location", "participants")),
+    "topics": frozenset(("name", "description", "keywords")),
+    "relations": frozenset(("subject", "predicate", "object")),
+    "action_items": frozenset(("description", "assignee", "due_date", "status")),
+}
 @dataclass(frozen=True, slots=True)
 class EvidenceSpan:
     segment_id: str
@@ -122,6 +129,11 @@ def validate_structured_intelligence(
             seen_claim_ids.add(claim.claim_id)
             if not isinstance(claim.value, Mapping) or not claim.value:
                 raise StructuredIntelligenceValidationError("claim value must be a non-empty object")
+            unexpected_fields = set(claim.value) - CLAIM_VALUE_ALLOWED_FIELDS[collection_name]
+            if unexpected_fields:
+                raise StructuredIntelligenceValidationError(
+                    f"{collection_name} claim contains unsupported value fields: {sorted(unexpected_fields)}"
+                )
             for field in CLAIM_VALUE_REQUIRED_FIELDS[collection_name]:
                 value = claim.value.get(field)
                 if not isinstance(value, str) or not value.strip():
