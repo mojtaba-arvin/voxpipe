@@ -32,6 +32,18 @@ class SpeechBrainLanguageIdentifier:
         if ":" in label: label = label.split(":",1)[0].strip()
         if label.startswith("__label__"): label=label[len("__label__"):]
         return label.lower()
+
+    @staticmethod
+    def _class_labels(model, count: int):
+        encoder = getattr(getattr(model, "hparams", None), "label_encoder", None)
+        inventory = getattr(encoder, "ind2lab", None)
+        if inventory is None:
+            raise ValueError("SpeechBrain model does not expose its complete label inventory")
+        try:
+            return [inventory[index] for index in range(count)]
+        except (KeyError, IndexError, TypeError):
+            raise ValueError("SpeechBrain label inventory does not match model output dimensions") from None
+
     def identify(self, samples, *, sample_rate: int, start_ms: int=0) -> LanguagePrediction:
         if sample_rate!=16000: raise ValueError("language identification requires mono 16 kHz audio")
         values=[float(x) for x in samples]
@@ -43,9 +55,15 @@ class SpeechBrainLanguageIdentifier:
         else:
             import torch
             with torch.inference_mode():
-                out_prob,_,_,labels=self.model.classify_batch(torch.tensor(values,dtype=torch.float32).unsqueeze(0))
-                probs=torch.softmax(out_prob,dim=-1).squeeze(0)
-                probabilities=[float(x) for x in probs.detach().cpu().tolist()]
+                out_prob, _, _, _ = self.model.classify_batch(
+                    torch.tensor(values,dtype=torch.float32).unsqueeze(0)
+                )
+                logits = out_prob.detach().cpu().reshape(-1).tolist()
+            labels = self._class_labels(self.model, len(logits))
+            peak = max(logits)
+            exponentials = [math.exp(value-peak) for value in logits]
+            total = sum(exponentials)
+            probabilities = [value/total for value in exponentials]
         if not probabilities or len(probabilities)!=len(labels): raise ValueError("language model returned inconsistent scores")
         index=max(range(len(probabilities)),key=probabilities.__getitem__)
         confidence=probabilities[index]

@@ -36,6 +36,15 @@ class SpeechIntelligenceTests(unittest.TestCase):
             SimpleNamespace(language="fa",confidence=.6)])
         self.assertEqual(metrics["accuracy"],.5)
         self.assertIn("en",metrics["confusion_matrix"])
+
+    def test_speechbrain_label_inventory_is_multiclass_not_top_prediction_only(self):
+        from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier
+        encoder = SimpleNamespace(ind2lab={0: "fa: Persian", 1: "en: English", 2: "de: German"})
+        model = SimpleNamespace(hparams=SimpleNamespace(label_encoder=encoder))
+        labels = SpeechBrainLanguageIdentifier._class_labels(model, 3)
+        self.assertEqual(labels, ["fa: Persian", "en: English", "de: German"])
+        with self.assertRaises(ValueError):
+            SpeechBrainLanguageIdentifier._class_labels(model, 4)
     def test_ecapa_clustering_and_der_jer(self):
         class Embedder:
             def embed(self,samples,sample_rate): return [1.0,0.0] if samples[0]>0 else [0.0,1.0]
