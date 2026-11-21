@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from itertools import permutations
 from pathlib import Path
 import math
+import re
+
+_SHA256 = re.compile(r"^[a-f0-9]{64}$")
 
 @dataclass(frozen=True, slots=True)
 class SpeakerTurn:
@@ -55,10 +58,10 @@ class ECAPADiarizationAdapter:
         return [x/norm for x in values]
     def diarize(self,samples,*,sample_rate=16000,audio_sha256,speech_regions):
         if sample_rate!=16000: raise ValueError("diarization requires mono 16 kHz audio")
-        if len(audio_sha256)!=64: raise ValueError("audio_sha256 must be SHA-256")
+        if not _SHA256.fullmatch(audio_sha256): raise ValueError("audio_sha256 must be lowercase SHA-256")
         window=sample_rate*self.window_ms//1000
         vectors=[]; windows=[]
-        for region in speech_regions:
+        for region in sorted(speech_regions, key=lambda x: x.start_ms):
             start=max(0,region.start_ms*sample_rate//1000)
             end=min(len(samples),region.end_ms*sample_rate//1000)
             if end-start<sample_rate: continue

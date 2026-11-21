@@ -53,6 +53,8 @@ class SpeechBrainLanguageIdentifier:
     def identify_windows(self,samples,*,sample_rate=16000,window_ms=4000,hop_ms=2000):
         if window_ms<1000 or hop_ms<1: raise ValueError("invalid language window configuration")
         width=sample_rate*window_ms//1000; hop=sample_rate*hop_ms//1000
+        if len(samples) < width:
+            return (self.identify(samples, sample_rate=sample_rate),) if len(samples) >= sample_rate else ()
         output=[]
         for start in range(0,max(0,len(samples)-width+1),hop):
             output.append(self.identify(samples[start:start+width],sample_rate=sample_rate,

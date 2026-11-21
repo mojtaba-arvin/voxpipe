@@ -40,6 +40,7 @@ class SileroVADAdapter:
             from silero_vad import get_speech_timestamps
             timestamp_fn = get_speech_timestamps
         self.model, self.timestamp_fn = model, timestamp_fn
+        self._timestamp_injected = timestamp_fn is not None
         self.threshold = threshold
         self.min_speech_duration_ms = min_speech_duration_ms
         self.min_silence_duration_ms = min_silence_duration_ms
@@ -49,8 +50,11 @@ class SileroVADAdapter:
         if not _SHA256.fullmatch(audio_sha256): raise ValueError("audio_sha256 must be lowercase SHA-256")
         values = array("f", samples)
         if not values or any(not math.isfinite(x) for x in values): raise ValueError("audio must be non-empty finite mono samples")
-        import torch
-        waveform = torch.tensor(values, dtype=torch.float32)
+        if self._timestamp_injected:
+            waveform = values
+        else:
+            import torch
+            waveform = torch.tensor(values, dtype=torch.float32)
         raw = self.timestamp_fn(
             waveform, self.model, threshold=self.threshold,
             min_speech_duration_ms=self.min_speech_duration_ms,
