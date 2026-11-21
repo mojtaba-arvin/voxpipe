@@ -42,8 +42,6 @@ jobs:
             sleep 2
           done
           ollama pull qwen3:4b
-      - name: Install VoxPipe package
-        run: python -m pip install --disable-pip-version-check -e .
       - name: Run local-only structured extraction smoke test
         run: python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
       - uses: actions/upload-artifact@v4
