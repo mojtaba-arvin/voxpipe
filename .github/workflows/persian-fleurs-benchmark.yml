@@ -97,6 +97,7 @@ jobs:
       - name: Commit only the validated result files
         env:
           TARGET_BRANCH: ${{ github.ref_name }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           destination=benchmarks/results/fleurs-fa-ir-2026-11-21
