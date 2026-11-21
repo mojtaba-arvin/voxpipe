@@ -30,6 +30,7 @@ class SileroVADAdapter:
         if not 0.0 < threshold < 1.0: raise ValueError("threshold must be between 0 and 1")
         if min_speech_duration_ms < 1 or min_silence_duration_ms < 0:
             raise ValueError("invalid VAD duration options")
+        injected_timestamp_fn = timestamp_fn is not None
         if model is None and timestamp_fn is None:
             try:
                 from silero_vad import load_silero_vad, get_speech_timestamps
@@ -40,7 +41,7 @@ class SileroVADAdapter:
             from silero_vad import get_speech_timestamps
             timestamp_fn = get_speech_timestamps
         self.model, self.timestamp_fn = model, timestamp_fn
-        self._timestamp_injected = timestamp_fn is not None
+        self._timestamp_injected = injected_timestamp_fn
         self.threshold = threshold
         self.min_speech_duration_ms = min_speech_duration_ms
         self.min_silence_duration_ms = min_silence_duration_ms
