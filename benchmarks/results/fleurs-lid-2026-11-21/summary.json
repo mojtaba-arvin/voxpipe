@@ -1,0 +1,56 @@
+{
+  "dataset": {
+    "id": "google/fleurs",
+    "revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "split": "test",
+    "license": "CC BY 4.0",
+    "attribution": "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech; Google FLEURS dataset, CC BY 4.0.",
+    "configs": {
+      "fa_ir": {"language": "fa", "parquet_sha256": "e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"},
+      "en_us": {"language": "en", "parquet_sha256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"},
+      "de_de": {"language": "de", "parquet_sha256": "3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"}
+    },
+    "samples_per_language": 20,
+    "total_samples": 60
+  },
+  "model": {
+    "id": "speechbrain/lang-id-voxlingua107-ecapa",
+    "revision": "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
+    "license": "Apache-2.0",
+    "weights_sha256": {
+      "classifier.ckpt": "a50d9024ff58d317031c9787d4c6c614d454a87a8ef32f9d36338cd3ff57adbc",
+      "embedding_model.ckpt": "ab750d5c06d713477045fa798fab5d33e959dbc0dfe4de510a9a47844c79a19a",
+      "hyperparams.yaml": "88fec9791a8416a152fb10834327e18d38e5bf7a351e9b714e08cdc4af05de6f",
+      "label_encoder.ckpt": "9f566d83c4f19168be4a0bf86c0c7dac7d3264a95105bcbf33a7c32b83ccc17f",
+      "label_encoder.txt": "9f566d83c4f19168be4a0bf86c0c7dac7d3264a95105bcbf33a7c32b83ccc17f",
+      "normalizer.ckpt": "c369e01dfa2e0d84c6b116f33c7b94f1fe28c061642086538e93cde3d97c26ef"
+    },
+    "device": "cpu",
+    "threshold": 0.0
+  },
+  "metrics": {
+    "accuracy": 0.95,
+    "macro_f1": 0.7297297297297297,
+    "per_class": {
+      "de": {"precision": 1.0, "recall": 0.85, "f1": 0.9189189189189189},
+      "en": {"precision": 1.0, "recall": 1.0, "f1": 1.0},
+      "fa": {"precision": 1.0, "recall": 1.0, "f1": 1.0},
+      "ro": {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+    },
+    "confusion_matrix": {
+      "de": {"de": 17, "en": 0, "fa": 0, "ro": 3},
+      "en": {"de": 0, "en": 20, "fa": 0, "ro": 0},
+      "fa": {"de": 0, "en": 0, "fa": 20, "ro": 0},
+      "ro": {"de": 0, "en": 0, "fa": 0, "ro": 0}
+    },
+    "expected_calibration_error": 0.044506149551465854
+  },
+  "environment": {
+    "python": "3.12.16",
+    "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.43",
+    "device": "cpu"
+  },
+  "generated_at": "2026-11-21T01:07:36.393843+00:00",
+  "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/44847915953",
+  "source_artifact_id": 14683742532
+}
