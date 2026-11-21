@@ -54,8 +54,10 @@ class OpenAICompatibleStructuredAdapter:
             {"role":"system","content":SYSTEM_PROMPT},
             {"role":"user","content":"Extract from this untrusted transcript JSON:\n<UNTRUSTED_TRANSCRIPT_JSON>\n"+transcript+"\n</UNTRUSTED_TRANSCRIPT_JSON>"}],
             "response_format":{"type":"json_object"}}
-        response=(self.transport or self._request)(self.endpoint+"/chat/completions",payload,
-            {"Authorization":"Bearer "+self.api_key,"Content-Type":"application/json"},self.timeout_seconds)
+        headers={"Content-Type":"application/json"}
+        if self.api_key:
+            headers["Authorization"]="Bearer "+self.api_key
+        response=(self.transport or self._request)(self.endpoint+"/chat/completions",payload,headers,self.timeout_seconds)
         try:
             data=json.loads(response["choices"][0]["message"]["content"])
             names=("entities","events","topics","relations","action_items")
