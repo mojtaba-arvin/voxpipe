@@ -514,20 +514,20 @@
         "A repeatable scoring harness reports normalized Persian-aware WER/CER, real-time factor, and optional estimated API cost from versioned per-file JSONL results; unmeasured model quality is not fabricated."
       ],
       "evidence": [
-        "docs/research/stt-provider-evaluation.md — compares faster-whisper, Google Chirp 3, Deepgram Nova-3 Multilingual, and OpenAI gpt-transcribe using current official capability, language, diarization, privacy, license/deployment, and price evidence; records that Persian accuracy has not been measured without an approved corpus.",
-        "docs/decisions/ADR-0022-first-stt-adapter.md — selects local faster-whisper, records trade-offs, model provisioning, rollout and rollback.",
-        "src/voxpipe/speech/faster_whisper.py and requirements-stt.txt — local-only lazy model loading, bounded private temp-file staging, word timestamps, provenance validation, explicit diarization rejection, no hosted API or runtime download by default.",
-        "tests/test_faster_whisper_adapter.py — fake-model offline tests for Persian output, timestamps, provenance, cleanup, input limits, failure mapping, and unsupported diarization.",
-        "scripts/benchmark_stt.py and tests/test_benchmark_stt.py — deterministic WER/CER/RTF and optional cost scoring without loading a model or calling a service."
+        "docs/research/stt-provider-evaluation.md — three local/hosted approaches compared; local Faster-Whisper selected without hosted inference or customer-audio egress.",
+        "scripts/run_fleurs_stt_benchmark.py and scripts/benchmark_stt.py — pinned FLEURS fa_ir test harness, Persian normalization, per-file WER/CER/RTF and corpus manifest generation.",
+        "GitHub Actions run 44848225647 — 100 real FLEURS Persian test samples on Faster-Whisper Small CPU/INT8; normalized WER 52.24%, CER 16.43%, RTF 0.201; model and dataset revisions plus SHA-256 recorded.",
+        "GitHub Actions run 44848989871 — rerun with automatic commit of results.jsonl and corpus-manifest.json to benchmarks/results/fleurs-fa-ir-2026-11-21/ (run still in progress at ledger update).",
+        "Quality gate: the measured WER is too high for production; model comparisons and word-timestamp error remain outstanding."
       ],
-      "blocked_reason": null
+      "blocked_reason": "Initial real Persian benchmark is complete, but measured WER is 52.24%; production-quality model selection, timestamp-error measurement and repeated latency/RSS study remain open."
     },
     {
       "id": "VP-0023",
       "title": "Evaluate and implement VAD",
       "phase": 2,
       "priority": 23,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Compare at least two VAD approaches on licensed speech data.",
@@ -535,15 +535,20 @@
         "Expose a provider-neutral VAD contract and deterministic offline tests.",
         "Document failure behavior for silence, music, overlap and noisy input."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/vad.py — provider-neutral Silero and WebRTC adapters plus frame-level metric evaluator and overlap-aware region matching.",
+        "tests/test_speech_intelligence.py — offline tests cover region conversion, frame metrics and best-overlap boundary matching.",
+        "scripts/run_fleurs_vad_benchmark.py and benchmarks/results/fleurs-vad-2026-11-21/summary.json — 60 pinned FLEURS utterances compared on CPU; WebRTC envelope-proxy F1 0.888 and Silero 0.837, with boundary/runtime/false-activation/missed-speech/RSS measurements.",
+        "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark."
+      ],
+      "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
     },
     {
       "id": "VP-0024",
       "title": "Evaluate speaker diarization",
       "phase": 2,
       "priority": 24,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Compare at least two diarization approaches with speaker-labelled consented audio.",
@@ -551,15 +556,20 @@
         "Preserve speaker identity only within an asset; do not infer real-world identity.",
         "Expose a provider-neutral diarization result and failure contract."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/diarization.py — provider-neutral diarization result, local ECAPA embeddings, deterministic cosine clustering and DER/JER evaluation.",
+        "scripts/run_neyshekar_diarization_benchmark.py — threshold selected on Neyshekar validation speakers and evaluated on disjoint test speakers.",
+        "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
+        "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels."
+      ],
+      "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
     },
     {
       "id": "VP-0025",
       "title": "Implement language identification",
       "phase": 2,
       "priority": 25,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Evaluate language identification on Persian, English and code-switched audio.",
@@ -567,15 +577,19 @@
         "Support unknown/uncertain outcomes; never force a language label below a configured threshold.",
         "Expose a provider-neutral language-identification contract and tests."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/language_id.py — local SpeechBrain VoxLingua107 adapter, threshold-based und outcome, sliding-window support and confidence-calibration evaluator.",
+        "scripts/run_fleurs_lid_benchmark.py and benchmarks/results/fleurs-lid-2026-11-21/summary.json — pinned FLEURS fa_ir/en_us/de_de benchmark (20 samples per language); accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445; Persian and English 20/20, German 17/20.",
+        "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference."
+      ],
+      "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
     },
     {
       "id": "VP-0026",
       "title": "Create consented speech evaluation corpus governance",
       "phase": 2,
       "priority": 26,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Record source, license, consent basis, dataset revision, split, speaker/session identity and checksum for each item.",
@@ -583,15 +597,20 @@
         "Validate dataset manifest and reject unlicensed or untraceable audio/reference pairs.",
         "Document deletion, attribution and redistribution restrictions."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "contracts/schemas/speech-corpus-manifest.v1.schema.json and scripts/validate_corpus_manifest.py — versioned manifest validation for dataset revision, license, attribution, consent basis, source-file SHA-256 and per-item audio/reference hashes.",
+        "docs/research/corpus-governance.md — separates public benchmark and customer audio; documents attribution, deletion, retention, redistribution and limits of public-license versus individual-consent evidence.",
+        "FLEURS ASR benchmark generated a manifest for 100 fa_ir test items with pinned revision and per-item hashes; the successful CI artifact is attached to run 44848225647.",
+        "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used."
+      ],
+      "blocked_reason": "Public datasets provide a license basis but do not expose complete per-speaker consent/session metadata. Natural conversational data with explicit consent and deletion/redistribution evidence is still required for the full corpus-governance acceptance."
     },
     {
       "id": "VP-0027",
       "title": "Define structured intelligence schemas and provenance",
       "phase": 3,
       "priority": 27,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0021"
       ],
@@ -602,11 +621,11 @@
         "Add compatibility, malformed evidence, cross-tenant and prompt-injection tests."
       ],
       "evidence": [
-        "contracts/schemas/structured-intelligence.v1.schema.json — Draft 2020-12 contract for entity/event/topic/relation/action-item claims with exact segment evidence spans and extraction provenance.",
-        "src/voxpipe/structuring/contracts.py — provider-neutral immutable data contracts and deterministic asset/transcript/revision/evidence/quote/provenance validation.",
-        "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — offline validation tests added; full CI verification pending.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
-        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
+        "contracts/schemas/structured-intelligence.v1.schema.json — typed, versioned entity/event/topic/relation/action-item value contracts with evidence/provenance.",
+        "src/voxpipe/structuring/contracts.py — required/allowed type-specific fields, immutable claim contracts, exact Unicode character evidence, optional word-index/timestamp evidence and provenance validation against source transcript revisions.",
+        "src/voxpipe/structuring/service.py — immutable segment/word snapshots and asset/transcript/revision/provider binding before any result is returned.",
+        "tests/test_structuring_contracts.py and tests/test_contract_schemas.py — valid/invalid evidence, unsupported fields, word offsets and schema compatibility tests.",
+        "GitHub Actions validation run 44849032956 passed after the typed schemas, word evidence and provider-boundary validation were added; latest validation is running on current head."
       ],
       "blocked_reason": null
     },
@@ -624,13 +643,14 @@
         "Persist model/prompt/schema versions and avoid unsupported inferred claims."
       ],
       "evidence": [
-        "src/voxpipe/structuring/ports.py — provider-neutral extraction port separates model/provider SDKs from the application boundary.",
-        "src/voxpipe/structuring/service.py — immutable source-segment snapshot, provider provenance binding, document/transcript/revision binding and exact evidence validation before returning any extraction.",
-        "tests/test_structuring_contracts.py — tests valid extraction, fabricated evidence rejection, provider/document mismatch and immutable source snapshot; no concrete LLM adapter, structured-output persistence or prompt-injection defenses at provider prompt boundary are claimed.",
-        "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
-        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
+        "src/voxpipe/structuring/llm.py — OpenAI-compatible adapter with immutable model/prompt versions, remote HTTPS+key enforcement, credential-free loopback Ollama support, JSON-only output, transcript size bounds and no tool exposure.",
+        "src/voxpipe/structuring/service.py and contracts.py — provider-neutral typed extraction, exact source evidence validation, allowed-field enforcement and prompt-injection-resistant data boundary.",
+        "migrations/postgres/0007_create_structured_extractions.sql and src/voxpipe/structuring/postgres.py — append-only tenant-RLS persistence, transcript revision/asset foreign keys and tenant-scoped idempotency.",
+        "src/voxpipe/structuring/evaluation.py — per-type, micro and macro precision/recall/F1 evaluator; exact normalized value multiset matching.",
+        "tests/test_structuring_adapter.py and tests/test_postgres_repository.py — injected prompt test, fabricated evidence rejection, loopback no-auth behavior, idempotency and cross-tenant isolation.",
+        "GitHub Actions local Ollama smoke run 44849025431 reached Qwen3 4B on CPU but exposed an optional-auth header bug; that bug has been fixed and rerun 44849260134 is in progress."
       ],
-      "blocked_reason": null
+      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 smoke run is synthetic and must pass evidence validation before it can serve as an integration result. No paid or hosted inference is authorized."
     },
     {
       "id": "VP-0029",
