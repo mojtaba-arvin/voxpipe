@@ -7,7 +7,7 @@
 - **Silero VAD** (MIT): local PyTorch/ONNX inference, supports 8 and 16 kHz, and exposes speech boundaries. The adapter uses the package's locally provisioned model and never downloads weights at request time.
 - **WebRTC VAD** (BSD-3-Clause): lightweight frame classifier with 10/20/30 ms frames and 8/16/32/48 kHz support. It is a useful independent baseline, but aggressiveness trades missed speech for false activation.
 
-VoxPipe exposes both behind the same VAD result shape. The evaluator reports frame-level precision/recall/F1, false-activation and missed-speech seconds, and mean boundary error. No Persian production score is claimed until an approved corpus with frame-level speech/non-speech annotations is available.
+VoxPipe exposes both behind the same VAD result shape. A CPU comparison ran on 60 pinned FLEURS test utterances (20 each fa_ir, en_us, de_de; revision `6989e5bd2dc37546a93ae5d857bc04325e6a3738`). On the synthetic utterance-envelope proxy, Silero VAD 6.2.3 (threshold 0.5) scored precision 1.000, recall 0.726, F1 0.837, envelope-boundary error 1,553 ms, zero false-activation seconds and 220.75 missed-speech seconds; runtime was 0.168 s/sample. WebRTC VAD 2.0.14.post1 (aggressiveness 2, 30 ms frames) scored precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, 5.77 false-activation seconds and 153.3 missed-speech seconds; runtime was 0.00141 s/sample. Combined process peak RSS was 6.93 GB (not per-model memory). These are explicitly envelope-proxy scores: FLEURS has utterance-level audio/text but no frame-level speech/non-speech labels, and internal pauses are counted as missed speech. They are not gold frame-level VAD precision/recall. WebRTC performed better on this proxy and was much faster; Silero was more conservative with no false activations. A production acceptance benchmark still requires a licensed Persian corpus with frame-aligned annotations.
 
 ## Diarization
 
@@ -29,6 +29,6 @@ Optional runtimes are listed in `requirements-speech.txt`. Model files must be s
 
 ## Remaining evidence gates
 
-- VAD: no approved frame-labelled Persian corpus; report synthetic/fixture tests separately from real speech/non-speech metrics.
+- VAD: a pinned FLEURS utterance-envelope proxy compares Silero and WebRTC; true frame-labelled Persian precision/recall and production boundary accuracy remain blocked by the lack of frame-level gold annotations.
 - Diarization: controlled read-speech speaker-clustering metrics are available; natural conversational DER/JER, overlap handling and production attribution remain unverified.
 - Language ID: a pinned 3-language FLEURS smoke benchmark exists; larger per-language samples, code-switch evaluation and calibrated abstention remain outstanding.
