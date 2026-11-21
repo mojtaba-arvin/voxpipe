@@ -123,6 +123,55 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with psycopg.connect(self.admin_dsn) as connection:
             connection.execute("TRUNCATE TABLE structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
+    def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
+        import psycopg
+
+        with tempfile.TemporaryDirectory() as temporary:
+            migration = Path(temporary) / "9999_parser_probe.sql"
+            migration.write_text(
+                """
+                CREATE TABLE migration_parser_probe (value text);
+                DO $migration$
+                BEGIN
+                    INSERT INTO migration_parser_probe(value) VALUES ('left;right');
+                END
+                $migration$;
+                """,
+                encoding="utf-8",
+            )
+            self.assertEqual(apply_migrations(self.admin_dsn, temporary), (9999,))
+
+        with psycopg.connect(self.admin_dsn) as connection:
+            row = connection.execute("SELECT value FROM migration_parser_probe").fetchone()
+            self.assertEqual(row[0], "left;right")
+            connection.execute("DROP TABLE migration_parser_probe")
+            connection.execute("DELETE FROM voxpipe_schema_migrations WHERE version = 9999")
+
+    def test_migration_runner_serializes_concurrent_invocations(self) -> None:
+        import psycopg
+
+        with tempfile.TemporaryDirectory() as temporary:
+            migration = Path(temporary) / "9998_concurrent_probe.sql"
+            migration.write_text(
+                """
+                CREATE TABLE migration_concurrency_probe (id integer PRIMARY KEY);
+                INSERT INTO migration_concurrency_probe(id) VALUES (1);
+                """,
+                encoding="utf-8",
+            )
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(executor.map(
+                    lambda _: apply_migrations(self.admin_dsn, temporary),
+                    range(2),
+                ))
+            self.assertCountEqual(results, [(9998,), ()])
+
+        with psycopg.connect(self.admin_dsn) as connection:
+            rows = connection.execute("SELECT id FROM migration_concurrency_probe").fetchall()
+            self.assertEqual(rows, [(1,)])
+            connection.execute("DROP TABLE migration_concurrency_probe")
+            connection.execute("DELETE FROM voxpipe_schema_migrations WHERE version = 9998")
+
     def test_transcript_storage_is_append_only_tenant_scoped_and_searchable(self) -> None:
         import psycopg
 
