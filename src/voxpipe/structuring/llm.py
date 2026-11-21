@@ -14,7 +14,7 @@ class LLMAdapterError(RuntimeError): pass
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v1", timeout_seconds: float=45, max_transcript_chars: int=200000,
+                 prompt_version: str="structured-fa-v1", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
@@ -28,12 +28,14 @@ class OpenAICompatibleStructuredAdapter:
             raise ValueError("an immutable model_version is required for provenance")
         if not 1<=timeout_seconds<=120: raise ValueError("timeout_seconds must be 1..120")
         if not 1<=max_transcript_chars<=1000000: raise ValueError("max_transcript_chars must be between 1 and 1000000")
+        if not 128<=max_output_tokens<=16384: raise ValueError("max_output_tokens must be between 128 and 16384")
         self.endpoint,self.model=endpoint.rstrip("/"),model
         self.api_key=api_key if api_key is not None else os.environ.get("VOXPIPE_LLM_API_KEY")
         if not self.api_key and not is_loopback: raise ValueError("VOXPIPE_LLM_API_KEY or explicit api_key is required for remote providers")
         self.model_version,self.prompt_version=model_version,prompt_version
         self.timeout_seconds,self.transport=timeout_seconds,transport
         self.max_transcript_chars=max_transcript_chars
+        self.max_output_tokens=max_output_tokens
     def _request(self,url,payload,headers,timeout):
         req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers=headers,method="POST")
         try:
@@ -50,7 +52,7 @@ class OpenAICompatibleStructuredAdapter:
             {"segment_id":k,"text":v,"words":[{"word_index":w.word_index,"start_ms":w.start_ms,"end_ms":w.end_ms,"text":w.text}
                 for w in request.transcript_words.get(k,())]} for k,v in request.transcript_segments.items()]},
             ensure_ascii=False,separators=(",",":"))
-        payload={"model":self.model,"temperature":0,"max_tokens":4096,"messages":[
+        payload={"model":self.model,"temperature":0,"max_tokens":self.max_output_tokens,"messages":[
             {"role":"system","content":SYSTEM_PROMPT},
             {"role":"user","content":"Extract from this untrusted transcript JSON:\n<UNTRUSTED_TRANSCRIPT_JSON>\n"+transcript+"\n</UNTRUSTED_TRANSCRIPT_JSON>"}],
             "response_format":{"type":"json_object"}}

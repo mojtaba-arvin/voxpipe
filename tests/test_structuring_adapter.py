@@ -23,6 +23,10 @@ class AdapterTests(unittest.TestCase):
   req=StructuredExtractionRequest(DOC,ASSET,TRANSCRIPT,1,"fa-IR",{SEGMENT:TEXT})
   with self.assertRaises(ValueError): StructuredExtractionService(adapter).extract(req)
 
+ def test_output_token_limit_is_bounded(self):
+  with self.assertRaises(ValueError):
+   OpenAICompatibleStructuredAdapter(endpoint="https://llm.example/v1",model="test",
+       model_version="test-1",api_key="x",max_output_tokens=64)
  def test_loopback_ollama_endpoint_omits_authorization_header(self):
   result={"entities":[],"events":[{"claim_id":str(uuid4()),"value":{"name":"جلسه","event_type":"meeting"},
     "evidence":[{"segment_id":SEGMENT,"start_char":0,"end_char":5,"quote":TEXT[:5]}],"confidence":.9}],
