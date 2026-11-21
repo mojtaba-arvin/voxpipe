@@ -1,0 +1,43 @@
+name: FLEURS multilingual language ID benchmark
+
+on:
+  push:
+    branches: [feat/phase2-6-execution-foundation]
+    paths:
+      - "scripts/run_fleurs_lid_benchmark.py"
+      - "src/voxpipe/speech/language_id.py"
+      - "requirements-lid.txt"
+      - ".github/workflows/fleurs-language-id.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  language-id:
+    name: SpeechBrain VoxLingua107 on pinned FLEURS test subsets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version-file: ".python-version"
+      - name: Install CPU-only PyTorch runtime
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio
+      - name: Install local model benchmark dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-lid.txt
+      - name: Run multilingual language ID benchmark
+        run: python scripts/run_fleurs_lid_benchmark.py --max-samples 20 --output-dir benchmark-results/fleurs-lid
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        if: always()
+        with:
+          name: fleurs-language-id-benchmark
+          path: benchmark-results/fleurs-lid/
+          if-no-files-found: warn
+          retention-days: 30

@@ -13,6 +13,7 @@ from voxpipe.ingestion.recovery import (
 from voxpipe.ingestion.repository import (
     IngestionRepositoryConflict,
     IngestionRepositoryPort,
+    TranscriptRepositoryPort,
     SQLiteIngestionRepository,
 )
 from voxpipe.ingestion.worker import IngestionJobWorker, JobExecutionResult
@@ -37,6 +38,7 @@ __all__ = [
     "IngestionRecoveryWorker",
     "IngestionRepositoryConflict",
     "IngestionRepositoryPort",
+    "TranscriptRepositoryPort",
     "JobLeaseLost",
     "JobNotFound",
     "JobQueueError",

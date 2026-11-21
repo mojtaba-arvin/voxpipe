@@ -42,3 +42,7 @@ Terminal states are `completed`, `failed`, `cancelled`, and `expired`. A termina
 
 
 - `schemas/transcript.v1.schema.json` — canonical provider-neutral transcript, timing, speaker, confidence, and provenance contract.
+
+- `schemas/structured-intelligence.v1.schema.json` — typed entity, event, topic, relation, and action-item claims with exact segment character evidence and extractor provenance.
+
+Structured claims are not accepted on schema validity alone. The application must load the referenced immutable transcript revision under authenticated tenant scope and run the evidence validator; quotes must match the exact character offsets. Model output is untrusted data, never executable instructions. The schema intentionally carries no tenant identifier; tenant isolation belongs to the persistence/query boundary.

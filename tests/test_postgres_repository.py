@@ -71,6 +71,10 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         cls.migrations_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgres"
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
+            connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcripts CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_upload_leases CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_audit_events CASCADE")
@@ -106,6 +110,9 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute(
                 "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
             )
+            connection.execute(
+                "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
+            )
 
         cls.repository = PostgresIngestionRepository(cls.app_dsn)
         cls.queue = PostgresIngestionJobQueue(cls.app_dsn)
@@ -114,7 +121,288 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+
+    def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
+        import psycopg
+
+        with tempfile.TemporaryDirectory() as temporary:
+            migration = Path(temporary) / "9999_parser_probe.sql"
+            migration.write_text(
+                """
+                CREATE TABLE migration_parser_probe (value text);
+                DO $migration$
+                BEGIN
+                    INSERT INTO migration_parser_probe(value) VALUES ('left;right');
+                END;
+                $migration$;
+                """,
+                encoding="utf-8",
+            )
+            self.assertEqual(apply_migrations(self.admin_dsn, temporary), (9999,))
+
+        with psycopg.connect(self.admin_dsn) as connection:
+            row = connection.execute("SELECT value FROM migration_parser_probe").fetchone()
+            self.assertEqual(row[0], "left;right")
+            connection.execute("DROP TABLE migration_parser_probe")
+            connection.execute("DELETE FROM voxpipe_schema_migrations WHERE version = 9999")
+
+    def test_migration_runner_serializes_concurrent_invocations(self) -> None:
+        import psycopg
+
+        with tempfile.TemporaryDirectory() as temporary:
+            migration = Path(temporary) / "9998_concurrent_probe.sql"
+            migration.write_text(
+                """
+                CREATE TABLE migration_concurrency_probe (id integer PRIMARY KEY);
+                INSERT INTO migration_concurrency_probe(id) VALUES (1);
+                """,
+                encoding="utf-8",
+            )
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(executor.map(
+                    lambda _: apply_migrations(self.admin_dsn, temporary),
+                    range(2),
+                ))
+            self.assertCountEqual(results, [(9998,), ()])
+
+        with psycopg.connect(self.admin_dsn) as connection:
+            rows = connection.execute("SELECT id FROM migration_concurrency_probe").fetchall()
+            self.assertEqual(rows, [(1,)])
+            connection.execute("DROP TABLE migration_concurrency_probe")
+            connection.execute("DELETE FROM voxpipe_schema_migrations WHERE version = 9998")
+
+    def test_transcript_storage_is_append_only_tenant_scoped_and_searchable(self) -> None:
+        import psycopg
+
+        tenant_a, tenant_b = str(uuid4()), str(uuid4())
+        asset_a = str(uuid4())
+        asset_b = str(uuid4())
+        now = self.now()
+        for tenant, asset in ((tenant_a, asset_a), (tenant_b, asset_b)):
+            self.repository.create_asset({
+                "asset_id": asset, "tenant_id": tenant, "updated_at": now,
+                "created_at": now, "content_type": "audio/wav", "size_bytes": 1,
+                "sha256": "a" * 64,
+            })
+
+        transcript_id, segment_id, speaker_id = str(uuid4()), str(uuid4()), str(uuid4())
+        second_segment_id = str(uuid4())
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            connection.execute(
+                """INSERT INTO transcripts
+                (tenant_id, transcript_id, asset_id, revision, language, text, provider, model,
+                 model_version, audio_sha256, generated_at)
+                VALUES (%s,%s,%s,1,'fa-IR','سلام جلسه شروع شد. جلسه جلسه مهم','fixture','test-model','1',%s,%s)""",
+                (tenant_a, transcript_id, asset_a, "a" * 64, now),
+            )
+            connection.execute(
+                "INSERT INTO transcript_speakers (tenant_id, transcript_id, revision, speaker_id, label) VALUES (%s,%s,1,%s,'speaker_1')",
+                (tenant_a, transcript_id, speaker_id),
+            )
+            connection.execute(
+                """INSERT INTO transcript_segments
+                (tenant_id, transcript_id, revision, segment_id, start_ms, end_ms, text, speaker_id)
+                VALUES (%s,%s,1,%s,0,1200,'سلام جلسه شروع شد',%s),
+                       (%s,%s,1,%s,1300,2200,'جلسه جلسه مهم',%s)""",
+                (tenant_a, transcript_id, segment_id, speaker_id,
+                 tenant_a, transcript_id, second_segment_id, speaker_id),
+            )
+            connection.execute(
+                """INSERT INTO transcript_words
+                (tenant_id, transcript_id, revision, segment_id, word_index, start_ms, end_ms, text)
+                VALUES (%s,%s,1,%s,0,0,300,'سلام')""",
+                (tenant_a, transcript_id, segment_id),
+            )
+
+        with psycopg.connect(self.app_dsn) as connection:
+            # Missing tenant context must fail closed for every transcript-derived table.
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_segments").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
+
+        # RLS must also reject writes without a tenant context.
+        with psycopg.connect(self.app_dsn) as connection:
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                with connection.transaction():
+                    connection.execute(
+                        """INSERT INTO transcripts
+                        (tenant_id, transcript_id, asset_id, revision, language, text,
+                         provider, model, audio_sha256, generated_at)
+                        VALUES (%s,%s,%s,1,'fa-IR','unauthorized','fixture','test-model',%s,%s)""",
+                        (tenant_a, str(uuid4()), asset_a, "a" * 64, now),
+                    )
+
+        # A tenant cannot attach its transcript to another tenant's source asset.
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_b,))
+            with self.assertRaises(psycopg.errors.ForeignKeyViolation):
+                with connection.transaction():
+                    connection.execute(
+                        """INSERT INTO transcripts
+                        (tenant_id, transcript_id, asset_id, revision, language, text,
+                         provider, model, audio_sha256, generated_at)
+                        VALUES (%s,%s,%s,1,'fa-IR','cross-tenant','fixture','test-model',%s,%s)""",
+                        (tenant_b, str(uuid4()), asset_a, "a" * 64, now),
+                    )
+
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_b,))
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                connection.execute("UPDATE transcripts SET text='tampered' WHERE transcript_id=%s", (transcript_id,))
+
+        rows = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", transcript_id=transcript_id, language="fa-IR",
+            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10,
+        )
+        self.assertEqual(len(rows), 2)
+        # More occurrences of the term rank higher; ties remain stable by time and ID.
+        self.assertEqual(str(rows[0]["segment_id"]), second_segment_id)
+        self.assertEqual(str(rows[1]["segment_id"]), segment_id)
+        self.assertGreater(rows[0]["rank"], rows[1]["rank"])
+        self.assertEqual(str(rows[0]["asset_id"]), asset_a)
+        self.assertEqual(rows[0]["revision"], 1)
+        page = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", transcript_id=transcript_id, limit=1, offset=1
+        )
+        self.assertEqual(len(page), 1)
+        self.assertEqual(str(page[0]["segment_id"]), segment_id)
+        self.assertEqual(
+            self.repository.search_transcript_segments(tenant_b, "جلسه"), []
+        )
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, " ")
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, "جلسه", limit=101)
+
+        # Asset deletion cascades transcript revisions, segments, speakers and words.
+        self.assertTrue(self.repository.delete_asset(tenant_a, asset_a))
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcripts").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT count(*) FROM transcript_words").fetchone()[0], 0)
+
+    def test_transcript_repository_creates_reads_and_preserves_immutable_revisions(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "a" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript_id = str(uuid4())
+        speaker_id = str(uuid4())
+        segment_id = str(uuid4())
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": transcript_id,
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "سلام جلسه شروع شد",
+            "provider": "fixture",
+            "model": "test-model",
+            "model_version": "1",
+            "audio_sha256": "a" * 64,
+            "generated_at": self.now(),
+            "speakers": [{"speaker_id": speaker_id, "label": "speaker_1", "confidence": 0.98}],
+            "segments": [{
+                "segment_id": segment_id, "start_ms": 0, "end_ms": 1200,
+                "text": "سلام جلسه شروع شد", "confidence": 0.99,
+                "speaker_id": speaker_id,
+                "words": [
+                    {"word_index": 0, "start_ms": 0, "end_ms": 300, "text": "سلام"},
+                    {"word_index": 1, "start_ms": 350, "end_ms": 700, "text": "جلسه"},
+                ],
+            }],
+        }
+        created = self.repository.create_transcript_revision(transcript)
+        self.assertEqual(created["revision"], 1)
+        self.assertEqual(created["segments"][0]["text"], "سلام جلسه شروع شد")
+        self.assertEqual(len(created["segments"][0]["words"]), 2)
+        self.assertEqual(str(created["speakers"][0]["speaker_id"]), speaker_id)
+        self.assertIsNone(self.repository.get_transcript_revision(str(uuid4()), transcript_id))
+        repeated = self.repository.create_transcript_revision(transcript)
+        self.assertEqual(repeated["revision"], created["revision"])
+        self.assertEqual(repeated["text"], created["text"])
+        conflicting = {**transcript, "text": "متن متفاوت"}
+        with self.assertRaises(IngestionRepositoryConflict):
+            self.repository.create_transcript_revision(conflicting)
+
+        second_revision = {
+            **transcript,
+            "revision": 2,
+            "text": "سلام جلسه شروع شد و تمام شد",
+            "segments": [{
+                **transcript["segments"][0],
+                "segment_id": str(uuid4()),
+                "end_ms": 1800,
+                "text": "سلام جلسه شروع شد و تمام شد",
+            }],
+        }
+        self.repository.create_transcript_revision(second_revision)
+        latest = self.repository.get_transcript_revision(tenant_id, transcript_id)
+        original = self.repository.get_transcript_revision(tenant_id, transcript_id, 1)
+        self.assertEqual(latest["revision"], 2)
+        self.assertEqual(original["revision"], 1)
+        self.assertEqual(original["text"], "سلام جلسه شروع شد")
+
+    def test_concurrent_transcript_revision_writes_allow_exactly_one_winner(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "c" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": str(uuid4()),
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "یک متن آزمایشی",
+            "provider": "fixture",
+            "model": "test-model",
+            "audio_sha256": "c" * 64,
+            "generated_at": self.now(),
+            "segments": [{
+                "segment_id": str(uuid4()), "start_ms": 0, "end_ms": 500,
+                "text": "یک متن آزمایشی",
+            }],
+        }
+
+        def attempt(_: int):
+            return self.repository.create_transcript_revision(transcript)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(attempt, (1, 2)))
+        self.assertEqual(results[0]["revision"], 1)
+        self.assertEqual(results[1]["revision"], 1)
+        self.assertEqual(results[0]["text"], results[1]["text"])
+        stored = self.repository.get_transcript_revision(tenant_id, transcript["transcript_id"])
+        self.assertEqual(stored["revision"], 1)
+        self.assertEqual(stored["text"], transcript["text"])
+
+    def test_transcript_repository_rejects_unknown_speakers_before_writing(self) -> None:
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "b" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript = {
+            "tenant_id": tenant_id,
+            "transcript_id": str(uuid4()),
+            "asset_id": asset["asset_id"],
+            "revision": 1,
+            "language": "fa-IR",
+            "text": "متن",
+            "provider": "fixture",
+            "model": "test-model",
+            "audio_sha256": "b" * 64,
+            "generated_at": self.now(),
+            "segments": [{
+                "segment_id": str(uuid4()), "start_ms": 0, "end_ms": 100,
+                "text": "متن", "speaker_id": str(uuid4()),
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "unknown speaker"):
+            self.repository.create_transcript_revision(transcript)
+        self.assertIsNone(
+            self.repository.get_transcript_revision(tenant_id, transcript["transcript_id"])
+        )
 
     def tearDown(self) -> None:
         pass
@@ -152,7 +440,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
@@ -464,6 +752,56 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with psycopg.connect(self.app_dsn) as connection:
             rows = connection.execute("SELECT job_id FROM ingestion_jobs").fetchall()
         self.assertEqual(rows, [])
+
+
+    def test_structured_extraction_persistence_is_idempotent_tenant_scoped_and_append_only(self) -> None:
+        import psycopg
+        from voxpipe.structuring.contracts import EvidenceSpan, ExtractionProvenance, StructuredClaim, StructuredIntelligence
+        from voxpipe.structuring.postgres import PostgresStructuredIntelligenceRepository
+
+        tenant_id = str(uuid4())
+        asset = self.asset(tenant_id)
+        self.repository.create_asset({**asset, "sha256": "b" * 64, "content_type": "audio/wav", "size_bytes": 1})
+        transcript_id, segment_id = str(uuid4()), str(uuid4())
+        self.repository.create_transcript_revision({
+            "tenant_id": tenant_id, "transcript_id": transcript_id, "asset_id": asset["asset_id"],
+            "revision": 1, "language": "fa-IR", "text": "سلام", "provider": "fixture",
+            "model": "test-model", "model_version": "1", "audio_sha256": "b" * 64,
+            "generated_at": self.now(), "speakers": [],
+            "segments": [{"segment_id": segment_id, "start_ms": 0, "end_ms": 500,
+                          "text": "سلام", "confidence": 0.99, "speaker_id": None, "words": []}],
+        })
+        result = StructuredIntelligence(
+            document_id=str(uuid4()), asset_id=asset["asset_id"], transcript_id=transcript_id,
+            transcript_revision=1,
+            provenance=ExtractionProvenance("fixture", "test-model", "1", "prompt-v1", "1.0.0",
+                                             datetime.now(timezone.utc)),
+            entities=(StructuredClaim(str(uuid4()), {"name": "سلام", "entity_type": "phrase"}, (EvidenceSpan(segment_id, 0, 4, "سلام"),), 0.9),),
+        )
+        store = PostgresStructuredIntelligenceRepository(self.app_dsn)
+        first = store.create_or_get(tenant_id, "extract-0001", result)
+        repeated = store.create_or_get(tenant_id, "extract-0001", result)
+        self.assertEqual(first, repeated)
+        self.assertEqual(store.get(tenant_id, first["extraction_id"]), first)
+        self.assertIsNone(store.get(str(uuid4()), first["extraction_id"]))
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_id,))
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                connection.execute("UPDATE structured_extractions SET result='{}'::jsonb WHERE extraction_id=%s",
+                                   (first["extraction_id"],))
+        from dataclasses import replace
+        from voxpipe.structuring.contracts import StructuredIntelligenceValidationError
+        original_claim = result.entities[0]
+        fabricated = replace(result, entities=(replace(original_claim, evidence=(EvidenceSpan(segment_id, 0, 4, "جعل"),)),))
+        with self.assertRaises(StructuredIntelligenceValidationError):
+            store.create_or_get(tenant_id, "fabricated-evidence", fabricated)
+
+        changed = replace(result, entities=(replace(original_claim, value={"name": "متفاوت", "entity_type": "phrase"}),))
+        from voxpipe.structuring.postgres import StructuredExtractionConflict, StructuredExtractionSourceNotFound
+        with self.assertRaises(StructuredExtractionConflict):
+            store.create_or_get(tenant_id, "extract-0001", changed)
+        with self.assertRaises(StructuredExtractionSourceNotFound):
+            store.create_or_get(str(uuid4()), "cross-tenant", result)
 
 
 if __name__ == "__main__":

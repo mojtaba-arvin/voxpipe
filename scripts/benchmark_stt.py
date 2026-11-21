@@ -1,18 +1,53 @@
-"""Score existing STT JSONL results without loading a model or calling a service."""
+"""Score reproducible STT JSONL results without loading a model or calling a service.
+
+Input is one JSON object per audio file. Keep raw references and hypotheses;
+normalization is explicit and versioned in the output so scores remain auditable.
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import re
 import sys
+import unicodedata
+from collections import defaultdict
 from pathlib import Path
+
+_PERSIAN_TRANSLATION = str.maketrans({
+    "ي": "ی", "ى": "ی", "ئ": "ئ", "ك": "ک", "ۀ": "ه",
+    "ة": "ه", "ؤ": "و", "أ": "ا", "إ": "ا", "ٱ": "ا",
+    **{chr(0x0660 + i): str(i) for i in range(10)},
+    **{chr(0x06F0 + i): str(i) for i in range(10)},
+})
+_DIACRITICS = re.compile(r"[\u064b-\u065f\u0670\u06d6-\u06ed]")
+_WHITESPACE = re.compile(r"\s+")
 
 
 def normalize(text: str) -> list[str]:
-    text = text.translate(str.maketrans({"ي": "ی", "ى": "ی", "ك": "ک", "ۀ": "ه", "ة": "ه"}))
-    text = re.sub(r"[\u064b-\u065f\u0670\u0640]", "", text)
-    text = re.sub(r"[^\w\s]", " ", text, flags=re.UNICODE)
-    return text.casefold().split()
+    """Return Persian-aware tokens under normalization policy fa-norm-v1.
+
+    Policy: Unicode NFC; Arabic kaf/yeh and alef variants map to Persian forms;
+    Arabic/Persian digits map to ASCII; diacritics and tatweel are removed;
+    ZWNJ is treated as a token boundary; punctuation is removed; whitespace
+    is collapsed. This policy is deliberately explicit, not linguistically
+    lossless. Always retain and report raw scores alongside normalized scores.
+    """
+    if not isinstance(text, str):
+        raise TypeError("transcript text must be a string")
+    text = unicodedata.normalize("NFC", text).translate(_PERSIAN_TRANSLATION)
+    text = text.replace("\u200c", " ").replace("\u0640", "")
+    text = _DIACRITICS.sub("", text)
+    text = "".join(" " if unicodedata.category(char).startswith("P") else char for char in text)
+    text = _WHITESPACE.sub(" ", text).strip().casefold()
+    return text.split() if text else []
+
+
+def normalize_raw(text: str) -> list[str]:
+    """Conservative NFC + whitespace normalization, without Persian folding."""
+    if not isinstance(text, str):
+        raise TypeError("transcript text must be a string")
+    value = _WHITESPACE.sub(" ", unicodedata.normalize("NFC", text)).strip()
+    return value.split() if value else []
 
 
 def edit_distance(left: list[str], right: list[str]) -> int:
@@ -36,20 +71,34 @@ def percentile(values: list[float], quantile: float) -> float | None:
     return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
 
 
-def score(rows: list[dict]) -> dict:
+def _rates(rows: list[dict], tokenizer) -> dict:
     ref_words = hyp_words = word_errors = char_errors = ref_chars = 0
-    audio_seconds = inference_seconds = estimated_cost = 0.0
-    cost_known = True
-    latencies: list[float] = []
-    rtfs: list[float] = []
     for row in rows:
-        reference, hypothesis = normalize(row["reference"]), normalize(row["hypothesis"])
+        reference, hypothesis = tokenizer(row["reference"]), tokenizer(row["hypothesis"])
         word_errors += edit_distance(reference, hypothesis)
         ref_words += len(reference)
         hyp_words += len(hypothesis)
         ref_text, hyp_text = " ".join(reference), " ".join(hypothesis)
         char_errors += edit_distance(list(ref_text), list(hyp_text))
         ref_chars += len(ref_text)
+    return {
+        "wer": word_errors / ref_words if ref_words else None,
+        "cer": char_errors / ref_chars if ref_chars else None,
+        "reference_words": ref_words,
+        "hypothesis_words": hyp_words,
+    }
+
+
+def score(rows: list[dict]) -> dict:
+    if not rows:
+        raise ValueError("benchmark requires at least one result row")
+    raw = _rates(rows, normalize_raw)
+    normalized = _rates(rows, normalize)
+    audio_seconds = inference_seconds = estimated_cost = 0.0
+    cost_known = True
+    latencies: list[float] = []
+    rtfs: list[float] = []
+    for row in rows:
         audio, inference = float(row["audio_duration_seconds"]), float(row["inference_seconds"])
         if audio <= 0 or inference < 0:
             raise ValueError("audio duration must be positive and inference time non-negative")
@@ -61,17 +110,25 @@ def score(rows: list[dict]) -> dict:
         if rate is None:
             cost_known = False
         else:
-            estimated_cost += audio / 60 * float(rate)
+            rate = float(rate)
+            if rate < 0:
+                raise ValueError("cost_per_audio_minute cannot be negative")
+            estimated_cost += audio / 60 * rate
     return {
-        "files": len(rows), "reference_words": ref_words, "hypothesis_words": hyp_words,
-        "wer": word_errors / ref_words if ref_words else None,
-        "cer": char_errors / ref_chars if ref_chars else None,
-        "real_time_factor": inference_seconds / audio_seconds if audio_seconds else None,
+        "files": len(rows),
+        "normalization": "fa-norm-v1",
+        "raw": raw,
+        "normalized": normalized,
+        # Compatibility aliases: historical wer/cer are normalized scores.
+        "wer": normalized["wer"],
+        "cer": normalized["cer"],
+        "real_time_factor": inference_seconds / audio_seconds,
         "latency_seconds_p50": percentile(latencies, 0.50),
         "latency_seconds_p95": percentile(latencies, 0.95),
         "per_file_rtf_p50": percentile(rtfs, 0.50),
         "per_file_rtf_p95": percentile(rtfs, 0.95),
-        "audio_seconds": audio_seconds, "inference_seconds": inference_seconds,
+        "audio_seconds": audio_seconds,
+        "inference_seconds": inference_seconds,
         "estimated_api_cost_usd": estimated_cost if cost_known else None,
     }
 
@@ -88,6 +145,9 @@ def main() -> int:
         for number, row in enumerate(rows, 1):
             if not isinstance(row, dict) or not required.issubset(row):
                 raise ValueError(f"row {number} is missing required fields: {sorted(required)}")
+            for field in ("reference", "hypothesis"):
+                if not isinstance(row[field], str):
+                    raise ValueError(f"row {number} field {field} must be a string")
         print(json.dumps(score(rows), ensure_ascii=False, indent=2))
         return 0
     except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:

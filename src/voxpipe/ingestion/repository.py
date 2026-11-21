@@ -34,6 +34,21 @@ class IngestionRepositoryPort(Protocol):
     def list_expired_assets(self, now: str, limit: int = 100, tenant_id: str | None = None) -> list[dict[str, Any]]: ...
 
 
+class TranscriptRepositoryPort(Protocol):
+    """Tenant-scoped immutable transcript persistence and lexical retrieval."""
+
+    def create_transcript_revision(self, transcript: dict[str, Any]) -> dict[str, Any]: ...
+    def get_transcript_revision(
+        self, tenant_id: str, transcript_id: str, revision: int | None = None,
+    ) -> dict[str, Any] | None: ...
+    def search_transcript_segments(
+        self, tenant_id: str, query: str, *, transcript_id: str | None = None,
+        language: str | None = None, speaker_id: str | None = None,
+        start_ms: int | None = None, end_ms: int | None = None,
+        limit: int = 20, offset: int = 0,
+    ) -> list[dict[str, Any]]: ...
+
+
 class SQLiteIngestionRepository:
     """Single-node durable repository using SQLite and tenant-scoped queries."""
 
