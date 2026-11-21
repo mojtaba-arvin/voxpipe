@@ -13,7 +13,7 @@ VoxPipe exposes both behind the same VAD result shape. The evaluator reports fra
 
 The first local baseline uses SpeechBrain ECAPA-TDNN speaker embeddings (Apache-2.0 model card) with deterministic cosine-centroid clustering over VAD speech windows. Speaker labels are anonymous and scoped to one audio asset. This baseline does not model overlap, turn-taking priors, or conversational channel separation. It is not claimed to be a production Persian diarization system.
 
-DER/JER evaluation supports a configurable reference-boundary collar, optional overlap exclusion, speaker mapping, and speaker-count error. A genuine Persian DER/JER result requires consented multi-speaker recordings with time-aligned speaker-turn annotations. Read-speech corpora and per-utterance speaker IDs are not substitutes for within-recording turn labels.
+DER/JER evaluation supports a configurable reference-boundary collar, optional overlap exclusion, one-to-one speaker mapping, and speaker-count error. ECAPA turn confidence is an uncalibrated cosine similarity, not a probability. A genuine Persian DER/JER result requires consented multi-speaker recordings with time-aligned speaker-turn annotations. Read-speech corpora and per-utterance speaker IDs are not substitutes for within-recording turn labels.
 
 ## Language identification
 

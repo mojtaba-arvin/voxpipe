@@ -106,8 +106,11 @@ def evaluate_diarization(reference,hypothesis,*,duration_ms:int,collar_ms:int=25
     if hyps and refs:
         if len(hyps)<=8 and len(refs)<=8:
             best=None; best_score=-1
-            for chosen in permutations(refs,min(len(hyps),len(refs))):
-                candidate=dict(zip(hyps,chosen))
+            if len(hyps)<=len(refs):
+                candidates=(dict(zip(hyps,chosen)) for chosen in permutations(refs,len(hyps)))
+            else:
+                candidates=(dict(zip(chosen,refs)) for chosen in permutations(hyps,len(refs)))
+            for candidate in candidates:
                 score=sum(overlap[(h,r)] for h,r in candidate.items())
                 if score>best_score: best,best_score=candidate,score
             mapping=best or {}

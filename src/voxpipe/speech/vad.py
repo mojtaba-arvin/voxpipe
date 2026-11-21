@@ -11,7 +11,7 @@ _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 class SpeechRegion:
     start_ms: int
     end_ms: int
-    confidence: float = 1.0
+    confidence: float | None = None
 
 @dataclass(frozen=True, slots=True)
 class VADResult:
@@ -57,7 +57,7 @@ class SileroVADAdapter:
             import torch
             waveform = torch.tensor(values, dtype=torch.float32)
         raw = self.timestamp_fn(
-            waveform, self.model, threshold=self.threshold,
+            waveform, self.model, sampling_rate=sample_rate, threshold=self.threshold,
             min_speech_duration_ms=self.min_speech_duration_ms,
             min_silence_duration_ms=self.min_silence_duration_ms,
             return_seconds=False,
@@ -73,7 +73,7 @@ class SileroVADAdapter:
         for region in regions:
             if merged and region.start_ms <= merged[-1].end_ms:
                 prior = merged[-1]
-                merged[-1] = SpeechRegion(prior.start_ms, max(prior.end_ms, region.end_ms), min(prior.confidence, region.confidence))
+                merged[-1] = SpeechRegion(prior.start_ms, max(prior.end_ms, region.end_ms))
             else: merged.append(region)
         return VADResult(self.provider_name, "silero-vad-local", audio_sha256, sample_rate,
                          round(len(values) * 1000 / sample_rate), tuple(merged))
