@@ -13,7 +13,7 @@ VoxPipe exposes both behind the same VAD result shape. The evaluator reports fra
 
 The first local baseline uses SpeechBrain ECAPA-TDNN speaker embeddings (Apache-2.0 model card) with deterministic cosine-centroid clustering over VAD speech windows. Speaker labels are anonymous and scoped to one audio asset. This baseline does not model overlap, turn-taking priors, or conversational channel separation. It is not claimed to be a production Persian diarization system.
 
-DER/JER evaluation supports a configurable reference-boundary collar, optional overlap exclusion, one-to-one speaker mapping, and speaker-count error. ECAPA turn confidence is an uncalibrated cosine similarity, not a probability. A genuine Persian DER/JER result requires consented multi-speaker recordings with time-aligned speaker-turn annotations. Read-speech corpora and per-utterance speaker IDs are not substitutes for within-recording turn labels.
+DER/JER evaluation supports a configurable reference-boundary collar, optional overlap exclusion, one-to-one speaker mapping, and speaker-count error. ECAPA turn confidence is an uncalibrated cosine similarity, not a probability. A controlled Persian speaker-clustering benchmark now uses Neyshekar V6.0 (CC0-1.0, DOI 10.5281/zenodo.18073632), pinned dataset revision `30696ada746a66bb3047c984744b5ecfd60fe4e9`, and three anonymous speakers with two utterances each in both validation and test splits. The threshold is selected on validation (0.20) and evaluated on disjoint test speakers. Test DER was 23.81% and JER 23.60%, versus 57.14% DER and 85.71% JER for a single-speaker baseline; speaker-count error remained 2. This is a small synthetic concatenation with 250 ms inserted silence, no overlap, and no natural turn-taking. It is not production-quality conversational diarization.
 
 ## Language identification
 
@@ -28,5 +28,5 @@ Optional runtimes are listed in `requirements-speech.txt`. Model files must be s
 ## Remaining evidence gates
 
 - VAD: no approved frame-labelled Persian corpus; report synthetic/fixture tests separately from real speech/non-speech metrics.
-- Diarization: no approved Persian corpus with within-recording speaker-turn ground truth; no real DER/JER claim.
+- Diarization: controlled read-speech speaker-clustering metrics are available; natural conversational DER/JER, overlap handling and production attribution remain unverified.
 - Language ID: adapter and metrics exist; a pinned multilingual gold benchmark is still required for measured macro-F1 and calibration.
