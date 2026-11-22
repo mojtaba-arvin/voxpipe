@@ -770,6 +770,8 @@ class PostgresIngestionRepository:
         query: str,
         *,
         transcript_id: str | None = None,
+        asset_id: str | None = None,
+        revision: int | None = None,
         language: str | None = None,
         speaker_id: str | None = None,
         start_ms: int | None = None,
@@ -806,6 +808,16 @@ class PostgresIngestionRepository:
                 uuid.UUID(speaker_id)
             except (ValueError, TypeError, AttributeError):
                 raise ValueError("speaker_id must be a UUID") from None
+        if asset_id is not None:
+            import uuid
+            try:
+                uuid.UUID(asset_id)
+            except (ValueError, TypeError, AttributeError):
+                raise ValueError("asset_id must be a UUID") from None
+        if revision is not None and (
+            not isinstance(revision, int) or isinstance(revision, bool) or revision < 1
+        ):
+            raise ValueError("revision must be a positive integer")
         with self._tenant_connection(tenant_id) as connection:
             rows = connection.execute(
                 """
@@ -825,6 +837,8 @@ class PostgresIngestionRepository:
                 CROSS JOIN search_query AS q
                 WHERE s.search_vector @@ q.value
                   AND (%s::uuid IS NULL OR t.transcript_id = %s::uuid)
+                  AND (%s::uuid IS NULL OR t.asset_id = %s::uuid)
+                  AND (%s::integer IS NULL OR t.revision = %s::integer)
                   AND (%s::text IS NULL OR t.language = %s::text)
                   AND (%s::uuid IS NULL OR s.speaker_id = %s::uuid)
                   AND (%s::bigint IS NULL OR s.end_ms >= %s::bigint)
@@ -832,9 +846,9 @@ class PostgresIngestionRepository:
                 ORDER BY rank DESC, s.start_ms ASC, s.segment_id ASC
                 LIMIT %s OFFSET %s
                 """,
-                (query, transcript_id, transcript_id, language, language,
-                 speaker_id, speaker_id, start_ms, start_ms, end_ms, end_ms,
-                 limit, offset),
+                (query, transcript_id, transcript_id, asset_id, asset_id,
+                 revision, revision, language, language, speaker_id, speaker_id,
+                 start_ms, start_ms, end_ms, end_ms, limit, offset),
             ).fetchall()
         return [dict(row) for row in rows]
 

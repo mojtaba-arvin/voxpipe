@@ -215,6 +215,25 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                 VALUES (%s,%s,1,%s,0,0,300,'سلام')""",
                 (tenant_a, transcript_id, segment_id),
             )
+            connection.execute(
+                """INSERT INTO transcripts
+                (tenant_id, transcript_id, asset_id, revision, language, text, provider, model,
+                 model_version, audio_sha256, generated_at)
+                VALUES (%s,%s,%s,2,'fa-IR','جلسه نسخه دوم','fixture','test-model','2',%s,%s)""",
+                (tenant_a, transcript_id, asset_a, "b" * 64, now),
+            )
+            connection.execute(
+                """INSERT INTO transcript_speakers
+                (tenant_id, transcript_id, revision, speaker_id, label)
+                VALUES (%s,%s,2,%s,'speaker_1')""",
+                (tenant_a, transcript_id, speaker_id),
+            )
+            connection.execute(
+                """INSERT INTO transcript_segments
+                (tenant_id, transcript_id, revision, segment_id, start_ms, end_ms, text, speaker_id)
+                VALUES (%s,%s,2,%s,0,900,'جلسه نسخه دوم',%s)""",
+                (tenant_a, transcript_id, str(uuid4()), speaker_id),
+            )
 
         with psycopg.connect(self.app_dsn) as connection:
             # Missing tenant context must fail closed for every transcript-derived table.
@@ -255,7 +274,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
 
         rows = self.repository.search_transcript_segments(
             tenant_a, "جلسه", transcript_id=transcript_id, language="fa-IR",
-            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10,
+            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10, revision=1,
         )
         self.assertEqual(len(rows), 2)
         # More occurrences of the term rank higher; ties remain stable by time and ID.
@@ -264,8 +283,22 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         self.assertGreater(rows[0]["rank"], rows[1]["rank"])
         self.assertEqual(str(rows[0]["asset_id"]), asset_a)
         self.assertEqual(rows[0]["revision"], 1)
+        all_revisions = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", transcript_id=transcript_id, asset_id=asset_a,
+        )
+        self.assertEqual(len(all_revisions), 3)
+        self.assertEqual({row["revision"] for row in all_revisions}, {1, 2})
+        revision_two = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", asset_id=asset_a, revision=2,
+        )
+        self.assertEqual(len(revision_two), 1)
+        self.assertEqual(revision_two[0]["revision"], 2)
+        wrong_source = self.repository.search_transcript_segments(
+            tenant_a, "جلسه", asset_id=str(uuid4()),
+        )
+        self.assertEqual(wrong_source, [])
         page = self.repository.search_transcript_segments(
-            tenant_a, "جلسه", transcript_id=transcript_id, limit=1, offset=1
+            tenant_a, "جلسه", transcript_id=transcript_id, revision=1, limit=1, offset=1
         )
         self.assertEqual(len(page), 1)
         self.assertEqual(str(page[0]["segment_id"]), segment_id)
@@ -276,6 +309,12 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             self.repository.search_transcript_segments(tenant_a, " ")
         with self.assertRaises(ValueError):
             self.repository.search_transcript_segments(tenant_a, "جلسه", limit=101)
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, "جلسه", asset_id="not-a-uuid")
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, "جلسه", revision=0)
+        with self.assertRaises(ValueError):
+            self.repository.search_transcript_segments(tenant_a, "جلسه", revision=True)
 
         # Asset deletion cascades transcript revisions, segments, speakers and words.
         self.assertTrue(self.repository.delete_asset(tenant_a, asset_a))
