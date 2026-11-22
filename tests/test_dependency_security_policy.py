@@ -1,7 +1,5 @@
-import re
 import unittest
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,10 +13,11 @@ class DependencySecurityPolicyTests(unittest.TestCase):
         self.assertNotIn("github.com/jackc/pgx/v5 v5.7.2", go_mod)
         self.assertNotIn("golang.org/x/text v0.21.0", go_mod)
 
-    def test_python_benchmark_dependency_floors_exclude_known_vulnerable_versions(self):
-        requirements = (ROOT / "requirements-benchmark.txt").read_text(encoding="utf-8")
-        self.assertRegex(requirements, r"(?m)^datasets>=5\.0\.1,<6$")
-        self.assertRegex(requirements, r"(?m)^fsspec>=2026\.6\.0,<2027$")
+    def test_python_benchmark_and_optional_speech_sets_exclude_vulnerable_floors(self):
+        for path in ("requirements-benchmark.txt", "requirements-vad.txt", "requirements-lid.txt"):
+            requirements = (ROOT / path).read_text(encoding="utf-8")
+            self.assertRegex(requirements, r"(?m)^datasets>=5\.0\.1,<6$")
+            self.assertRegex(requirements, r"(?m)^fsspec>=2026\.6\.0,<2027$")
 
     def test_all_go_ci_jobs_use_the_patched_toolchain(self):
         for path in (
