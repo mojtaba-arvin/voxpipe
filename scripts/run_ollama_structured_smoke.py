@@ -50,7 +50,33 @@ def required_event_fields_for_candidates(candidates):
     return tuple(required)
 
 
-def ollama_output_schema(span_ids, required_event_fields=()):
+def candidate_schema_constraints(candidates):
+    """Constrain impossible claim categories before generation, using only visible evidence."""
+    text = " ".join(item["quote"] for item in candidates)
+    event_types = []
+    if re.search(r"برگزار\s+می‌شود|برگزار\s+خواهد\s+شد|تشکیل\s+می‌شود", text):
+        event_types.append("meeting")
+    if re.search(r"امضا\s+کرد(?:ه|ند)?", text):
+        event_types.append("contract-signing")
+    reporting_speaker = re.search(r"(?:^|[.!؟。]\s*)([\u0600-\u06FF]+)\s+گفت\b", text)
+    has_other_entity_cue = re.search(r"شرکت|سازمان|دفتر|مرکز|ساختمان|شهر|کشور|آقای|خانم", text)
+    # A reporting-frame speaker alone is not an entity in this extraction contract.
+    max_entities = 0 if reporting_speaker and not has_other_entity_cue else 32
+    return {
+        "max_entities": max_entities,
+        "max_events": 32 if event_types else 0,
+        "allowed_event_types": tuple(event_types),
+    }
+
+
+def ollama_output_schema(
+    span_ids,
+    required_event_fields=(),
+    *,
+    max_entities=32,
+    max_events=32,
+    allowed_event_types=("meeting", "contract-signing"),
+):
     allowed = list(span_ids) or ["__no_evidence__"]
     evidence={"type":"object","additionalProperties":False,
         "required":["span_id"],
@@ -61,7 +87,7 @@ def ollama_output_schema(span_ids, required_event_fields=()):
             "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":["person","organization","location","document"]},
                 "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}}},
         "events":{"type":"object","additionalProperties":False,"required":["name","event_type",*required_event_fields],
-            "properties":{"name":{"type":"string","minLength":1},"event_type":{"type":"string","minLength":1},
+            "properties":{"name":{"type":"string","minLength":1},"event_type":{"type":"string","enum":list(allowed_event_types) or ["meeting","contract-signing"]},
                 "start_time":{"type":"string","minLength":1},"end_time":{"type":"string"},"location":{"type":"string","minLength":1},
                 "participants":{"type":"array","items":{"type":"string"}}}},
         "topics":{"type":"object","additionalProperties":False,"required":["name"],
@@ -80,8 +106,9 @@ def ollama_output_schema(span_ids, required_event_fields=()):
             "properties":{"value":value_schema,
                 "evidence":{"type":"array","minItems":1,"items":evidence},
                 "confidence":{"type":"number","minimum":0,"maximum":1}}}
+    limits = {"entities": max_entities, "events": max_events}
     return {"type":"object","additionalProperties":False,"required":list(names),
-        "properties":{name:{"type":"array","maxItems":32,"items":claim(value_schemas[name])} for name in names}}
+        "properties":{name:{"type":"array","maxItems":limits.get(name,32),"items":claim(value_schemas[name])} for name in names}}
 
 
 def evaluate_prompt_injection_result(result):
@@ -120,8 +147,9 @@ def ollama_native_transport(_url,payload,_headers,timeout):
     candidates=json.loads(user_message[start:end])
     span_ids=tuple(item["span_id"] for item in candidates)
     required_event_fields = required_event_fields_for_candidates(candidates)
+    constraints = candidate_schema_constraints(candidates)
     native={"model":payload["model"],"messages":payload["messages"],"stream":True,
-        "format":ollama_output_schema(span_ids,required_event_fields),"think":False,
+        "format":ollama_output_schema(span_ids,required_event_fields,**constraints),"think":False,
         "options":{"temperature":payload.get("temperature",0),"num_predict":min(max(payload.get("max_tokens",4096),128),4096)}}
     request=urllib.request.Request("http://127.0.0.1:11434/api/chat",
         data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
@@ -165,7 +193,7 @@ def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v9",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v10",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
@@ -246,7 +274,7 @@ def run(model_name,output_dir):
     (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     summary={"duration_seconds":round(time.monotonic()-run_started,3),
         "sample_durations_seconds":sample_durations,
-        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v9"},
+        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v10"},
         "samples":len(SAMPLES),"validated_samples":successes,"validated_claims":claim_count,
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),

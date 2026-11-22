@@ -42,6 +42,32 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(event_value["properties"]["start_time"]["minLength"], 1)
         entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
         self.assertEqual(entity_value["properties"]["entity_type"]["enum"], ["person", "organization", "location", "document"])
+        self.assertEqual(schema["properties"]["events"]["maxItems"], 32)
+        self.assertEqual(schema["properties"]["events"]["items"]["properties"]["value"]["properties"]["event_type"]["enum"], ["meeting", "contract-signing"])
+
+    def test_action_deadline_cannot_generate_an_event(self) -> None:
+        candidates = [{"span_id": "span-0001", "quote": "علی باید گزارش را تا جمعه ارسال کند."}]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertEqual(constraints["max_events"], 0)
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        self.assertEqual(schema["properties"]["events"]["maxItems"], 0)
+
+    def test_reporting_speaker_alone_cannot_generate_an_entity(self) -> None:
+        candidates = [{"span_id": "span-0001", "quote": "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود."}]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertEqual(constraints["max_entities"], 0)
+        self.assertEqual(constraints["max_events"], 32)
+        self.assertEqual(constraints["allowed_event_types"], ("meeting",))
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        self.assertEqual(schema["properties"]["entities"]["maxItems"], 0)
+
+    def test_contract_signing_schema_only_allows_signing_event_type(self) -> None:
+        candidates = [{"span_id": "span-0001", "quote": "شرکت آریا با شرکت بهار قرارداد همکاری امضا کرد."}]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertEqual(constraints["allowed_event_types"], ("contract-signing",))
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        event_value = schema["properties"]["events"]["items"]["properties"]["value"]
+        self.assertEqual(event_value["properties"]["event_type"]["enum"], ["contract-signing"])
 
     def test_injection_gate_rejects_unrelated_claims_in_other_collections(self) -> None:
         event = SimpleNamespace(
