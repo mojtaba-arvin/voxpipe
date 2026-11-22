@@ -87,6 +87,45 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(event_value["properties"]["event_type"]["enum"], ["contract-signing"])
         self.assertEqual(event_value["properties"]["name"]["pattern"], "^امضای .+")
 
+    def test_entity_types_are_scoped_to_explicit_candidate_cues(self) -> None:
+        candidates = [
+            {"span_id": "span-0001", "quote": "جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود."}
+        ]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertEqual(constraints["allowed_entity_types"], ("location",))
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
+        self.assertEqual(entity_value["properties"]["entity_type"]["enum"], ["location"])
+        self.assertEqual(schema["properties"]["entities"]["maxItems"], 32)
+
+    def test_action_item_fields_are_constrained_by_explicit_obligation(self) -> None:
+        candidates = [
+            {"span_id": "span-0001", "quote": "علی باید گزارش فروش را تا جمعه ارسال کند."}
+        ]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertEqual(constraints["allowed_entity_types"], ("person", "document"))
+        self.assertEqual(constraints["required_action_item_fields"], ("assignee", "due_date"))
+        self.assertFalse(constraints["allow_action_item_status"])
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        action = schema["properties"]["action_items"]
+        self.assertEqual(action["maxItems"], 32)
+        value = action["items"]["properties"]["value"]
+        self.assertEqual(value["required"], ["description", "assignee", "due_date"])
+        self.assertNotIn("status", value["properties"])
+        pattern = value["properties"]["description"]["pattern"]
+        self.assertIsNone(__import__("re").search(pattern, "ارسال گزارش فروش تا جمعه"))
+        self.assertIsNotNone(__import__("re").search(pattern, "ارسال گزارش فروش"))
+
+    def test_action_status_is_allowed_only_when_source_states_a_status(self) -> None:
+        candidates = [
+            {"span_id": "span-0001", "quote": "علی باید گزارش را ارسال کند و کار انجام شد."}
+        ]
+        constraints = SMOKE.candidate_schema_constraints(candidates)
+        self.assertTrue(constraints["allow_action_item_status"])
+        schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
+        value = schema["properties"]["action_items"]["items"]["properties"]["value"]
+        self.assertIn("status", value["properties"])
+
     def test_injection_gate_rejects_unrelated_claims_in_other_collections(self) -> None:
         event = SimpleNamespace(
             value={"name": "جلسه", "event_type": "meeting", "start_time": "فردا ساعت ۹"},
