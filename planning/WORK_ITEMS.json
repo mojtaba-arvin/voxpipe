@@ -777,7 +777,8 @@
         "Select orchestration engine through an ADR and measured operational PoC."
       ],
       "evidence": [
-        "2026-11-22: implemented PostgreSQL-backed workflow run/step journal with tenant RLS, ordered steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, safe reference-only payload validation and source-asset deletion cascade. Added PostgreSQL 16 integration tests for lifecycle, idempotency, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and lease recovery. This is a bounded single-workflow sequential PoC, not yet a production worker integration or throughput benchmark."
+        "2026-11-22: implemented PostgreSQL-backed workflow run/step journal with tenant RLS, ordered steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, safe reference-only payload validation and source-asset deletion cascade. Added PostgreSQL 16 integration tests for lifecycle, idempotency, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and lease recovery. This is a bounded single-workflow sequential PoC, not yet a production worker integration or throughput benchmark.",
+        "CI triage: run 45065248976 found a literal backslash-n appended after the JSON document by the file-generation step, causing repository ledger parsing to fail before unit tests. Rewrote the ledger with a real trailing newline; no application behavior or acceptance criteria were changed."
       ],
       "blocked_reason": "The PostgreSQL durable-step PoC and integration tests are implemented. A production scheduler/worker integration, concurrent multi-worker load test, backup/restore exercise, operational latency/throughput measurements and final engine decision remain."
     },
@@ -830,4 +831,4 @@
       "blocked_reason": "Not implemented or independently verified yet."
     }
   ]
-}\n
+}
