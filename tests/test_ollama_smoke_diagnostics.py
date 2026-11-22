@@ -74,7 +74,7 @@ class SmokeDiagnosticsTests(unittest.TestCase):
                         "role": "user",
                         "content": (
                             "<EVIDENCE_CANDIDATES_JSON>\n"
-                            '[{"span_id":"span-0001"}]'
+                            '[{"span_id":"span-0001","quote":"مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود."}]'
                             "\n</EVIDENCE_CANDIDATES_JSON>"
                         ),
                     }

@@ -146,7 +146,7 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Never create a generic", SYSTEM_PROMPT)
         self.assertIn("Action items are explicit actionable obligations or requests", SYSTEM_PROMPT)
         self.assertIn("Preserve date/time expressions exactly as spoken", SYSTEM_PROMPT)
-        self.assertIn("قرارداد همکاری با شرکت بهار", SYSTEM_PROMPT)
+        self.assertIn("Do not copy facts, names, topics, or relations", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
