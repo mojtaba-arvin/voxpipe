@@ -2,13 +2,18 @@ name: Neyshekar controlled Persian diarization benchmark
 
 on:
   push:
-    branches: [feat/phase2-6-execution-foundation]
+    branches: [main]
     paths:
       - "scripts/run_neyshekar_diarization_benchmark.py"
       - "src/voxpipe/speech/diarization.py"
       - "requirements-lid.txt"
       - ".github/workflows/neyshekar-diarization-benchmark.yml"
   workflow_dispatch:
+
+concurrency:
+  # Each benchmark owns its concurrency group; unrelated workstreams never cancel one another.
+  group: voxpipe-diarization-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
