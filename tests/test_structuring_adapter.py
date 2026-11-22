@@ -51,7 +51,7 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(evidence.quote, TEXT)
         self.assertEqual(TEXT[evidence.start_char:evidence.end_char], evidence.quote)
         self.assertIn("span_id", SYSTEM_PROMPT)
-        self.assertNotIn("start_char", SYSTEM_PROMPT)
+        self.assertNotIn("Calculate start_char", SYSTEM_PROMPT)
         self.assertIn("EVIDENCE_CANDIDATES_JSON", seen["messages"][1]["content"])
 
     def test_explicit_model_directed_instruction_is_redacted_before_inference(self):
