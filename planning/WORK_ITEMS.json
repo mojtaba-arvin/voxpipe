@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -784,7 +784,7 @@
       "title": "Add production alerting and SLOs",
       "phase": 6,
       "priority": 35,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Define SLOs for upload acceptance, queue age, processing success, transcription latency and deletion completion.",
@@ -792,8 +792,10 @@
         "Add actionable alerts, runbooks and synthetic checks for critical paths.",
         "Test alert rules and verify dashboards against staging workload."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels."
+      ],
+      "blocked_reason": "Tenant-safe worker aggregates are implemented. End-to-end SLO instrumentation for upload latency, queue age, processing success, transcription latency and deletion completion, plus alert export/dashboard validation, still requires a configured metrics backend and production-like staging workload."
     },
     {
       "id": "VP-0036",

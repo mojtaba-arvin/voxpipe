@@ -36,6 +36,21 @@ class WorkerMetrics:
             count, total = self._durations.get(tenant_id, (0, 0.0))
             self._durations[tenant_id] = (count + 1, total + max(0.0, duration_seconds))
 
+
+    def aggregate_snapshot(self) -> dict[str, Any]:
+        """Return low-cardinality operational metrics without tenant identifiers."""
+        with self._lock:
+            outcomes: dict[str, int] = defaultdict(int)
+            for (_, outcome), count in self._counts.items():
+                outcomes[outcome] += count
+            execution_count = sum(count for count, _ in self._durations.values())
+            duration_total = sum(total for _, total in self._durations.values())
+            return {
+                "outcomes": dict(sorted(outcomes.items())),
+                "execution_count": execution_count,
+                "processing_duration_seconds_total": round(duration_total, 3),
+            }
+
     def snapshot(self) -> dict[str, dict[str, Any]]:
         with self._lock:
             tenants = {tenant for tenant, _ in self._counts}
