@@ -31,7 +31,7 @@ class LLMAdapterError(RuntimeError): pass
 def _sentence_ranges(text: str):
     """Return trimmed sentence/clause ranges while preserving original offsets."""
     cursor = 0
-    for match in re.finditer(r"(?<=[.!?؟۔])(?=\\s|$)|\\n+", text):
+    for match in re.finditer(r"(?<=[.!?؟۔])(?=\s|$)|\n+", text):
         start, end = cursor, match.start()
         while start < end and text[start].isspace():
             start += 1
