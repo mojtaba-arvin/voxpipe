@@ -94,8 +94,29 @@ class PersianGoldBenchmarkTests(unittest.TestCase):
         self.assertEqual(report["per_type"]["entities"]["false_positive"], 1)
         self.assertEqual(report["per_type"]["entities"]["false_negative"], 0)
 
-    def test_empty_prediction_and_gold_score_is_explicitly_perfect(self):
-        self.assertEqual(score_counts(0, 0, 0)["f1"], 1.0)
+    def test_unsupported_category_metrics_are_undefined(self):
+        metrics = score_counts(0, 0, 0)
+        self.assertIsNone(metrics["precision"])
+        self.assertIsNone(metrics["recall"])
+        self.assertIsNone(metrics["f1"])
+
+    def test_macro_excludes_categories_without_gold_or_predictions(self):
+        gold = [{"sample_id": "s1", "annotations": {
+            "entities": [{"value": {"name": "A"}}],
+            "events": [], "topics": [], "relations": [], "action_items": [],
+        }}]
+        predicted = {"s1": {
+            "entities": [{"value": {"name": "A"}}],
+            "events": [], "topics": [], "relations": [], "action_items": [],
+        }}
+        report = evaluate(gold, predicted)
+        self.assertEqual(report["macro"]["f1"], 1.0)
+        self.assertIsNone(report["per_type"]["events"]["f1"])
+
+    def test_false_positive_only_category_scores_zero(self):
+        self.assertEqual(score_counts(0, 1, 0)["precision"], 0.0)
+        self.assertEqual(score_counts(0, 1, 0)["recall"], 0.0)
+        self.assertEqual(score_counts(0, 1, 0)["f1"], 0.0)
 
 
 if __name__ == "__main__":
