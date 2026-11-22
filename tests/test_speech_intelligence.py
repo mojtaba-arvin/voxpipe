@@ -1,7 +1,8 @@
 import unittest
 from types import SimpleNamespace
 from voxpipe.speech.vad import SileroVADAdapter, SpeechRegion, evaluate_vad
-from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier, evaluate_language_id
+from voxpipe.speech.language_id import (SpeechBrainLanguageIdentifier, evaluate_language_id,
+    calibrate_abstention_threshold)
 from voxpipe.speech.diarization import ECAPADiarizationAdapter, SpeakerTurn, evaluate_diarization
 
 DIGEST="a"*64
@@ -44,6 +45,39 @@ class SpeechIntelligenceTests(unittest.TestCase):
             SimpleNamespace(language="fa",confidence=.6)])
         self.assertEqual(metrics["accuracy"],.5)
         self.assertIn("en",metrics["confusion_matrix"])
+
+    def test_language_id_evaluation_reports_selective_coverage_and_rejects_bad_confidence(self):
+        predictions=[SimpleNamespace(language="fa",confidence=.9),SimpleNamespace(language="und",confidence=.4)]
+        metrics=evaluate_language_id(["fa","en"],predictions)
+        self.assertEqual(metrics["coverage"],.5)
+        self.assertEqual(metrics["selective_accuracy"],1.0)
+        self.assertEqual(metrics["abstention_rate"],.5)
+        with self.assertRaises(ValueError):
+            evaluate_language_id(["fa"],[SimpleNamespace(language="fa",confidence=float("nan"))])
+
+    def test_language_id_threshold_calibration_uses_validation_labels_and_maximizes_coverage(self):
+        predictions=[SimpleNamespace(language="fa",confidence=.95),
+                     SimpleNamespace(language="fa",confidence=.80),
+                     SimpleNamespace(language="en",confidence=.55),
+                     SimpleNamespace(language="fa",confidence=.40)]
+        result=calibrate_abstention_threshold(["fa","fa","en","en"],predictions,
+            min_selective_accuracy=1.0,min_coverage=.5)
+        self.assertTrue(result["feasible"])
+        self.assertEqual(result["threshold"],.8)
+        self.assertEqual(result["coverage"],.5)
+        self.assertEqual(result["selective_accuracy"],1.0)
+
+    def test_language_id_threshold_calibration_fails_closed_when_constraints_conflict(self):
+        predictions=[SimpleNamespace(language="fa",confidence=.9),
+                     SimpleNamespace(language="en",confidence=.8)]
+        result=calibrate_abstention_threshold(["fa","fa"],predictions,
+            min_selective_accuracy=1.0,min_coverage=1.0)
+        self.assertFalse(result["feasible"])
+        self.assertIsNone(result["threshold"])
+
+    def test_language_id_calibration_rejects_already_abstained_predictions(self):
+        with self.assertRaises(ValueError):
+            calibrate_abstention_threshold(["fa"],[SimpleNamespace(language="und",confidence=.9)])
 
     def test_speechbrain_label_inventory_is_multiclass_not_top_prediction_only(self):
         from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier

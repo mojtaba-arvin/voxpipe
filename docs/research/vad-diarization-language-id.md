@@ -32,3 +32,8 @@ Optional runtimes are listed in `requirements-speech.txt`. Model files must be s
 - VAD: a pinned FLEURS utterance-envelope proxy compares Silero and WebRTC; true frame-labelled Persian precision/recall and production boundary accuracy remain blocked by the lack of frame-level gold annotations.
 - Diarization: controlled read-speech speaker-clustering metrics are available; natural conversational DER/JER, overlap handling and production attribution remain unverified.
 - Language ID: a pinned 3-language FLEURS smoke benchmark exists; larger per-language samples, code-switch evaluation and calibrated abstention remain outstanding.
+
+
+## Confidence calibration and abstention
+
+The local VoxLingua107 adapter supports an explicit confidence threshold and returns `und` below that threshold. The benchmark runner now defaults to a fixed threshold of 0.65 and reports coverage, selective accuracy, and abstention rate alongside overall accuracy, macro-F1, confusion matrix, and ECE. A threshold must be selected on a calibration split that is disjoint from the final test split; `calibrate_abstention_threshold` maximizes accepted coverage subject to explicit selective-accuracy and minimum-coverage constraints and fails closed when no threshold satisfies both. The current FLEURS test subset is not a code-switch benchmark, so this does not close the code-switch acceptance gap.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -584,9 +584,10 @@
         "src/voxpipe/speech/language_id.py — local SpeechBrain VoxLingua107 adapter, threshold-based und outcome, sliding-window support and confidence-calibration evaluator.",
         "scripts/run_fleurs_lid_benchmark.py and benchmarks/results/fleurs-lid-2026-11-21/summary.json — pinned FLEURS fa_ir/en_us/de_de benchmark (20 samples per language); accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445; Persian and English 20/20, German 17/20.",
         "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
-        "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian."
+        "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
+        "2026-11-22: language-ID evaluation now reports coverage, selective accuracy and abstention rate; a validation-only threshold calibrator enforces minimum selective-accuracy and coverage floors and fails closed when infeasible. FLEURS benchmark runner uses a preselected 0.65 threshold and does not tune on its test split. Unit tests cover feasible/infeasible calibration and invalid confidence."
       ],
-      "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
+      "blocked_reason": "A code-switched, noisy and out-of-inventory evaluation set is still unavailable. The 0.65 benchmark threshold is a fixed operating point, not a claim of dataset-calibrated optimality; calibrate it only on a disjoint labelled validation corpus and evaluate on a separate test corpus."
     },
     {
       "id": "VP-0026",

@@ -20,8 +20,9 @@ def hash_file(path):
         for chunk in iter(lambda:stream.read(1024*1024),b""): digest.update(chunk)
     return digest.hexdigest()
 
-def run(max_samples:int,output_dir:Path)->dict:
+def run(max_samples:int,output_dir:Path,threshold:float=0.65)->dict:
     if not 1<=max_samples<=264: raise ValueError("max_samples must be between 1 and 264")
+    if not 0.0<=threshold<=1.0: raise ValueError("threshold must be between 0 and 1")
     import numpy as np
     import soundfile as sf
     from datasets import Audio,load_dataset
@@ -31,7 +32,7 @@ def run(max_samples:int,output_dir:Path)->dict:
     info=model_info(MODEL_ID)
     model_revision=info.sha
     model_dir=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
-    model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision)
+    model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=threshold,model_version=model_revision)
     references=[];predictions=[];rows=[]
     for config,metadata in CONFIGS.items():
         url=f"https://huggingface.co/datasets/google/fleurs/resolve/{REVISION}/{config}/test-00000-of-00001.parquet"
@@ -62,7 +63,7 @@ def run(max_samples:int,output_dir:Path)->dict:
         "configs":{k:{"language":v["language"],"parquet_sha256":v["sha256"]} for k,v in CONFIGS.items()},
         "samples_per_language":max_samples,"total_samples":len(rows)},
         "model":{"id":MODEL_ID,"revision":model_revision,"license":"Apache-2.0","weights_sha256":weight_hashes,
-                 "device":"cpu","threshold":0.0},
+                 "device":"cpu","threshold":threshold,"threshold_policy":"fixed before evaluation; calibrate on a disjoint validation split"},
         "metrics":metrics,"environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor()},
         "generated_at":datetime.now(timezone.utc).isoformat()}
     (output_dir/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
@@ -72,7 +73,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-samples",type=int,default=20)
     parser.add_argument("--output-dir",type=Path,default=Path("benchmark-results/fleurs-lid"))
+    parser.add_argument("--threshold",type=float,default=0.65,help="pre-calibrated confidence threshold; do not tune on the test split")
     args=parser.parse_args()
-    print(json.dumps(run(args.max_samples,args.output_dir),ensure_ascii=False,indent=2))
+    print(json.dumps(run(args.max_samples,args.output_dir,args.threshold),ensure_ascii=False,indent=2))
 
 if __name__=="__main__": main()
