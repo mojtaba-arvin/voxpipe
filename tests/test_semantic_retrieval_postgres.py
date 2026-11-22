@@ -29,7 +29,7 @@ class PgvectorIntegrationTests(unittest.TestCase):
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='voxpipe_app') THEN CREATE ROLE voxpipe_app LOGIN PASSWORD 'voxpipe_app'; END IF; END $$"
             )
             connection.execute("GRANT SELECT ON transcripts, transcript_segments TO voxpipe_app")
-            connection.execute("GRANT SELECT, INSERT, UPDATE ON transcript_segment_embeddings TO voxpipe_app")
+            connection.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON transcript_segment_embeddings TO voxpipe_app")
 
     def setUp(self):
         self.tenant = str(uuid4())

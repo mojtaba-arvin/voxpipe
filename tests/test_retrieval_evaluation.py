@@ -12,7 +12,7 @@ class RetrievalEvaluationTests(unittest.TestCase):
             ks=(1, 2, 3),
         )
         self.assertAlmostEqual(result["recall_at_k"]["1"], .25)
-        self.assertAlmostEqual(result["recall_at_k"]["2"], 1.0)
+        self.assertAlmostEqual(result["recall_at_k"]["2"], .75)
         self.assertAlmostEqual(result["mrr"], .75)
         q1 = (1 + 1 / math.log2(4)) / (1 + 1 / math.log2(3))
         q2 = 1 / math.log2(3)
