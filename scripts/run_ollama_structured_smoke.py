@@ -16,7 +16,7 @@ SAMPLES=[
   "gold":{"entities":[{"value":{"name":"علی","entity_type":"person"}},{"value":{"name":"گزارش فروش","entity_type":"document"}}],
           "events":[],"topics":[{"value":{"name":"گزارش فروش"}}],
           "relations":[{"value":{"subject":"علی","predicate":"مسئول ارسال","object":"گزارش فروش"}}],
-          "action_items":[{"value":{"description":"ارسال گزارش فروش","assignee":"علی","due_date":"جمعه"}}]}},
+          "action_items":[{"value":{"description":"ارسال گزارش فروش","assignee":"علی","due_date":"تا جمعه"}}]}},
  {"id":"meeting","text":"جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود.",
   "gold":{"entities":[{"value":{"name":"دفتر مرکزی","entity_type":"location"}}],
           "events":[{"value":{"name":"جلسه بودجه","event_type":"meeting","start_time":"فردا ساعت ۹","location":"دفتر مرکزی"}}],
@@ -278,7 +278,7 @@ def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v12",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v13",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}

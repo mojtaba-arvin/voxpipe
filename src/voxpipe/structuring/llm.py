@@ -19,7 +19,7 @@ Allowed value fields:
 - events: name, event_type; optional start_time, end_time, location, participants.
 - topics: name; optional description, keywords.
 - relations: subject, predicate, object.
-- action_items: description; optional assignee, due_date, status.
+- action_items: description; optional assignee, due_date, status. Keep the action-only description separate from the deadline. If the model repeats a source-supported deadline at the end of description, the adapter removes only that exact trailing deadline phrase; due_date retains the complete verbatim phrase, including a leading «تا».
 
 Event fidelity is mandatory: only create an event when the sentence describes an occurrence, such as a meeting being held or an agreement being signed. A task, obligation, delivery, or document deadline is not an event; a due-date phrase such as «تا جمعه» belongs only to an action item's due_date and must never be copied into event start_time or location. A deadline is not an event start time, and a time expression can never be a location. When a genuine event sentence states a time, copy the complete time expression verbatim into start_time; when it states a location, copy the actual place phrase verbatim into location. Do not omit either field. Name the event in the source language using a concise, natural source-faithful noun phrase; never translate a Persian event name into English or use placeholders such as "Signing event". For contract-signing events, the event name MUST begin with the exact prefix «امضای » followed by the full signed-object phrase. For Persian signing events expressed with a verb such as «امضا کرد», use the natural nominal event form «امضای [موضوع]», not the object followed by a bare verb. Use event_type "meeting" for meetings and "contract-signing" for contract signing. «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود» is a meeting named «جلسه» with start_time «فردا ساعت ۹»; reported speech does not make it an empty event.
 
@@ -33,6 +33,41 @@ Category rules:
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
 Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A sentence assigning a person to send a document by a deadline supports an action item, not an event; the document itself is not an event, and its deadline is not an event time or place. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
+
+
+def _normalize_action_item_value(value, evidence):
+    """Split an exact, evidence-backed trailing deadline out of action description.
+
+    This is a conservative field-boundary normalization, not fact extraction:
+    it removes only a deadline string that is both present in source evidence
+    and an exact suffix of the generated description. The full deadline phrase
+    remains unchanged in due_date.
+    """
+    if not isinstance(value, dict):
+        return value
+    description = value.get("description")
+    due_date = value.get("due_date")
+    if (not isinstance(description, str) or not description.strip()
+            or not isinstance(due_date, str) or not due_date.strip()):
+        return value
+    deadline = due_date.strip()
+    if not any(deadline in span.quote for span in evidence):
+        return value
+    description = description.rstrip()
+    if not description.endswith(deadline):
+        return value
+    action = description[:-len(deadline)].rstrip()
+    for marker in ("تا", "الی"):
+        if action.endswith(" " + marker):
+            action = action[:-len(marker)].rstrip()
+            break
+    action = action.rstrip(" ،,;:")
+    if not action:
+        return value
+    normalized = dict(value)
+    normalized["description"] = action
+    return normalized
+
 
 class LLMAdapterError(RuntimeError): pass
 
@@ -122,7 +157,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v12", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v13", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
@@ -216,7 +251,8 @@ class OpenAICompatibleStructuredAdapter:
                         if not isinstance(span_id,str) or span_id not in candidates:
                             raise ValueError("evidence references an unknown candidate span")
                         selected.append(candidates[span_id])
-                    claims.append(StructuredClaim(str(uuid4()),row["value"],tuple(selected),row["confidence"]))
+                    value = _normalize_action_item_value(row["value"], tuple(selected)) if name == "action_items" else row["value"]
+                    claims.append(StructuredClaim(str(uuid4()),value,tuple(selected),row["confidence"]))
                 groups[name]=tuple(claims)
             return StructuredIntelligence(request.document_id,request.asset_id,request.transcript_id,request.transcript_revision,
                 ExtractionProvenance(self.provider_name,self.model,self.model_version,self.prompt_version,"1.0.0",datetime.now(timezone.utc)),**groups)

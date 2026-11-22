@@ -37,6 +37,35 @@ class AdapterTests(unittest.TestCase):
     def make_request(self, text=TEXT):
         return StructuredExtractionRequest(DOC, ASSET, TRANSCRIPT, 1, "fa-IR", {SEGMENT: text})
 
+
+    def test_action_item_deadline_is_split_from_description_only_when_evidence_backed(self):
+        payload = {
+            "entities": [], "events": [], "topics": [], "relations": [],
+            "action_items": [{
+                "value": {"description": "ارسال گزارش فروش تا جمعه", "assignee": "علی", "due_date": "تا جمعه"},
+                "evidence": [{"span_id": "span-0001"}], "confidence": 0.9,
+            }],
+        }
+        def transport(url, body, headers, timeout):
+            return {"choices": [{"message": {"content": json.dumps(payload, ensure_ascii=False)}}]}
+        request = self.make_request("علی باید گزارش فروش را تا جمعه ارسال کند.")
+        result = StructuredExtractionService(self.make_adapter(transport)).extract(request)
+        value = result.action_items[0].value
+        self.assertEqual(value["description"], "ارسال گزارش فروش")
+        self.assertEqual(value["due_date"], "تا جمعه")
+        self.assertEqual(result.provenance.prompt_version, "structured-fa-v13")
+
+    def test_action_item_deadline_normalization_does_not_remove_unverified_or_internal_dates(self):
+        from voxpipe.structuring.llm import _normalize_action_item_value
+        from voxpipe.structuring.contracts import EvidenceSpan
+        evidence = (EvidenceSpan(SEGMENT, 0, len(TEXT), TEXT),)
+        unchanged = {"description": "ارسال گزارش فروش تا جمعه", "due_date": "تا جمعه"}
+        self.assertEqual(_normalize_action_item_value(unchanged, evidence), unchanged)
+        verified = (EvidenceSpan(SEGMENT, 0, len(TEXT), "ارسال گزارش فروش تا جمعه"),)
+        self.assertEqual(_normalize_action_item_value(unchanged, verified)["description"], "ارسال گزارش فروش")
+        internal = {"description": "تا جمعه گزارش فروش ارسال شود", "due_date": "تا جمعه"}
+        self.assertEqual(_normalize_action_item_value(internal, verified), internal)
+
     def test_evidence_is_selected_by_id_and_resolved_to_exact_original_span(self):
         seen = {}
 

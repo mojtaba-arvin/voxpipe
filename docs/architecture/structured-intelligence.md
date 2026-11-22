@@ -23,3 +23,8 @@ evaluate_claims reports per-type, micro and macro precision/recall/F1 using exac
 ## Limitations
 
 Prompt instructions and exact-evidence validation reduce injection and hallucination risk but cannot guarantee semantic truth. A production release still needs a reviewed Persian gold set, measured results for each claim type, adversarial red-team cases, tenant-isolation integration coverage and explicit provider data-handling approval.
+
+
+## Smoke v13 action-item field normalization
+
+The adapter now separates a source-evidenced trailing deadline from the action-only description when the exact deadline string is duplicated at the end of the description. It removes only an exact suffix present in the selected evidence and preserves the complete original deadline phrase in `due_date` (including Persian «تا»). It does not alter unverified or internal date mentions. The synthetic action-item fixture now expects `تا جمعه`, matching the complete spoken deadline. This is a deterministic field-boundary correction, not a claim of general extraction quality. Topic and relation recovery and a human-reviewed Persian gold set remain outstanding.
