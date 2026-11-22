@@ -23,7 +23,7 @@ Evidence is mandatory for every claim. Copy evidence directly from the original 
 
 For action items, distinguish an explicit obligation from a mere description. For example, a sentence saying a named person must send a named report by a stated deadline is an action item; preserve the assignee and deadline exactly as expressed. For a sentence saying a meeting will occur at a stated time and place, emit an event and include the stated time and location. For a sentence saying one organization signed an agreement with another, emit the organizations, the signing event, and the directly stated relation when supported.
 
-Return only one JSON object with exactly these five arrays: entities, events, topics, relations, action_items. Every item must contain a UUID claim_id, a typed value object using only the allowed fields, a non-empty evidence array, and confidence from 0 to 1. Do not include explanations, markdown, extra keys, or inferred facts."""
+Every claim_id MUST be a fresh UUID unique across ALL five arrays; never reuse a claim_id for two claims, even when their values or evidence are related. Return only one JSON object with exactly these five arrays: entities, events, topics, relations, action_items. Every item must contain a UUID claim_id, a typed value object using only the allowed fields, a non-empty evidence array, and confidence from 0 to 1. Do not include explanations, markdown, extra keys, or inferred facts."""
 class LLMAdapterError(RuntimeError): pass
 
 class OpenAICompatibleStructuredAdapter:
