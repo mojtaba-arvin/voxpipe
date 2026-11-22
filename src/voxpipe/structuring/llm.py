@@ -28,7 +28,8 @@ Category rules:
 - An event is something that happens, not an entity. Never classify a meeting/event name as an entity.
 - Topics are substantive subjects explicitly discussed in the current transcript, not event labels, times, attributes, or arbitrary nouns. «جلسه» alone is not a topic. Never copy a topic from an example or another transcript.
 - Relations require a directly stated relationship between entities/facts. Preserve the source predicate and object. Never create a generic «گفت»/"says" relation just because someone is speaking.
-- Action items are explicit actionable obligations or requests. A scheduled meeting or completed action is not an action item. Do not invent an assignee, status, or deadline.
+- Action items are explicit actionable obligations or requests. A scheduled meeting or completed action is not an action item. Keep description limited to the action itself: do not include the assignee or repeat a deadline in description. Put the responsible person only in assignee and copy an explicitly stated deadline verbatim only into due_date. Add status only when the transcript explicitly states a status (for example, completed, in progress, or cancelled); otherwise omit status. Never invent an assignee, status, or deadline.
+- Entity type must be supported by the same evidence: company/organization markers support organization; explicit place phrases support location; document nouns such as report, letter, invoice, record or document support document; a person explicitly assigned an obligation supports person. A meeting/event title is not an entity. Do not guess an entity type when the evidence does not support it.
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
 Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A sentence assigning a person to send a document by a deadline supports an action item, not an event; the document itself is not an event, and its deadline is not an event time or place. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
@@ -121,7 +122,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v11", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v12", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
