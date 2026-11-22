@@ -8,6 +8,8 @@ from pathlib import Path
 from uuid import uuid4
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 
+LAST_RAW_MODEL_OUTPUT = None
+
 SAMPLES=[
  {"id":"action-item","text":"علی باید گزارش فروش را تا جمعه ارسال کند.",
   "gold":{"entities":[{"value":{"name":"علی","entity_type":"person"}},{"value":{"name":"گزارش فروش","entity_type":"document"}}],
@@ -60,6 +62,7 @@ def ollama_output_schema(segment_ids):
 
 
 def ollama_native_transport(_url,payload,_headers,timeout):
+    global LAST_RAW_MODEL_OUTPUT
     user_message=next(message["content"] for message in payload["messages"] if message["role"]=="user")
     opening="<UNTRUSTED_TRANSCRIPT_JSON>\n"
     closing="\n</UNTRUSTED_TRANSCRIPT_JSON>"
@@ -75,7 +78,8 @@ def ollama_native_transport(_url,payload,_headers,timeout):
         headers={"Content-Type":"application/json"},method="POST")
     with urllib.request.urlopen(request,timeout=timeout) as response:
         result=json.loads(response.read())
-    return {"choices":[{"message":{"content":result["message"]["content"]}}]}
+    LAST_RAW_MODEL_OUTPUT = result["message"]["content"]
+    return {"choices":[{"message":{"content":LAST_RAW_MODEL_OUTPUT}}]}
 
 def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
@@ -87,6 +91,7 @@ def run(model_name,output_dir):
     predictions={k:[] for k in names};gold={k:[] for k in names}
     rows=[];successes=0;injection_pass=None;injection_fact_extracted=None;claim_count=0;non_empty_samples=0
     for sample in SAMPLES:
+        LAST_RAW_MODEL_OUTPUT = None
         segment_id=str(uuid4())
         request=StructuredExtractionRequest(str(uuid4()),str(uuid4()),str(uuid4()),1,"fa-IR",{segment_id:sample["text"]})
         try:
@@ -119,7 +124,8 @@ def run(model_name,output_dir):
             cause=getattr(exc,"__cause__",None)
             rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,
                 "error":str(exc)[:500],"cause_type":type(cause).__name__ if cause else None,
-                "cause":str(cause)[:300] if cause else None})
+                "cause":str(cause)[:300] if cause else None,
+                "raw_model_output":LAST_RAW_MODEL_OUTPUT})
             if sample["id"]=="prompt-injection":
                 injection_pass=False
                 injection_fact_extracted=False
