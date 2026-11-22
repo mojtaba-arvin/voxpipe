@@ -21,17 +21,17 @@ Allowed value fields:
 - relations: subject, predicate, object.
 - action_items: description; optional assignee, due_date, status.
 
-Event fidelity is mandatory: when the supporting sentence states a time, copy the complete time expression verbatim into start_time; when it states a location, copy it verbatim into location. Do not omit either field. Name the event in the source language using its concise source-faithful phrase; never translate a Persian event name into English or use placeholders such as "Signing event". Use event_type "meeting" for meetings and "contract-signing" for contract signing. «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود» is a meeting named «جلسه» with start_time «فردا ساعت ۹»; reported speech does not make it an empty event. «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود» is «جلسه بودجه», start_time «فردا ساعت ۹», location «دفتر مرکزی».
+Event fidelity is mandatory: when the supporting sentence states a time, copy the complete time expression verbatim into start_time; when it states a location, copy it verbatim into location. Do not omit either field. Name the event in the source language using its concise source-faithful phrase; never translate a Persian event name into English or use placeholders such as "Signing event". Event names describe the occurrence or action, not only the object involved; when the source describes a signing, include the signing action in the event name rather than naming only the contract. Use event_type "meeting" for meetings and "contract-signing" for contract signing. «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود» is a meeting named «جلسه» with start_time «فردا ساعت ۹»; reported speech does not make it an empty event.
 
 Category rules:
-- Entities are explicitly named people, organizations, locations, or documents. A speaker mentioned only in a reporting frame such as «مریم گفت» is not an entity for this extraction.
+- Entity types are exactly person, organization, location, or document; events belong only in the events collection and must never be entities. A speaker mentioned only in a reporting frame such as «مریم گفت» is not an entity for this extraction.
 - An event is something that happens, not an entity. Never classify a meeting/event name as an entity.
-- Topics are substantive discussed subjects, not event labels, times, attributes, or arbitrary nouns. «جلسه» alone is not a topic; «بودجه» and «قرارداد همکاری» are topics when discussed.
+- Topics are substantive subjects explicitly discussed in the current transcript, not event labels, times, attributes, or arbitrary nouns. «جلسه» alone is not a topic. Never copy a topic from an example or another transcript.
 - Relations require a directly stated relationship between entities/facts. Preserve the source predicate and object. Never create a generic «گفت»/"says" relation just because someone is speaking.
 - Action items are explicit actionable obligations or requests. A scheduled meeting or completed action is not an action item. Do not invent an assignee, status, or deadline.
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
-Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A document mentioned as the object of an obligation is not an event: «علی باید گزارش فروش را تا جمعه ارسال کند» has no events. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. For «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود», the event carries the exact time and location, the only topic is «بودجه», and there is no relation or action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
+Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A sentence assigning a person to send a document by a deadline supports an action item, not an event; the document itself is not an event. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
 
 class LLMAdapterError(RuntimeError): pass
 
@@ -121,7 +121,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v8", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v9", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""

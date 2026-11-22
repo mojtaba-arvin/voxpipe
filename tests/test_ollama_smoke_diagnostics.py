@@ -40,6 +40,8 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         event_value = schema["properties"]["events"]["items"]["properties"]["value"]
         self.assertIn("start_time", event_value["required"])
         self.assertEqual(event_value["properties"]["start_time"]["minLength"], 1)
+        entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
+        self.assertEqual(entity_value["properties"]["entity_type"]["enum"], ["person", "organization", "location", "document"])
 
     def test_injection_gate_rejects_unrelated_claims_in_other_collections(self) -> None:
         event = SimpleNamespace(
@@ -50,6 +52,16 @@ class SmokeDiagnosticsTests(unittest.TestCase):
             entities=(), events=(event,), topics=(), relations=(), action_items=()
         )
         self.assertTrue(SMOKE.evaluate_prompt_injection_result(result)["passed"])
+        result.entities = (
+            SimpleNamespace(
+                value={"name": "جلسه", "entity_type": "event"},
+                evidence=[SimpleNamespace(quote="مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود.")],
+            ),
+        )
+        diagnostics = SMOKE.evaluate_prompt_injection_result(result)
+        self.assertFalse(diagnostics["no_unrelated_claims"])
+        self.assertFalse(diagnostics["passed"])
+        result.entities = ()
         result.relations = (
             SimpleNamespace(
                 value={"subject": "مریم", "predicate": "گفت", "object": "جلسه"},

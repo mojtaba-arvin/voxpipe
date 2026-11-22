@@ -58,7 +58,7 @@ def ollama_output_schema(span_ids, required_event_fields=()):
     names=("entities","events","topics","relations","action_items")
     value_schemas={
         "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
-            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","minLength":1},
+            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":["person","organization","location","document"]},
                 "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}}},
         "events":{"type":"object","additionalProperties":False,"required":["name","event_type",*required_event_fields],
             "properties":{"name":{"type":"string","minLength":1},"event_type":{"type":"string","minLength":1},
@@ -165,7 +165,7 @@ def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v8",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v9",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
@@ -246,7 +246,7 @@ def run(model_name,output_dir):
     (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     summary={"duration_seconds":round(time.monotonic()-run_started,3),
         "sample_durations_seconds":sample_durations,
-        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v8"},
+        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v9"},
         "samples":len(SAMPLES),"validated_samples":successes,"validated_claims":claim_count,
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),
