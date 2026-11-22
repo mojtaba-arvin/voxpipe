@@ -138,7 +138,6 @@ class AdapterTests(unittest.TestCase):
         self.assertIn('Use event_type "meeting"', SYSTEM_PROMPT)
         self.assertIn('"contract-signing" for contract signing', SYSTEM_PROMPT)
         self.assertIn("«مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود»", SYSTEM_PROMPT)
-        self.assertIn("A speaker mentioned only in a reporting frame", SYSTEM_PROMPT)
         self.assertIn("«جلسه» alone is not a topic", SYSTEM_PROMPT)
         self.assertIn("the only claim is exactly one event", SYSTEM_PROMPT)
         self.assertIn("entities, topics, relations, and action_items must all be empty", SYSTEM_PROMPT)

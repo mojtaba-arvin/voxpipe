@@ -68,6 +68,7 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
         event_value = schema["properties"]["events"]["items"]["properties"]["value"]
         self.assertEqual(event_value["properties"]["event_type"]["enum"], ["contract-signing"])
+        self.assertEqual(event_value["properties"]["name"]["pattern"], "^امضای .+")
 
     def test_injection_gate_rejects_unrelated_claims_in_other_collections(self) -> None:
         event = SimpleNamespace(
