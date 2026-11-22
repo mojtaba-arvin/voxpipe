@@ -77,7 +77,22 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
             if next_id > 4096:
                 raise LLMAdapterError("transcript produced too many evidence candidates")
             span_id = f"span-{next_id:04d}"
-            candidates[span_id] = EvidenceSpan(segment_id, start, end, quote)
+            source_words = request.transcript_words.get(segment_id, ())
+            matched_words = []
+            search_from = 0
+            for word in source_words:
+                position = quote.find(word.text, search_from)
+                if position >= 0:
+                    matched_words.append(word)
+                    search_from = position + len(word.text)
+            word_indexes = [word.word_index for word in matched_words]
+            if (matched_words and all(right == left + 1 for left, right in zip(word_indexes, word_indexes[1:]))):
+                span = EvidenceSpan(segment_id, start, end, quote,
+                    matched_words[0].word_index, matched_words[-1].word_index + 1,
+                    matched_words[0].start_ms, matched_words[-1].end_ms)
+            else:
+                span = EvidenceSpan(segment_id, start, end, quote)
+            candidates[span_id] = span
         if redactions:
             parts = []
             cursor = 0
