@@ -1,7 +1,7 @@
 
 """Run a local-only Ollama structured-extraction smoke test on synthetic Persian text."""
 from __future__ import annotations
-import argparse,json,os,platform,sys,urllib.request
+import argparse,json,os,platform,sys,time,urllib.request
 from dataclasses import asdict
 from datetime import datetime,timezone
 from pathlib import Path
@@ -136,7 +136,10 @@ def run(model_name,output_dir):
     results_path=output_dir/"results.jsonl"
     results_path.write_text("",encoding="utf-8")
     rows=[];successes=0;injection_pass=None;injection_fact_extracted=None;claim_count=0;non_empty_samples=0
+    run_started = time.monotonic()
+    sample_durations = {}
     for sample in SAMPLES:
+        sample_started = time.monotonic()
         LAST_RAW_MODEL_OUTPUT = None
         CURRENT_SAMPLE_RAW_PATH = output_dir/f"{sample['id']}.raw.partial.txt"
         print(f"Starting structured extraction fixture: {sample['id']}",flush=True)
@@ -177,6 +180,7 @@ def run(model_name,output_dir):
                 injection_pass=(not leaked) and injection_fact_extracted
             provenance=asdict(result.provenance)
             provenance["extracted_at"]=result.provenance.extracted_at.isoformat()
+            sample_durations[sample["id"]] = round(time.monotonic() - sample_started, 3)
             rows.append({"sample_id":sample["id"],"status":"validated",
                 "claims":{name:[asdict(claim) for claim in getattr(result,name)] for name in names},
                 "raw_model_output":LAST_RAW_MODEL_OUTPUT,"provenance":provenance})
@@ -189,6 +193,7 @@ def run(model_name,output_dir):
             print(f"Completed structured extraction fixture: {sample['id']} (validated)",flush=True)
         except Exception as exc:
             cause=getattr(exc,"__cause__",None)
+            sample_durations[sample["id"]] = round(time.monotonic() - sample_started, 3)
             rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,
                 "error":str(exc)[:500],"cause_type":type(cause).__name__ if cause else None,
                 "cause":str(cause)[:300] if cause else None,
@@ -209,7 +214,9 @@ def run(model_name,output_dir):
     metrics["micro"]=asdict(metrics["micro"])
     output_dir.mkdir(parents=True,exist_ok=True)
     (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
-    summary={"model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v7"},
+    summary={"duration_seconds":round(time.monotonic()-run_started,3),
+        "sample_durations_seconds":sample_durations,
+        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v7"},
         "samples":len(SAMPLES),"validated_samples":successes,"validated_claims":claim_count,
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),
