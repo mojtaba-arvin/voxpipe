@@ -12,6 +12,9 @@ class DependencySecurityPolicyTests(unittest.TestCase):
         self.assertIn("golang.org/x/text v0.41.0", go_mod)
         self.assertNotIn("github.com/jackc/pgx/v5 v5.7.2", go_mod)
         self.assertNotIn("golang.org/x/text v0.21.0", go_mod)
+        go_sum = (ROOT / "go.sum").read_text(encoding="utf-8")
+        self.assertIn("github.com/stretchr/testify v1.11.1 h1:", go_sum)
+        self.assertNotIn("github.com/stretchr/testify v1.8.1 h1:", go_sum)
 
     def test_python_benchmark_and_optional_speech_sets_exclude_vulnerable_floors(self):
         for path in ("requirements-benchmark.txt", "requirements-vad.txt", "requirements-lid.txt"):
