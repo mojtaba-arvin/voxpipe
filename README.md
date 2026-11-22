@@ -172,3 +172,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for phase goals, gates, and current prior
 ## License
 
 VoxPipe is distributed under the [MIT License](LICENSE).
+
+
+## Release candidates
+
+The `Release candidate artifacts` workflow builds Linux amd64/arm64 API binaries, a source archive, a CycloneDX dependency SBOM, a release manifest and SHA-256 checksums for tags on `main` or manual dispatch. It does not publish a GitHub Release or deploy to production. Canary rollout, signed provenance and rollback/restore require a configured deployment environment and remain gated.

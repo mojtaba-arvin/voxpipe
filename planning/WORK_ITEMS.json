@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -800,7 +800,7 @@
       "title": "Implement release, canary and rollback automation",
       "phase": 6,
       "priority": 36,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Build immutable release artifacts with SBOM, dependency provenance and signed/checksummed model manifests.",
@@ -808,8 +808,10 @@
         "Support canary health gates and rollback without corrupting durable job/schema state.",
         "Verify restore and rollback procedures in a production-like environment."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted."
+      ],
+      "blocked_reason": "Build/validation/SBOM artifact automation is implemented. A deployment environment, signed provenance identity, migration compatibility rehearsal against production-like data, canary health gates, and rollback/restore verification are not configured; production release automation remains blocked."
     },
     {
       "id": "VP-0037",
