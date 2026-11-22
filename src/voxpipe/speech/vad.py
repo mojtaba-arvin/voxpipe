@@ -4,8 +4,41 @@ from array import array
 from dataclasses import dataclass
 import math
 import re
+import struct
+from typing import Protocol
 
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
+
+
+@dataclass(frozen=True, slots=True)
+class VADRequest:
+    """Canonical normalized mono audio request shared by all VAD adapters."""
+    samples: tuple[float, ...]
+    sample_rate: int
+    audio_sha256: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.samples, (tuple, list)) or not self.samples:
+            raise ValueError("samples must be a non-empty sequence of mono float samples")
+        normalized = []
+        for sample in self.samples:
+            if (not isinstance(sample, (int, float)) or isinstance(sample, bool)
+                    or not math.isfinite(sample) or not -1.0 <= sample <= 1.0):
+                raise ValueError("samples must be finite normalized values between -1 and 1")
+            normalized.append(float(sample))
+        object.__setattr__(self, "samples", tuple(normalized))
+        if not isinstance(self.sample_rate, int) or isinstance(self.sample_rate, bool) or self.sample_rate not in (8000, 16000, 32000, 48000):
+            raise ValueError("sample_rate must be one of 8, 16, 32 or 48 kHz")
+        if not isinstance(self.audio_sha256, str) or not _SHA256.fullmatch(self.audio_sha256):
+            raise ValueError("audio_sha256 must be lowercase SHA-256")
+
+
+class VADPort(Protocol):
+    """Provider-neutral VAD contract; adapters accept the same normalized samples."""
+    provider_name: str
+
+    def detect_request(self, request: VADRequest) -> "VADResult": ...
+
 
 @dataclass(frozen=True, slots=True)
 class SpeechRegion:
@@ -45,6 +78,11 @@ class SileroVADAdapter:
         self.threshold = threshold
         self.min_speech_duration_ms = min_speech_duration_ms
         self.min_silence_duration_ms = min_silence_duration_ms
+
+    def detect_request(self, request: VADRequest) -> VADResult:
+        if not isinstance(request, VADRequest):
+            raise TypeError("request must be a VADRequest")
+        return self.detect(request.samples, sample_rate=request.sample_rate, audio_sha256=request.audio_sha256)
 
     def detect(self, samples, *, sample_rate: int, audio_sha256: str) -> VADResult:
         if sample_rate not in (8000, 16000): raise ValueError("Silero VAD accepts 8 kHz or 16 kHz audio")
@@ -91,6 +129,12 @@ class WebRTCVADAdapter:
             except ImportError as exc:
                 raise RuntimeError("install webrtcvad-wheels to use WebRTC VAD") from exc
         self.vad, self.frame_duration_ms = vad, frame_duration_ms
+    def detect_request(self, request: VADRequest) -> VADResult:
+        if not isinstance(request, VADRequest):
+            raise TypeError("request must be a VADRequest")
+        pcm16 = b"".join(struct.pack("<h", round(sample * 32767)) for sample in request.samples)
+        return self.detect(pcm16, sample_rate=request.sample_rate, audio_sha256=request.audio_sha256)
+
     def detect(self, pcm16: bytes, *, sample_rate: int, audio_sha256: str) -> VADResult:
         if sample_rate not in (8000,16000,32000,48000): raise ValueError("unsupported WebRTC sample rate")
         if not isinstance(pcm16,bytes) or not pcm16 or len(pcm16)%2: raise ValueError("audio must be non-empty mono PCM16")

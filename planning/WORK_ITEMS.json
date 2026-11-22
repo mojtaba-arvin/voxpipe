@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -541,9 +541,10 @@
         "tests/test_speech_intelligence.py — offline tests cover region conversion, frame metrics and best-overlap boundary matching.",
         "scripts/run_fleurs_vad_benchmark.py and benchmarks/results/fleurs-vad-2026-11-21/summary.json — 60 pinned FLEURS utterances compared on CPU; WebRTC envelope-proxy F1 0.888 and Silero 0.837, with boundary/runtime/false-activation/missed-speech/RSS measurements.",
         "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark.",
-        "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth."
+        "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth.",
+        "2026-11-22: introduced a canonical normalized-mono VADRequest and VADPort.detect_request contract shared by Silero and WebRTC adapters; WebRTC PCM16 conversion remains adapter-private. Added common-contract, silence, malformed sample, sample-rate and provenance tests. FLEURS envelope-proxy results are not promoted to frame-level gold."
       ],
-      "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
+      "blocked_reason": "The common provider-neutral request/adapter contract and deterministic edge tests are implemented. True frame-level Persian precision/recall and boundary acceptance still require a licensed, frame-labelled speech corpus; FLEURS utterance envelopes are not frame labels."
     },
     {
       "id": "VP-0024",

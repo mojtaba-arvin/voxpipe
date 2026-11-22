@@ -1,6 +1,6 @@
 import unittest
 from types import SimpleNamespace
-from voxpipe.speech.vad import SileroVADAdapter, SpeechRegion, evaluate_vad
+from voxpipe.speech.vad import SileroVADAdapter, WebRTCVADAdapter, VADRequest, SpeechRegion, evaluate_vad
 from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier, evaluate_language_id
 from voxpipe.speech.diarization import ECAPADiarizationAdapter, SpeakerTurn, evaluate_diarization
 
@@ -24,6 +24,37 @@ class SpeechIntelligenceTests(unittest.TestCase):
         result=SileroVADAdapter(model=object(),timestamp_fn=timestamps).detect([0.1]*3200,sample_rate=16000,audio_sha256=DIGEST)
         self.assertEqual(result.regions,(SpeechRegion(0,200),))
         self.assertEqual(result.duration_ms,200)
+
+    def test_common_vad_request_drives_silero_and_webrtc_adapters(self):
+        request = VADRequest(tuple([0.5] * 160 + [0.0] * 160), 16000, DIGEST)
+        silero = SileroVADAdapter(model=object(), timestamp_fn=lambda wave, model, **kwargs: [
+            {"start": 0, "end": 160}
+        ])
+        class NonZeroFrameVAD:
+            def is_speech(self, frame, sample_rate):
+                return any(frame)
+        webrtc = WebRTCVADAdapter(vad=NonZeroFrameVAD(), frame_duration_ms=10)
+        self.assertEqual(silero.detect_request(request).regions, (SpeechRegion(0, 10),))
+        self.assertEqual(webrtc.detect_request(request).regions, (SpeechRegion(0, 10),))
+
+    def test_vad_request_rejects_invalid_samples_and_audio_provenance(self):
+        with self.assertRaises(ValueError):
+            VADRequest((0.0, float("nan")), 16000, DIGEST)
+        with self.assertRaises(ValueError):
+            VADRequest((1.1,), 16000, DIGEST)
+        with self.assertRaises(ValueError):
+            VADRequest((0.0,), 44100, DIGEST)
+        with self.assertRaises(ValueError):
+            VADRequest((0.0,), 16000, "bad")
+
+    def test_common_vad_request_preserves_silence_as_no_speech(self):
+        request = VADRequest(tuple([0.0] * 320), 16000, DIGEST)
+        class SilenceVAD:
+            def is_speech(self, frame, sample_rate):
+                return False
+        result = WebRTCVADAdapter(vad=SilenceVAD(), frame_duration_ms=10).detect_request(request)
+        self.assertEqual(result.regions, ())
+
     def test_webrtc_vad_and_vad_metrics(self):
         pcm=(b"\x01\x00"*160)+(b"\x00\x00"*160)
         from voxpipe.speech.vad import WebRTCVADAdapter

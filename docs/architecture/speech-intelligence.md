@@ -24,3 +24,10 @@ Adapters return the canonical `Transcript` or raise `TranscriptionError` with a 
 - VAD, language identification, diarization, and audio enhancement.
 - Consent/provenance-managed multilingual evaluation corpus.
 - Transcript persistence, versioning, retention/deletion propagation, and searchable indexing.
+
+
+## VAD adapter contract
+
+`VADRequest` is the provider-neutral boundary for normalized mono float samples, sample rate and source-audio SHA-256. Both Silero and WebRTC adapters implement `VADPort.detect_request`; WebRTC PCM16 framing/conversion is private to its adapter. The older low-level adapter methods remain available for the pinned benchmark. Request validation rejects non-finite/out-of-range samples, unsupported sample rates and malformed provenance before inference.
+
+The adapters still have different model capabilities (Silero is limited to 8/16 kHz, while WebRTC supports 8/16/32/48 kHz). This contract standardizes input semantics, not model accuracy or frame-label acceptance. FLEURS utterance envelopes remain proxy labels and cannot close the frame-level Persian VAD gate.
