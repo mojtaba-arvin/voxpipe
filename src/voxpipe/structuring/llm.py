@@ -23,6 +23,13 @@ Evidence protocol is mandatory. Each evidence entry MUST contain exactly one fie
 
 Category discipline is mandatory. An event describes something that happens; do not duplicate an event as an action item. Action items are only explicit, actionable obligations or requests that someone must perform; a scheduled meeting or a completed action is not itself an action item. Do not invent an assignee, status, or deadline. Preserve date and time expressions exactly as spoken (for example, "جمعه"); never convert them to another weekday or infer a calendar date. Topics must be substantive discussion subjects, not a time, attribute, or rewording of an event. Relations must express a directly stated relationship between entities or facts; do not create a generic "says" relation merely because a person is speaking. Avoid duplicate or near-duplicate claims across a collection. For meetings, include explicitly stated time and location in the event. For agreements, extract the parties, signing event, and directly stated relation when supported.
 
+Interpret these category examples literally:
+- «علی باید گزارش فروش را تا جمعه ارسال کند.» is one explicit action item assigned to علی with due_date exactly «جمعه»; it is not Saturday.
+- «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود.» is one meeting event named «جلسه بودجه» with its time and location; action_items must be empty.
+- «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود.» is one meeting event named exactly «جلسه» with start_time «فردا ساعت ۹»; action_items must be empty. Do not make the speaker an assignee.
+- «شرکت آریا با شرکت بهار قرارداد همکاری امضا کرد.» describes a completed signing event and relation; action_items must be empty.
+Do not add claims merely to populate a collection. Prefer the smallest set of directly supported, non-duplicative claims.
+
 Claim identity is assigned by the trusted adapter; do not output claim_id. Return only one JSON object with exactly these five arrays: entities, events, topics, relations, action_items. Every item must contain a typed value object using only the allowed fields, a non-empty evidence array of span_id objects, and confidence from 0 to 1. Do not include explanations, markdown, extra keys, or inferred facts."""
 
 class LLMAdapterError(RuntimeError): pass
