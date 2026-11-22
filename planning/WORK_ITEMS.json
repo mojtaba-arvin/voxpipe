@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -816,7 +816,7 @@
       "title": "Add bounded autonomous maintenance workflows",
       "phase": 6,
       "priority": 37,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Automate only allowlisted dependency, security and regression remediation tasks.",
@@ -824,8 +824,10 @@
         "Enforce spending, permissions, branch-protection and blast-radius limits.",
         "Audit every action and test safe stop/rollback behavior."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added grouped weekly Dependabot updates for Go, Python and GitHub Actions; added scheduled/PR-triggered pip-audit and govulncheck workflows with pinned tool versions and read-only permissions; documented no-auto-merge, human approval for high-impact changes, PR-only remediation, free-tier/no-paid-inference and rollback-by-revert policy."
+      ],
+      "blocked_reason": "Dependency update and security audit automation are configured. General autonomous issue triage/patch generation, approval orchestration, canary recovery and verified stop/rollback behavior remain unimplemented; no general-purpose autonomous agent is enabled."
     }
   ]
 }
