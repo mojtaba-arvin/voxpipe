@@ -14,7 +14,6 @@ def model_result(*, span_id="span-0001", evidence_extra=None):
     return {
         "entities": [],
         "events": [{
-            "claim_id": str(uuid4()),
             "value": {"name": "جلسه", "event_type": "meeting"},
             "evidence": [evidence],
             "confidence": 0.9,
@@ -50,6 +49,7 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(evidence.segment_id, SEGMENT)
         self.assertEqual(evidence.quote, TEXT)
         self.assertEqual(TEXT[evidence.start_char:evidence.end_char], evidence.quote)
+        self.assertTrue(output.events[0].claim_id)
         self.assertIn("span_id", SYSTEM_PROMPT)
         self.assertNotIn("Calculate start_char", SYSTEM_PROMPT)
         self.assertIn("EVIDENCE_CANDIDATES_JSON", seen["messages"][1]["content"])
