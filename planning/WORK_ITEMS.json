@@ -657,7 +657,8 @@
         "Local Qwen3 4B CPU smoke run 44849025431 initially exposed the missing optional Authorization-header handling; fixed and covered by tests.",
         "Runs 44849670885 and 44849816303 reached the local Ollama endpoint but timed out on all four model calls; no validated claims or meaningful synthetic F1 were produced.",
         "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update.",
-        "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality."
+        "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality.",
+        "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress."
       ],
       "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
     },
@@ -690,7 +691,7 @@
       "title": "Implement lexical transcript search",
       "phase": 4,
       "priority": 30,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Index transcript text and segment metadata with tenant isolation and source provenance.",
@@ -703,7 +704,8 @@
         "src/voxpipe/ingestion/postgres.py — search_transcript_segments uses websearch_to_tsquery/ts_rank under transaction-local tenant context; supports transcript, language, speaker, time and bounded pagination filters and returns revision/asset/audio/model provenance.",
         "tests/test_postgres_repository.py — PostgreSQL integration test covers matching results, relative term-frequency ranking, stable pagination, source provenance, tenant isolation, invalid query/pagination, RLS and asset-deletion cascade. Broader multi-revision query behavior remains to be tested.",
         "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
-        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6.",
+        "PR #30 merged as commit 70cd82bcaa31f49c171302b0046e08b2e16c6edc after both Python/PostgreSQL and Go/PostgreSQL jobs passed on final PR head c2e81dab088cdfec5af6be0c20103889df1b45ee (run 44989798617). Coverage includes asset_id and revision filters, multiple immutable revisions, deterministic rank/time/segment ordering, pagination, invalid filters, RLS, cross-tenant isolation, and source-asset deletion cascade. Post-merge main CI run 44990773340 passed both jobs on merge commit 70cd82bcaa31f49c171302b0046e08b2e16c6edc."
       ],
       "blocked_reason": null
     },
