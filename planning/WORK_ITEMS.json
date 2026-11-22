@@ -605,9 +605,10 @@
         "contracts/schemas/speech-corpus-manifest.v1.schema.json and scripts/validate_corpus_manifest.py — versioned manifest validation for dataset revision, license, attribution, consent basis, source-file SHA-256 and per-item audio/reference hashes.",
         "docs/research/corpus-governance.md — separates public benchmark and customer audio; documents attribution, deletion, retention, redistribution and limits of public-license versus individual-consent evidence.",
         "FLEURS ASR benchmark generated a manifest for 100 fa_ir test items with pinned revision and per-item hashes; the successful CI artifact is attached to run 44848225647.",
-        "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used."
+        "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
+        "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence."
       ],
-      "blocked_reason": "Public datasets provide a license basis but do not expose complete per-speaker consent/session metadata. Natural conversational data with explicit consent and deletion/redistribution evidence is still required for the full corpus-governance acceptance."
+      "blocked_reason": "The 20-item Public Dataset Proxy is a minimal reproducibility/governance fallback only. Public licensing does not establish individual speaker consent; natural conversational data with explicit consent and deletion/redistribution evidence remains required for full corpus-governance acceptance."
     },
     {
       "id": "VP-0027",
