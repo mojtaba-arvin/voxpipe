@@ -14,7 +14,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, SchemaError
 
 COLLECTIONS = ("entities", "events", "topics", "relations", "action_items")
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,7 +91,14 @@ def load_dataset(dataset_dir: Path) -> tuple[dict[str, Any], dict[str, list[dict
     schema_path = dataset_dir / "record.schema.json"
     manifest = read_json(manifest_path)
     schema = read_json(schema_path)
-    Draft202012Validator.check_schema(schema)
+    if not isinstance(manifest, dict):
+        raise DatasetError("manifest root must be a JSON object")
+    if not isinstance(schema, dict):
+        raise DatasetError("record schema root must be a JSON object")
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise DatasetError(f"record schema is invalid: {exc.message}") from exc
     validator = Draft202012Validator(schema)
 
     if manifest.get("schema_version") != "1.0.0":
@@ -104,7 +111,7 @@ def load_dataset(dataset_dir: Path) -> tuple[dict[str, Any], dict[str, list[dict
     sample_ids: set[str] = set()
     for split in ("train", "dev", "test"):
         entry = splits[split]
-        if not isinstance(entry, dict) or not isinstance(entry.get("records"), int):
+        if not isinstance(entry, dict) or not isinstance(entry.get("records"), int) or isinstance(entry.get("records"), bool) or entry["records"] < 0:
             raise DatasetError(f"manifest splits.{split}.records must be an integer")
         path = dataset_dir / f"{split}.jsonl"
         if path.exists():
@@ -142,10 +149,15 @@ def load_dataset(dataset_dir: Path) -> tuple[dict[str, Any], dict[str, list[dict
     return manifest, records_by_split
 
 
-def score_counts(tp: int, fp: int, fn: int) -> dict[str, int | float]:
-    precision = tp / (tp + fp) if tp + fp else (1.0 if fn == 0 else 0.0)
-    recall = tp / (tp + fn) if tp + fn else (1.0 if fp == 0 else 0.0)
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+def score_counts(tp: int, fp: int, fn: int) -> dict[str, int | float | None]:
+    # A category absent from both gold and predictions has no measurable quality.
+    # Keep its metrics null instead of awarding a misleading perfect score.
+    if tp + fp + fn == 0:
+        precision = recall = f1 = None
+    else:
+        precision = tp / (tp + fp) if tp + fp else 0.0
+        recall = tp / (tp + fn) if tp + fn else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {
         "true_positive": tp, "false_positive": fp, "false_negative": fn,
         "precision": precision, "recall": recall, "f1": f1,
@@ -200,7 +212,11 @@ def evaluate(gold_rows: list[dict[str, Any]], predictions: dict[str, dict[str, l
         totals = [a + b for a, b in zip(totals, (tp, fp, fn))]
 
     macro = {
-        metric: sum(per_type[name][metric] for name in COLLECTIONS) / len(COLLECTIONS)
+        metric: (
+            sum(per_type[name][metric] for name in COLLECTIONS if per_type[name][metric] is not None)
+            / sum(per_type[name][metric] is not None for name in COLLECTIONS)
+            if any(per_type[name][metric] is not None for name in COLLECTIONS) else None
+        )
         for metric in ("precision", "recall", "f1")
     }
     return {
