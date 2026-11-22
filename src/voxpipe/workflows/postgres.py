@@ -167,7 +167,7 @@ class PostgresWorkflowRepository:
                      "input_refs": row["input_refs"], "max_attempts": row["max_attempts"]}
                     for row in prior_steps
                 ]
-                if (str(existing["workflow_id"]) != workflow or existing["asset_id"] != asset
+                if (str(existing["workflow_id"]) != workflow or (str(existing["asset_id"]) if existing["asset_id"] is not None else None) != asset
                         or existing["workflow_type"] != workflow_type
                         or existing["workflow_version"] != workflow_version or actual != expected):
                     raise WorkflowConflict("idempotency key was reused with different workflow content")
@@ -221,6 +221,13 @@ class PostgresWorkflowRepository:
                   AND (
                     (state='pending' AND available_at<=now())
                     OR (state='running' AND lease_expires_at<=now() AND attempts<max_attempts)
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM workflow_steps AS prior
+                    WHERE prior.tenant_id=workflow_steps.tenant_id
+                      AND prior.workflow_id=workflow_steps.workflow_id
+                      AND prior.ordinal<workflow_steps.ordinal
+                      AND prior.state<>'completed'
                   )
                 ORDER BY ordinal
                 LIMIT 1

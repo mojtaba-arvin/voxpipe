@@ -50,6 +50,16 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(final["workflow"]["state"], "completed")
         self.assertTrue(all(step["state"] == "completed" for step in final["steps"]))
 
+    def test_later_step_cannot_be_claimed_before_predecessor_completes(self):
+        self.create()
+        first = self.repository.claim_next_step(self.tenant, self.workflow, self.worker)
+        self.assertEqual(first["step_id"], self.step1.step_id)
+        self.assertIsNone(self.repository.claim_next_step(self.tenant, self.workflow, str(uuid4())))
+        self.repository.complete_step(self.tenant, self.workflow, self.step1.step_id,
+            self.worker, {"transcript_id": str(uuid4())})
+        next_step = self.repository.claim_next_step(self.tenant, self.workflow, str(uuid4()))
+        self.assertEqual(next_step["step_id"], self.step2.step_id)
+
     def test_idempotent_create_returns_existing_but_rejects_changed_content(self):
         first = self.create(key="same-key")
         second = self.repository.create_workflow(self.tenant, self.workflow, "audio-intelligence",
