@@ -41,13 +41,29 @@ def ollama_model_digest(model_name):
 
 
 def required_event_fields_for_candidates(candidates):
-    candidate_text = " ".join(item["quote"] for item in candidates)
-    required = []
-    if re.search(r"(?:ساعت\s*[۰-۹0-9]|امروز|فردا|پس‌فردا|دیروز)", candidate_text):
-        required.append("start_time")
-    if re.search(r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل)(?:\s|$)", candidate_text):
-        required.append("location")
-    return tuple(required)
+    """Require time/location only when the same evidence candidate describes an event.
+
+    A transcript may contain both an event and an unrelated action-item deadline.
+    Looking across concatenated candidates would incorrectly make that deadline
+    mandatory on every generated event.
+    """
+    required = set()
+    event_cues = re.compile(
+        r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود|امضا\s+کرد(?:ه|ند)?"
+    )
+    time_cue = re.compile(r"(?:ساعت\s*[۰-۹0-9]|امروز|فردا|پس‌فردا|دیروز)")
+    location_cue = re.compile(
+        r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل)(?:\s|$)"
+    )
+    for candidate in candidates:
+        quote = candidate["quote"]
+        if not event_cues.search(quote):
+            continue
+        if time_cue.search(quote):
+            required.add("start_time")
+        if location_cue.search(quote):
+            required.add("location")
+    return tuple(field for field in ("start_time", "location") if field in required)
 
 
 def candidate_schema_constraints(candidates):
