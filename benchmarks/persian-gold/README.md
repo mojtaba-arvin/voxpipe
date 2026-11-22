@@ -50,3 +50,17 @@ The current `scripts/run_ollama_structured_smoke.py` fixtures remain integration
 - Publish a SHA-256 checksum for each frozen JSONL split and record the annotation protocol revision.
 - Keep test annotations access-controlled where practical; never tune against test errors.
 - A quality claim requires a non-empty, fully adjudicated test split and published per-category metrics. Until then, benchmark status remains **not evaluated**.
+
+## Local validation and evaluation
+
+Run `python scripts/evaluate_persian_gold.py validate` (also included in `make check`) to validate every populated split against the JSON Schema, manifest record counts, SHA-256 checksums, adjudicator independence, unique sample IDs/claims, and exact Unicode code-point evidence offsets. Empty, not-yet-collected splits are valid while the manifest remains `not_started`; this does **not** mean the benchmark is ready.
+
+After all records are double-annotated and adjudicated, freeze each `{train,dev,test}.jsonl` file, update the corresponding record counts and SHA-256 values in `manifest.json`, and set `human_reviewed: true` and `status: ready`. The evaluator refuses to score before these gates pass.
+
+Predictions must be UTF-8 JSONL with one object per test sample, shaped as `{"sample_id":"…","annotations":{"entities":[],"events":[],"topics":[],"relations":[],"action_items":[]}}`; each claim contains a `value` object. Run:
+
+```sh
+python scripts/evaluate_persian_gold.py evaluate --predictions path/to/predictions.jsonl
+```
+
+Prediction coverage must match the frozen test split exactly. The report includes per-category TP/FP/FN, precision/recall/F1, micro and macro scores, and test-set checksum. Matching is exact canonical JSON-value multiset matching; it does not award semantic equivalence and must be supplemented by reviewed error analysis. Never tune against the test split.
