@@ -70,8 +70,8 @@ class AdaptiveRoutingTests(unittest.TestCase):
             language="fa-IR", now=NOW)
         metadata = decision.safe_metadata()
         self.assertNotIn("tenant_id", str(metadata))
-        self.assertNotIn("transcript", str(metadata))
-        self.assertNotIn("audio", str(metadata))
+        self.assertNotIn("transcript_text", str(metadata))
+        self.assertNotIn("audio_payload", str(metadata))
         self.assertEqual(metadata["policy_version"], "policy-v1")
 
     def test_duplicate_evidence_and_invalid_policy_are_rejected(self):

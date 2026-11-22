@@ -761,7 +761,8 @@
         "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback."
       ],
       "evidence": [
-        "2026-11-22: implemented an evidence-based adaptive routing policy over the explicit provider capability registry. Routing requires an operator model allowlist, fresh measured task-quality evidence, availability, quality floor, latency ceiling, locality, and cost ceiling; excludes open-circuit providers; returns a bounded deterministic fallback list and content-free audit metadata. Added unit tests for stale/missing evidence, privacy, budget, circuit breaker and fail-closed behavior. No automatic hosted routing or paid inference is enabled."
+        "2026-11-22: implemented an evidence-based adaptive routing policy over the explicit provider capability registry. Routing requires an operator model allowlist, fresh measured task-quality evidence, availability, quality floor, latency ceiling, locality, and cost ceiling; excludes open-circuit providers; returns a bounded deterministic fallback list and content-free audit metadata. Added unit tests for stale/missing evidence, privacy, budget, circuit breaker and fail-closed behavior. No automatic hosted routing or paid inference is enabled.",
+        "CI triage: the first routing metadata test used substring 'transcript', which also matched the legitimate task name 'transcription'. Narrowed the regression assertions to prohibited payload fields (transcript_text/audio_payload/query_text/tenant_id); the audit metadata contract remains content-free and production code is unchanged."
       ],
       "blocked_reason": "The deterministic routing engine and policy tests are implemented. Production use still requires a persistent, independently verified capability/evaluation evidence source, real task-specific quality and latency measurements, and an operator-controlled allowlist; current evidence is unit-test-only."
     },
