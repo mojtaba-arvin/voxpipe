@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -658,9 +658,10 @@
         "Runs 44849670885 and 44849816303 reached the local Ollama endpoint but timed out on all four model calls; no validated claims or meaningful synthetic F1 were produced.",
         "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update.",
         "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality.",
-        "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress."
+        "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress.",
+        "2026-11-22 Run 45014040665 (Ollama Smoke #58) on commit 28740ee9c3a59cb9771e7e94e34adf22779954df: 4/4 schema-valid samples, 13 claims with exact evidence validation, 3/4 non-empty; prompt-injection acceptance failed because the legitimate meeting fact was omitted. Synthetic diagnostic F1: entities 1.00, events 0.00, topics 1.00, relations 0.80, action_items 1.00. Not a human-reviewed quality benchmark. Run 45014040610 also failed one Python regression test due to brittle sanitized-JSON delimiter parsing; assertion replaced with marker-based JSON parsing in commit a0197111e60631404551f2194edfaea4346c2b10. Exact-head CI and smoke for that fix are still pending."
       ],
-      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
+      "blocked_reason": "The smoke gate remains failing: the Qwen3 injection fixture omits the legitimate meeting event (event F1 0.00), despite excluding injected instructions; exact-head CI after the regression-test correction has not yet completed. A human-reviewed, versioned Persian extraction gold set is also unavailable, so no production quality claim is permitted. No paid or hosted inference is authorized."
     },
     {
       "id": "VP-0029",
