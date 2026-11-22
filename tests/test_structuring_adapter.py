@@ -133,7 +133,7 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Select span IDs only from the supplied catalog", SYSTEM_PROMPT)
         self.assertIn("Event fidelity is mandatory", SYSTEM_PROMPT)
         self.assertIn("copy the complete time expression verbatim into start_time", SYSTEM_PROMPT)
-        self.assertIn("copy it verbatim into location", SYSTEM_PROMPT)
+        self.assertIn("copy the actual place phrase verbatim into location", SYSTEM_PROMPT)
         self.assertIn("never translate a Persian event name into English", SYSTEM_PROMPT)
         self.assertIn('Use event_type "meeting"', SYSTEM_PROMPT)
         self.assertIn('"contract-signing" for contract signing', SYSTEM_PROMPT)
