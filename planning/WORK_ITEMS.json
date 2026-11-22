@@ -727,7 +727,7 @@
         "2026-11-22: added PostgreSQL pgvector 0.8.7-backed 384-dimensional segment embedding storage with HNSW cosine index, model/version isolation, source-text SHA binding, forced tenant RLS, transcript/asset deletion cascade, filtered semantic search, and tenant-scoped obsolete-version cleanup. Added Recall@K/MRR/nDCG evaluator and pgvector integration tests. Embedding generation/model selection and a labelled relevance corpus remain separate gates.",
         "CI triage: first pgvector integration run confirmed semantic ranking, tenant filtering, source binding and stale-version deletion path. Two test/permission issues were corrected: the evaluator's Recall@2 expected value was 0.75 (not 1.0) for the defined ranked lists, and the RLS-scoped application role needed DELETE permission on the embeddings table for tenant-scoped model-version cleanup. No tenant or source isolation was relaxed."
       ],
-      "blocked_reason": "pgvector storage/search and deterministic relevance metric evaluator are implemented. A production multilingual embedding model/adapter, model quality/latency measurements, a versioned human-judged relevance set, entity-index filters, and index rebuild/recall benchmarking remain."
+      "blocked_reason": "pgvector storage/search and deterministic relevance metrics are implemented. A production multilingual embedding model/adapter, model quality/latency measurements, a versioned human-judged relevance set, entity-index filters, and index rebuild/recall benchmarking remain."
     },
     {
       "id": "VP-0032",
