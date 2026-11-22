@@ -89,6 +89,12 @@ class AdapterTests(unittest.TestCase):
             StructuredExtractionService(adapter).extract(self.make_request())
         self.assertIn("only span_id", str(raised.exception.__cause__))
 
+    def test_prompt_enforces_category_discipline_and_preserves_literal_dates(self):
+        self.assertIn("a scheduled meeting or a completed action is not itself an action item", SYSTEM_PROMPT)
+        self.assertIn("never convert them to another weekday", SYSTEM_PROMPT)
+        self.assertIn("Topics must be substantive discussion subjects", SYSTEM_PROMPT)
+        self.assertIn("do not create a generic \\\"says\\\" relation", SYSTEM_PROMPT)
+
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
             OpenAICompatibleStructuredAdapter(
