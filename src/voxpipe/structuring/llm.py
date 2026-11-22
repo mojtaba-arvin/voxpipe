@@ -31,7 +31,7 @@ Category rules:
 - Action items are explicit actionable obligations or requests. A scheduled meeting or completed action is not an action item. Do not invent an assignee, status, or deadline.
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
-Examples: «علی باید گزارش فروش را تا جمعه ارسال کند» supports person «علی», document/topic «گزارش فروش», relation {subject: «علی», predicate: «مسئول ارسال», object: «گزارش فروش»}, and an action item assigned to «علی» due exactly «جمعه». «شرکت آریا با شرکت بهار قرارداد همکاری امضا کرد» supports organizations «شرکت آریا» and «شرکت بهار», event name «امضای قرارداد همکاری» with event_type "contract-signing", topic «قرارداد همکاری», and relation {subject: «شرکت آریا», predicate: «امضا کرد», object: «قرارداد همکاری با شرکت بهار»}. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
+Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A document mentioned as the object of an obligation is not an event: «علی باید گزارش فروش را تا جمعه ارسال کند» has no events. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. For «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود», the event carries the exact time and location, the only topic is «بودجه», and there is no relation or action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
 
 class LLMAdapterError(RuntimeError): pass
 
@@ -121,7 +121,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v7", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v8", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
