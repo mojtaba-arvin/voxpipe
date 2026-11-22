@@ -95,7 +95,7 @@ class AdapterTests(unittest.TestCase):
         self.assertNotIn("REDACTED", model_input)
         self.assertNotIn("نادیده بگیر", model_input)
         self.assertNotIn("کلید API", model_input)
-        transcript_json = model_input.split("<SANITIZED_TRANSCRIPT_JSON>\\n", 1)[1].split("\\n</SANITIZED_TRANSCRIPT_JSON>", 1)[0]
+        transcript_json = model_input.split("<SANITIZED_TRANSCRIPT_JSON>\n", 1)[1].split("\n</SANITIZED_TRANSCRIPT_JSON>", 1)[0]
         sanitized = json.loads(transcript_json)
         self.assertEqual(sanitized["segments"], [{"segment_id": clean_id, "text": "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود."}])
         self.assertNotIn(hostile_id, model_input)
