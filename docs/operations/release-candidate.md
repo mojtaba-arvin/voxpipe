@@ -2,7 +2,7 @@
 
 ## What the workflow produces
 
-The `Release candidate artifacts` workflow is a build-only gate. It verifies that a tag commit is reachable from `main`, runs Python and Go validation, creates Linux amd64/arm64 API binaries and a Git source archive, generates a CycloneDX 1.6 SBOM from the Go module graph and installed Python validation environment, and writes SHA-256 checksums plus a release manifest.
+The `Release candidate artifacts` workflow is a build-only gate. It verifies that a tag commit is reachable from `main`, runs Python and Go validation against a disposable PostgreSQL/pgvector service, creates Linux amd64/arm64 API binaries and a Git source archive, generates a CycloneDX 1.6 SBOM from the Go module graph and installed Python validation environment, and writes SHA-256 checksums plus a release manifest.
 
 Manual dispatch creates a `manual-<sha>` artifact set. Tag builds use the tag name as the version. Artifacts are retained by GitHub Actions for 30 days; they are not published as a GitHub Release.
 
