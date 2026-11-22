@@ -197,6 +197,52 @@ class PostgresWorkflowRepository:
             ).fetchall()
         return {"workflow": self._serialize_row(run), "steps": [self._serialize_row(step) for step in steps]}
 
+
+    def list_ready_workflows(self, tenant_id: str, *, limit: int = 100) -> tuple[str, ...]:
+        """List tenant-scoped workflows with a claimable or expired step."""
+        tenant = _uuid(tenant_id, "tenant_id")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        with self._tenant_connection(tenant) as connection:
+            rows = connection.execute(
+                """
+                SELECT r.workflow_id
+                FROM workflow_runs AS r
+                WHERE r.tenant_id=%s AND r.state IN ('pending','running')
+                  AND EXISTS (
+                    SELECT 1 FROM workflow_steps AS candidate
+                    WHERE candidate.tenant_id=r.tenant_id AND candidate.workflow_id=r.workflow_id
+                      AND (
+                        (candidate.state='pending' AND candidate.available_at<=now())
+                        OR (candidate.state='running' AND candidate.lease_expires_at<=now())
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM workflow_steps AS prior
+                        WHERE prior.tenant_id=candidate.tenant_id
+                          AND prior.workflow_id=candidate.workflow_id
+                          AND prior.ordinal<candidate.ordinal
+                          AND prior.state<>'completed'
+                      )
+                  )
+                ORDER BY r.updated_at, r.created_at
+                LIMIT %s
+                """,
+                (tenant, limit),
+            ).fetchall()
+        return tuple(str(row["workflow_id"]) for row in rows)
+
+    def claim_next_ready_step(
+        self, tenant_id: str, worker_id: str, *, lease_seconds: int = 60, scan_limit: int = 100,
+    ) -> dict[str, Any] | None:
+        """Scheduler-friendly claim loop; row-level lease fencing remains authoritative."""
+        tenant = _uuid(tenant_id, "tenant_id")
+        worker = _uuid(worker_id, "worker_id")
+        for workflow_id in self.list_ready_workflows(tenant, limit=scan_limit):
+            claimed = self.claim_next_step(tenant, workflow_id, worker, lease_seconds=lease_seconds)
+            if claimed is not None:
+                return claimed
+        return None
+
     def claim_next_step(
         self, tenant_id: str, workflow_id: str, worker_id: str, *, lease_seconds: int = 60,
     ) -> dict[str, Any] | None:

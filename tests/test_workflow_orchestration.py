@@ -36,6 +36,22 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
             key, steps or (self.step1, self.step2),
         )
 
+
+    def test_scheduler_claims_independent_ready_workflows(self):
+        self.create((self.step1,))
+        second_workflow = str(uuid4())
+        second_step = WorkflowStepSpec(str(uuid4()), "transcribe-second", {"asset_id": str(uuid4())})
+        self.repository.create_workflow(self.tenant, second_workflow, "audio-intelligence",
+            "1.0", "scheduler-second", (second_step,))
+        ready = self.repository.list_ready_workflows(self.tenant)
+        self.assertEqual(set(ready), {self.workflow, second_workflow})
+        first = self.repository.claim_next_ready_step(self.tenant, self.worker)
+        second = self.repository.claim_next_ready_step(self.tenant, str(uuid4()))
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertNotEqual(first["workflow_id"], second["workflow_id"])
+        self.assertEqual(self.repository.list_ready_workflows(self.tenant), ())
+
     def test_workflow_steps_are_durable_and_complete_in_order(self):
         created = self.create()
         self.assertEqual(created["workflow"]["state"], "pending")
