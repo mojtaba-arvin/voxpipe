@@ -61,7 +61,21 @@ jobs:
       - name: Verify OpenAI-compatible local endpoint
         run: curl -fsS http://127.0.0.1:11434/v1/models
       - name: Run local-only structured extraction smoke test
-        run: python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
+        shell: bash
+        run: |
+          set +e
+          python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Per-sample structured extraction diagnostics (synthetic fixtures only)"
+            if [ -f benchmark-results/ollama-structured/results.jsonl ]; then
+              cat benchmark-results/ollama-structured/results.jsonl
+            else
+              echo "No per-sample results file was produced."
+            fi
+            echo "::endgroup::"
+          fi
+          exit "$status"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         if: always()
         with:
