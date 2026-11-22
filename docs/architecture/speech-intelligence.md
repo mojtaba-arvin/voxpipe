@@ -24,3 +24,10 @@ Adapters return the canonical `Transcript` or raise `TranscriptionError` with a 
 - VAD, language identification, diarization, and audio enhancement.
 - Consent/provenance-managed multilingual evaluation corpus.
 - Transcript persistence, versioning, retention/deletion propagation, and searchable indexing.
+
+
+## Diarization adapter contract
+
+`DiarizationRequest` standardizes normalized mono 16 kHz samples, the source-audio SHA-256 and ordered VAD speech regions. The ECAPA adapter exposes `DiarizationPort.diarize_request`; speaker labels are anonymous and scoped to the asset. `SpeakerTurn` validates positive time spans and bounded confidence, and result objects declare whether overlap is supported.
+
+The current ECAPA sliding-window baseline explicitly reports `overlap_supported=false`; it must not be represented as overlap-aware diarization. The current Neyshekar experiment is a controlled concatenation of read speech, not naturally recorded multi-speaker conversation. Production DER/JER acceptance still requires a consented natural-conversation corpus with speaker-turn and overlap annotations.

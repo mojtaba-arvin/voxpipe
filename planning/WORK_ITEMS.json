@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -563,9 +563,10 @@
         "scripts/run_neyshekar_diarization_benchmark.py — threshold selected on Neyshekar validation speakers and evaluated on disjoint test speakers.",
         "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
         "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
-        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation."
+        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
+        "2026-11-22: introduced a provider-neutral DiarizationRequest/DiarizationPort boundary for normalized mono 16 kHz audio and VAD speech regions; ECAPA adapter now implements diarize_request. SpeakerTurn validates anonymous label, boundaries and confidence; result validates ordering, provenance and explicit overlap capability. Added contract and invalid-input tests."
       ],
-      "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
+      "blocked_reason": "The adapter contract and deterministic tests are implemented. The ECAPA baseline still explicitly does not support overlapping speech; natural multi-speaker conversation with speaker labels, overlap annotations and explicit consent is required for production DER/JER acceptance."
     },
     {
       "id": "VP-0025",

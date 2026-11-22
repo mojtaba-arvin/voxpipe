@@ -5,8 +5,54 @@ from itertools import permutations
 from pathlib import Path
 import math
 import re
+from typing import Protocol
+
+from voxpipe.speech.vad import SpeechRegion
 
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
+
+
+@dataclass(frozen=True, slots=True)
+class DiarizationRequest:
+    """Provider-neutral mono audio and VAD regions for anonymous speaker clustering."""
+    samples: tuple[float, ...]
+    audio_sha256: str
+    speech_regions: tuple[SpeechRegion, ...]
+    sample_rate: int = 16000
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.samples, (tuple, list)) or not self.samples:
+            raise ValueError("samples must be a non-empty mono audio sequence")
+        normalized = []
+        for sample in self.samples:
+            if (not isinstance(sample, (int, float)) or isinstance(sample, bool)
+                    or not math.isfinite(sample) or not -1.0 <= sample <= 1.0):
+                raise ValueError("samples must be finite normalized values between -1 and 1")
+            normalized.append(float(sample))
+        object.__setattr__(self, "samples", tuple(normalized))
+        if self.sample_rate != 16000:
+            raise ValueError("the current ECAPA adapter requires mono 16 kHz audio")
+        if not isinstance(self.audio_sha256, str) or not _SHA256.fullmatch(self.audio_sha256):
+            raise ValueError("audio_sha256 must be lowercase SHA-256")
+        if not isinstance(self.speech_regions, (tuple, list)):
+            raise ValueError("speech_regions must be a sequence")
+        duration_ms = round(len(normalized) * 1000 / self.sample_rate)
+        previous_end = -1
+        for region in self.speech_regions:
+            if not isinstance(region, SpeechRegion):
+                raise ValueError("speech_regions must contain SpeechRegion values")
+            if region.start_ms < previous_end or region.end_ms > duration_ms:
+                raise ValueError("speech regions must be ordered and within the audio duration")
+            previous_end = region.end_ms
+        object.__setattr__(self, "speech_regions", tuple(self.speech_regions))
+
+
+class DiarizationPort(Protocol):
+    """Provider-neutral anonymous speaker diarization boundary."""
+    provider_name: str
+
+    def diarize_request(self, request: DiarizationRequest) -> "DiarizationResult": ...
+
 
 @dataclass(frozen=True, slots=True)
 class SpeakerTurn:
@@ -15,6 +61,16 @@ class SpeakerTurn:
     speaker_id:str
     confidence:float
 
+    def __post_init__(self) -> None:
+        if (not isinstance(self.start_ms, int) or isinstance(self.start_ms, bool) or self.start_ms < 0
+                or not isinstance(self.end_ms, int) or isinstance(self.end_ms, bool) or self.end_ms <= self.start_ms):
+            raise ValueError("speaker turn boundaries are invalid")
+        if not isinstance(self.speaker_id, str) or not self.speaker_id.strip() or len(self.speaker_id) > 128:
+            raise ValueError("speaker_id must be a non-empty anonymous label")
+        if (not isinstance(self.confidence, (int, float)) or isinstance(self.confidence, bool)
+                or not math.isfinite(self.confidence) or not 0 <= self.confidence <= 1):
+            raise ValueError("speaker confidence must be finite and between 0 and 1")
+
 @dataclass(frozen=True, slots=True)
 class DiarizationResult:
     provider:str
@@ -22,6 +78,20 @@ class DiarizationResult:
     audio_sha256:str
     turns:tuple[SpeakerTurn,...]
     overlap_supported:bool=False
+
+    def __post_init__(self) -> None:
+        for field in ("provider", "model"):
+            value = getattr(self, field)
+            if not isinstance(value, str) or not value.strip() or len(value) > 128:
+                raise ValueError(f"{field} must be a non-empty bounded string")
+        if not isinstance(self.audio_sha256, str) or not _SHA256.fullmatch(self.audio_sha256):
+            raise ValueError("audio_sha256 must be lowercase SHA-256")
+        if not isinstance(self.turns, tuple) or any(not isinstance(turn, SpeakerTurn) for turn in self.turns):
+            raise ValueError("turns must be a tuple of SpeakerTurn values")
+        if not isinstance(self.overlap_supported, bool):
+            raise ValueError("overlap_supported must be boolean")
+        if any(right.start_ms < left.start_ms for left, right in zip(self.turns, self.turns[1:])):
+            raise ValueError("speaker turns must be ordered by start time")
 
 class SpeechBrainECAPAEmbedder:
     """Thin local-only SpeechBrain ECAPA embedding wrapper."""
@@ -56,6 +126,12 @@ class ECAPADiarizationAdapter:
         norm=math.sqrt(sum(x*x for x in values))
         if not values or norm==0 or not math.isfinite(norm): raise ValueError("invalid speaker embedding")
         return [x/norm for x in values]
+    def diarize_request(self, request: DiarizationRequest) -> DiarizationResult:
+        if not isinstance(request, DiarizationRequest):
+            raise TypeError("request must be a DiarizationRequest")
+        return self.diarize(request.samples, sample_rate=request.sample_rate,
+            audio_sha256=request.audio_sha256, speech_regions=request.speech_regions)
+
     def diarize(self,samples,*,sample_rate=16000,audio_sha256,speech_regions):
         if sample_rate!=16000: raise ValueError("diarization requires mono 16 kHz audio")
         if not _SHA256.fullmatch(audio_sha256): raise ValueError("audio_sha256 must be lowercase SHA-256")
