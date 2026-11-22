@@ -65,8 +65,8 @@ def ollama_output_schema(span_ids):
     }
     def claim(value_schema):
         return {"type":"object","additionalProperties":False,
-            "required":["claim_id","value","evidence","confidence"],
-            "properties":{"claim_id":{"type":"string","format":"uuid"},"value":value_schema,
+            "required":["value","evidence","confidence"],
+            "properties":{"value":value_schema,
                 "evidence":{"type":"array","minItems":1,"items":evidence},
                 "confidence":{"type":"number","minimum":0,"maximum":1}}}
     return {"type":"object","additionalProperties":False,"required":list(names),
