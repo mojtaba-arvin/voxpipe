@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -752,7 +752,7 @@
       "title": "Implement policy-based adaptive model routing",
       "phase": 5,
       "priority": 33,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Route only among explicitly enabled models using measured quality, latency, availability and cost evidence.",
@@ -760,8 +760,10 @@
         "Record routing decision metadata without logging audio/transcript content.",
         "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: implemented an evidence-based adaptive routing policy over the explicit provider capability registry. Routing requires an operator model allowlist, fresh measured task-quality evidence, availability, quality floor, latency ceiling, locality, and cost ceiling; excludes open-circuit providers; returns a bounded deterministic fallback list and content-free audit metadata. Added unit tests for stale/missing evidence, privacy, budget, circuit breaker and fail-closed behavior. No automatic hosted routing or paid inference is enabled."
+      ],
+      "blocked_reason": "The deterministic routing engine and policy tests are implemented. Production use still requires a persistent, independently verified capability/evaluation evidence source, real task-specific quality and latency measurements, and an operator-controlled allowlist; current evidence is unit-test-only."
     },
     {
       "id": "VP-0034",
