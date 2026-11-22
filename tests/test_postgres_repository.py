@@ -74,6 +74,8 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
+            connection.execute("DROP TABLE IF EXISTS workflow_steps CASCADE")
+            connection.execute("DROP TABLE IF EXISTS workflow_runs CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcripts CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_upload_leases CASCADE")
@@ -113,6 +115,9 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute(
                 "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
             )
+            connection.execute(
+                "GRANT SELECT, INSERT, UPDATE ON workflow_runs, workflow_steps TO voxpipe_app"
+            )
 
         cls.repository = PostgresIngestionRepository(cls.app_dsn)
         cls.queue = PostgresIngestionJobQueue(cls.app_dsn)
@@ -121,7 +126,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE workflow_steps, workflow_runs, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
         import psycopg
