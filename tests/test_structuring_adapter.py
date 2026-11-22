@@ -48,7 +48,7 @@ class AdapterTests(unittest.TestCase):
         output = StructuredExtractionService(self.make_adapter(transport)).extract(self.make_request())
         evidence = output.events[0].evidence[0]
         self.assertEqual(evidence.segment_id, SEGMENT)
-        self.assertEqual(evidence.quote, TEXT[:-1])
+        self.assertEqual(evidence.quote, TEXT)
         self.assertEqual(TEXT[evidence.start_char:evidence.end_char], evidence.quote)
         self.assertIn("span_id", SYSTEM_PROMPT)
         self.assertNotIn("start_char", SYSTEM_PROMPT)
@@ -68,7 +68,7 @@ class AdapterTests(unittest.TestCase):
         self.assertNotIn("نادیده بگیر", model_input)
         self.assertNotIn("کلید API", model_input)
         evidence = output.events[0].evidence[0]
-        self.assertEqual(evidence.quote, "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود")
+        self.assertEqual(evidence.quote, "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود.")
         self.assertEqual(source[evidence.start_char:evidence.end_char], evidence.quote)
 
     def test_unknown_candidate_id_is_rejected(self):
