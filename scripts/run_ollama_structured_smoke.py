@@ -107,7 +107,7 @@ def ollama_native_transport(_url,payload,_headers,timeout):
     )
     native={"model":payload["model"],"messages":messages,"stream":True,
         "format":ollama_output_schema(segment_ids),"think":False,
-        "options":{"temperature":payload.get("temperature",0),"num_predict":min(max(payload.get("max_tokens",1024),128),1024)}}
+        "options":{"temperature":payload.get("temperature",0),"num_predict":min(max(payload.get("max_tokens",4096),128),4096)}}
     request=urllib.request.Request("http://127.0.0.1:11434/api/chat",
         data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type":"application/json"},method="POST")
@@ -135,7 +135,7 @@ def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v2",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=1024,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v2",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
