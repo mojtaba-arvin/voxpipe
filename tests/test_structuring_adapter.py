@@ -95,6 +95,9 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Topics must be substantive discussion subjects", SYSTEM_PROMPT)
         self.assertIn("generic", SYSTEM_PROMPT)
         self.assertIn("says", SYSTEM_PROMPT)
+        self.assertIn("مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود", SYSTEM_PROMPT)
+        self.assertIn("action_items must be empty", SYSTEM_PROMPT)
+        self.assertIn("it is not Saturday", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
