@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -768,7 +768,7 @@
       "title": "Implement durable workflow orchestration",
       "phase": 6,
       "priority": 34,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Run ingestion, transcription, enrichment and indexing as versioned durable workflows.",
@@ -776,8 +776,10 @@
         "Prove restart recovery and duplicate-delivery safety with failure injection.",
         "Select orchestration engine through an ADR and measured operational PoC."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: implemented PostgreSQL-backed workflow run/step journal with tenant RLS, ordered steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, safe reference-only payload validation and source-asset deletion cascade. Added PostgreSQL 16 integration tests for lifecycle, idempotency, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and lease recovery. This is a bounded single-workflow sequential PoC, not yet a production worker integration or throughput benchmark."
+      ],
+      "blocked_reason": "The PostgreSQL durable-step PoC and integration tests are implemented. A production scheduler/worker integration, concurrent multi-worker load test, backup/restore exercise, operational latency/throughput measurements and final engine decision remain."
     },
     {
       "id": "VP-0035",
@@ -828,4 +830,4 @@
       "blocked_reason": "Not implemented or independently verified yet."
     }
   ]
-}
+}\n
