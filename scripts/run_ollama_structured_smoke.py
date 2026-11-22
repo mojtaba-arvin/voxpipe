@@ -67,21 +67,77 @@ def required_event_fields_for_candidates(candidates):
 
 
 def candidate_schema_constraints(candidates):
-    """Constrain impossible claim categories before generation, using only visible evidence."""
-    text = " ".join(item["quote"] for item in candidates)
+    """Derive collection/type/field constraints only from explicit candidate evidence."""
     event_types = []
-    if re.search(r"برگزار\s+می‌شود|برگزار\s+خواهد\s+شد|تشکیل\s+می‌شود", text):
-        event_types.append("meeting")
-    if re.search(r"امضا\s+کرد(?:ه|ند)?", text):
-        event_types.append("contract-signing")
-    reporting_speaker = re.search(r"(?:^|[.!؟。]\s*)([\u0600-\u06FF]+)\s+گفت\b", text)
-    has_other_entity_cue = re.search(r"شرکت|سازمان|دفتر|مرکز|ساختمان|شهر|کشور|آقای|خانم", text)
-    # A reporting-frame speaker alone is not an entity in this extraction contract.
-    max_entities = 0 if reporting_speaker and not has_other_entity_cue else 32
+    entity_types = set()
+    max_action_items = 0
+    required_action_item_fields = set()
+    action_item_description_pattern = None
+    allow_action_item_status = False
+
+    event_cue = re.compile(
+        r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود|امضا\s+کرد(?:ه|ند)?"
+    )
+    action_cue = re.compile(r"\s+باید\s+|موظف\s+است|لازم\s+است|درخواست\s+کرد")
+    deadline_cue = re.compile(
+        r"تا\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\s+هفته|پایان\s+هفته|[۰-۹0-9]{1,2}[/-][۰-۹0-9]{1,2})"
+    )
+    explicit_status_cue = re.compile(
+        r"انجام\s+شد|تکمیل\s+شد|در\s+حال\s+انجام|لغو\s+شد|به\s+تعویق\s+افتاد"
+    )
+
+    for candidate in candidates:
+        quote = candidate["quote"]
+        if event_cue.search(quote):
+            if re.search(r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود", quote):
+                if "meeting" not in event_types:
+                    event_types.append("meeting")
+            if re.search(r"امضا\s+کرد(?:ه|ند)?", quote):
+                if "contract-signing" not in event_types:
+                    event_types.append("contract-signing")
+
+        # Only lexical evidence can authorize a type. In particular, an event
+        # title such as «جلسه بودجه» cannot be emitted as an organization.
+        if re.search(r"شرکت|سازمان|مؤسسه|موسسه", quote):
+            entity_types.add("organization")
+        if re.search(r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
+            entity_types.add("location")
+        if re.search(r"گزارش|نامه|فاکتور|سند|مدرک", quote):
+            entity_types.add("document")
+        if re.search(r"[\u0600-\u06FF]+\s+(?:باید|موظف\s+است|مسئول\s+است)", quote):
+            entity_types.add("person")
+
+        if action_cue.search(quote):
+            max_action_items = 32
+            if re.search(r"[\u0600-\u06FF]+\s+باید\s+", quote):
+                required_action_item_fields.add("assignee")
+            deadline = deadline_cue.search(quote)
+            if deadline:
+                required_action_item_fields.add("due_date")
+                # Keep the deadline in its dedicated field, not duplicated in
+                # the action description. The exact phrase comes from evidence.
+                action_item_description_pattern = (
+                    r"^(?!.*" + re.escape(deadline.group(0)) + r").+"
+                )
+            if explicit_status_cue.search(quote):
+                allow_action_item_status = True
+
+    ordered_entity_types = tuple(
+        kind for kind in ("person", "organization", "location", "document")
+        if kind in entity_types
+    )
     return {
-        "max_entities": max_entities,
+        "max_entities": 32 if ordered_entity_types else 0,
+        "allowed_entity_types": ordered_entity_types or ("person", "organization", "location", "document"),
         "max_events": 32 if event_types else 0,
         "allowed_event_types": tuple(event_types),
+        "max_action_items": max_action_items,
+        "required_action_item_fields": tuple(
+            field for field in ("assignee", "due_date")
+            if field in required_action_item_fields
+        ),
+        "action_item_description_pattern": action_item_description_pattern,
+        "allow_action_item_status": allow_action_item_status,
     }
 
 
@@ -92,6 +148,11 @@ def ollama_output_schema(
     max_entities=32,
     max_events=32,
     allowed_event_types=("meeting", "contract-signing"),
+    allowed_entity_types=("person", "organization", "location", "document"),
+    max_action_items=32,
+    required_action_item_fields=(),
+    action_item_description_pattern=None,
+    allow_action_item_status=False,
 ):
     allowed = list(span_ids) or ["__no_evidence__"]
     evidence={"type":"object","additionalProperties":False,
@@ -103,7 +164,7 @@ def ollama_output_schema(
         event_name_schema["pattern"] = "^امضای .+"
     value_schemas={
         "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
-            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":["person","organization","location","document"]},
+            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":list(allowed_entity_types)},
                 "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}}},
         "events":{"type":"object","additionalProperties":False,"required":["name","event_type",*required_event_fields],
             "properties":{"name":event_name_schema,"event_type":{"type":"string","enum":list(allowed_event_types) or ["meeting","contract-signing"]},
@@ -115,9 +176,14 @@ def ollama_output_schema(
         "relations":{"type":"object","additionalProperties":False,"required":["subject","predicate","object"],
             "properties":{"subject":{"type":"string","minLength":1},"predicate":{"type":"string","minLength":1},
                 "object":{"type":"string","minLength":1}}},
-        "action_items":{"type":"object","additionalProperties":False,"required":["description"],
-            "properties":{"description":{"type":"string","minLength":1},"assignee":{"type":"string"},
-                "due_date":{"type":"string"},"status":{"type":"string"}}},
+        "action_items":{"type":"object","additionalProperties":False,
+            "required":["description",*required_action_item_fields],
+            "properties":{"description":{
+                    "type":"string","minLength":1,
+                    **({"pattern":action_item_description_pattern} if action_item_description_pattern else {})},
+                "assignee":{"type":"string","minLength":1},
+                "due_date":{"type":"string","minLength":1},
+                **({"status":{"type":"string"}} if allow_action_item_status else {})}},
     }
     def claim(value_schema):
         return {"type":"object","additionalProperties":False,
@@ -125,7 +191,7 @@ def ollama_output_schema(
             "properties":{"value":value_schema,
                 "evidence":{"type":"array","minItems":1,"items":evidence},
                 "confidence":{"type":"number","minimum":0,"maximum":1}}}
-    limits = {"entities": max_entities, "events": max_events}
+    limits = {"entities": max_entities, "events": max_events, "action_items": max_action_items}
     return {"type":"object","additionalProperties":False,"required":list(names),
         "properties":{name:{"type":"array","maxItems":limits.get(name,32),"items":claim(value_schemas[name])} for name in names}}
 
@@ -212,7 +278,7 @@ def run(model_name,output_dir):
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v11",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v12",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
@@ -293,7 +359,7 @@ def run(model_name,output_dir):
     (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     summary={"duration_seconds":round(time.monotonic()-run_started,3),
         "sample_durations_seconds":sample_durations,
-        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v11"},
+        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v12"},
         "samples":len(SAMPLES),"validated_samples":successes,"validated_claims":claim_count,
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),
