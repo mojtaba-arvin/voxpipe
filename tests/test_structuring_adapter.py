@@ -92,7 +92,7 @@ class AdapterTests(unittest.TestCase):
     def test_prompt_enforces_category_discipline_and_preserves_literal_dates(self):
         self.assertIn("a scheduled meeting or a completed action is not itself an action item", SYSTEM_PROMPT)
         self.assertIn("never convert them to another weekday", SYSTEM_PROMPT)
-        self.assertIn("Topics must be substantive discussion subjects", SYSTEM_PROMPT)
+        self.assertIn("Topics are the substantive subject being discussed", SYSTEM_PROMPT)
         self.assertIn("generic", SYSTEM_PROMPT)
         self.assertIn("says", SYSTEM_PROMPT)
         self.assertIn("مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود", SYSTEM_PROMPT)
