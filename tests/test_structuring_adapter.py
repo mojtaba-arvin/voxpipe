@@ -65,6 +65,9 @@ class AdapterTests(unittest.TestCase):
         output = StructuredExtractionService(self.make_adapter(transport)).extract(self.make_request(source))
         model_input = seen["messages"][1]["content"]
         self.assertIn("[REDACTED_MODEL_DIRECTED_INSTRUCTION]", model_input)
+        self.assertIn("مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود", model_input)
+        self.assertIn("span-0001", model_input)
+        self.assertIn("Redaction applies only to the specific instruction sentence", model_input)
         self.assertNotIn("نادیده بگیر", model_input)
         self.assertNotIn("کلید API", model_input)
         evidence = output.events[0].evidence[0]
@@ -105,6 +108,8 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("بودجه", SYSTEM_PROMPT)
         self.assertIn("قرارداد همکاری با شرکت بهار", SYSTEM_PROMPT)
         self.assertIn("it is not Saturday", SYSTEM_PROMPT)
+        self.assertIn("Redaction is sentence-scoped, never transcript-scoped", SYSTEM_PROMPT)
+        self.assertIn("Do not discard, suppress, or empty otherwise-supported facts", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
