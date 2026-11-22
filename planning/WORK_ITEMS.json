@@ -778,7 +778,8 @@
       ],
       "evidence": [
         "2026-11-22: implemented PostgreSQL-backed workflow run/step journal with tenant RLS, ordered steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, safe reference-only payload validation and source-asset deletion cascade. Added PostgreSQL 16 integration tests for lifecycle, idempotency, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and lease recovery. This is a bounded single-workflow sequential PoC, not yet a production worker integration or throughput benchmark.",
-        "CI triage: run 45065248976 found a literal backslash-n appended after the JSON document by the file-generation step, causing repository ledger parsing to fail before unit tests. Rewrote the ledger with a real trailing newline; no application behavior or acceptance criteria were changed."
+        "CI triage: run 45065248976 found a literal backslash-n appended after the JSON document by the file-generation step, causing repository ledger parsing to fail before unit tests. Rewrote the ledger with a real trailing newline; no application behavior or acceptance criteria were changed.",
+        "CI triage: PostgreSQL integration surfaced two API/test-contract issues: the migration-upgrade assertion still expected versions 2–7 after adding migration 0008, and psycopg UUID objects were returned instead of stable string IDs. Updated the migration assertion and normalized UUID fields at repository boundaries; sequential-step, approval, lease and retry behavior itself passed."
       ],
       "blocked_reason": "The PostgreSQL durable-step PoC and integration tests are implemented. A production scheduler/worker integration, concurrent multi-worker load test, backup/restore exercise, operational latency/throughput measurements and final engine decision remain."
     },

@@ -173,6 +173,14 @@ class PostgresWorkflowRepository:
                     raise WorkflowConflict("idempotency key was reused with different workflow content")
         return self.get_workflow(tenant, workflow)
 
+    @staticmethod
+    def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
+        serialized = dict(row)
+        for key, value in serialized.items():
+            if isinstance(value, UUID):
+                serialized[key] = str(value)
+        return serialized
+
     def get_workflow(self, tenant_id: str, workflow_id: str) -> dict[str, Any] | None:
         tenant = _uuid(tenant_id, "tenant_id")
         workflow = _uuid(workflow_id, "workflow_id")
@@ -187,7 +195,7 @@ class PostgresWorkflowRepository:
                 "SELECT * FROM workflow_steps WHERE tenant_id=%s AND workflow_id=%s ORDER BY ordinal",
                 (tenant, workflow),
             ).fetchall()
-        return {"workflow": dict(run), "steps": [dict(step) for step in steps]}
+        return {"workflow": self._serialize_row(run), "steps": [self._serialize_row(step) for step in steps]}
 
     def claim_next_step(
         self, tenant_id: str, workflow_id: str, worker_id: str, *, lease_seconds: int = 60,
@@ -252,7 +260,7 @@ class PostgresWorkflowRepository:
                 "UPDATE workflow_runs SET state='running', updated_at=now() WHERE tenant_id=%s AND workflow_id=%s",
                 (tenant, workflow),
             )
-        return dict(claimed)
+        return self._serialize_row(claimed)
 
     def complete_step(
         self, tenant_id: str, workflow_id: str, step_id: str, worker_id: str,
