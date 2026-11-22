@@ -37,10 +37,12 @@ def ollama_model_digest(model_name):
     return model.get("digest") or model.get("model") or "digest-unavailable"
 
 
-def ollama_output_schema():
+def ollama_output_schema(segment_ids):
+    if not segment_ids:
+        raise ValueError("at least one source segment ID is required")
     evidence={"type":"object","additionalProperties":False,
         "required":["segment_id","start_char","end_char","quote"],
-        "properties":{"segment_id":{"type":"string","format":"uuid"},
+        "properties":{"segment_id":{"type":"string","format":"uuid","enum":list(segment_ids)},
             "start_char":{"type":"integer","minimum":0},"end_char":{"type":"integer","minimum":1},
             "quote":{"type":"string","minLength":1},
             "word_start_index":{"type":["integer","null"],"minimum":0},
@@ -58,8 +60,15 @@ def ollama_output_schema():
 
 
 def ollama_native_transport(_url,payload,_headers,timeout):
+    user_message=next(message["content"] for message in payload["messages"] if message["role"]=="user")
+    opening="<UNTRUSTED_TRANSCRIPT_JSON>\\n"
+    closing="\\n</UNTRUSTED_TRANSCRIPT_JSON>"
+    start=user_message.index(opening)+len(opening)
+    end=user_message.index(closing,start)
+    transcript=json.loads(user_message[start:end])
+    segment_ids=tuple(segment["segment_id"] for segment in transcript["segments"])
     native={"model":payload["model"],"messages":payload["messages"],"stream":False,
-        "format":ollama_output_schema(),"think":False,
+        "format":ollama_output_schema(segment_ids),"think":False,
         "options":{"temperature":payload.get("temperature",0),"num_predict":max(payload.get("max_tokens",512),1024)}}
     request=urllib.request.Request("http://127.0.0.1:11434/api/chat",
         data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
