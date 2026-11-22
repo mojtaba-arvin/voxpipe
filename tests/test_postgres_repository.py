@@ -216,17 +216,17 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                 (tenant_a, transcript_id, segment_id),
             )
             connection.execute(
-                """INSERT INTO transcript_speakers
-                (tenant_id, transcript_id, revision, speaker_id, label)
-                VALUES (%s,%s,2,%s,'speaker_1')""",
-                (tenant_a, transcript_id, speaker_id),
-            )
-            connection.execute(
                 """INSERT INTO transcripts
                 (tenant_id, transcript_id, asset_id, revision, language, text, provider, model,
                  model_version, audio_sha256, generated_at)
                 VALUES (%s,%s,%s,2,'fa-IR','جلسه نسخه دوم','fixture','test-model','2',%s,%s)""",
                 (tenant_a, transcript_id, asset_a, "b" * 64, now),
+            )
+            connection.execute(
+                """INSERT INTO transcript_speakers
+                (tenant_id, transcript_id, revision, speaker_id, label)
+                VALUES (%s,%s,2,%s,'speaker_1')""",
+                (tenant_a, transcript_id, speaker_id),
             )
             connection.execute(
                 """INSERT INTO transcript_segments
