@@ -52,6 +52,23 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
         self.assertEqual(schema["properties"]["events"]["maxItems"], 0)
 
+    def test_unrelated_action_deadline_does_not_require_event_time(self) -> None:
+        candidates = [
+            {"span_id": "span-0001", "quote": "جلسه برگزار می‌شود."},
+            {"span_id": "span-0002", "quote": "علی باید گزارش را فردا ارسال کند."},
+        ]
+        self.assertEqual(SMOKE.required_event_fields_for_candidates(candidates), ())
+
+    def test_event_time_and_location_are_required_from_the_same_candidate(self) -> None:
+        candidates = [
+            {"span_id": "span-0001", "quote": "جلسه برگزار می‌شود."},
+            {"span_id": "span-0002", "quote": "جلسه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود."},
+        ]
+        self.assertEqual(
+            SMOKE.required_event_fields_for_candidates(candidates),
+            ("start_time", "location"),
+        )
+
     def test_reporting_speaker_alone_cannot_generate_an_entity(self) -> None:
         candidates = [{"span_id": "span-0001", "quote": "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود."}]
         constraints = SMOKE.candidate_schema_constraints(candidates)
