@@ -51,14 +51,33 @@ def ollama_output_schema(segment_ids):
             "word_end_index":{"type":["integer","null"],"minimum":1},
             "start_ms":{"type":["integer","null"],"minimum":0},
             "end_ms":{"type":["integer","null"],"minimum":1}}}
-    claim={"type":"object","additionalProperties":False,
-        "required":["claim_id","value","evidence","confidence"],
-        "properties":{"claim_id":{"type":"string","format":"uuid"},
-            "value":{"type":"object"},"evidence":{"type":"array","minItems":1,"items":evidence},
-            "confidence":{"type":"number","minimum":0,"maximum":1}}}
     names=("entities","events","topics","relations","action_items")
+    value_schemas={
+        "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
+            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","minLength":1},
+                "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}}},
+        "events":{"type":"object","additionalProperties":False,"required":["name","event_type"],
+            "properties":{"name":{"type":"string","minLength":1},"event_type":{"type":"string","minLength":1},
+                "start_time":{"type":"string"},"end_time":{"type":"string"},"location":{"type":"string"},
+                "participants":{"type":"array","items":{"type":"string"}}}},
+        "topics":{"type":"object","additionalProperties":False,"required":["name"],
+            "properties":{"name":{"type":"string","minLength":1},"description":{"type":"string"},
+                "keywords":{"type":"array","items":{"type":"string"}}}},
+        "relations":{"type":"object","additionalProperties":False,"required":["subject","predicate","object"],
+            "properties":{"subject":{"type":"string","minLength":1},"predicate":{"type":"string","minLength":1},
+                "object":{"type":"string","minLength":1}}},
+        "action_items":{"type":"object","additionalProperties":False,"required":["description"],
+            "properties":{"description":{"type":"string","minLength":1},"assignee":{"type":"string"},
+                "due_date":{"type":"string"},"status":{"type":"string"}}},
+    }
+    def claim(value_schema):
+        return {"type":"object","additionalProperties":False,
+            "required":["claim_id","value","evidence","confidence"],
+            "properties":{"claim_id":{"type":"string","format":"uuid"},"value":value_schema,
+                "evidence":{"type":"array","minItems":1,"items":evidence},
+                "confidence":{"type":"number","minimum":0,"maximum":1}}}
     return {"type":"object","additionalProperties":False,"required":list(names),
-        "properties":{name:{"type":"array","maxItems":500,"items":claim} for name in names}}
+        "properties":{name:{"type":"array","maxItems":32,"items":claim(value_schemas[name])} for name in names}}
 
 
 def ollama_native_transport(_url,payload,_headers,timeout):
@@ -72,7 +91,7 @@ def ollama_native_transport(_url,payload,_headers,timeout):
     segment_ids=tuple(segment["segment_id"] for segment in transcript["segments"])
     native={"model":payload["model"],"messages":payload["messages"],"stream":False,
         "format":ollama_output_schema(segment_ids),"think":False,
-        "options":{"temperature":payload.get("temperature",0),"num_predict":max(payload.get("max_tokens",512),1024)}}
+        "options":{"temperature":payload.get("temperature",0),"num_predict":min(max(payload.get("max_tokens",1024),128),1024)}}
     request=urllib.request.Request("http://127.0.0.1:11434/api/chat",
         data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type":"application/json"},method="POST")
@@ -82,10 +101,11 @@ def ollama_native_transport(_url,payload,_headers,timeout):
     return {"choices":[{"message":{"content":LAST_RAW_MODEL_OUTPUT}}]}
 
 def run(model_name,output_dir):
+    global LAST_RAW_MODEL_OUTPUT
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
-        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v2",timeout_seconds=120,max_transcript_chars=200000,max_output_tokens=4096,transport=ollama_native_transport)
+        model_version=f"{model_name}@{digest}",prompt_version="structured-fa-v2",timeout_seconds=240,max_transcript_chars=200000,max_output_tokens=1024,transport=ollama_native_transport)
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
@@ -119,7 +139,7 @@ def run(model_name,output_dir):
             provenance["extracted_at"]=result.provenance.extracted_at.isoformat()
             rows.append({"sample_id":sample["id"],"status":"validated",
                 "claims":{name:[asdict(claim) for claim in getattr(result,name)] for name in names},
-                "provenance":provenance})
+                "raw_model_output":LAST_RAW_MODEL_OUTPUT,"provenance":provenance})
         except Exception as exc:
             cause=getattr(exc,"__cause__",None)
             rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,
