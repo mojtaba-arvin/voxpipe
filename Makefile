@@ -22,3 +22,6 @@ go-check:
 	@test -z "$(gofmt -l ./cmd ./internal)"
 	go vet ./...
 	go test -race ./...
+
+gold-check:
+	$(PYTHON) scripts/evaluate_persian_gold.py validate
