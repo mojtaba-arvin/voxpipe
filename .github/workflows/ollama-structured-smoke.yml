@@ -25,7 +25,7 @@ jobs:
   local-llm:
     name: Qwen3 local-only structured extraction
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 20
     env:
       OLLAMA_HOST: "127.0.0.1:11434"
       CUDA_VISIBLE_DEVICES: ""
@@ -61,6 +61,7 @@ jobs:
       - name: Verify OpenAI-compatible local endpoint
         run: curl -fsS http://127.0.0.1:11434/v1/models
       - name: Run local-only structured extraction smoke test
+        timeout-minutes: 15
         shell: bash
         run: |
           set +e
