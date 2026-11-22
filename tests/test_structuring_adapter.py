@@ -40,6 +40,17 @@ class AdapterTests(unittest.TestCase):
   request=StructuredExtractionRequest(DOC,ASSET,TRANSCRIPT,1,"fa-IR",{SEGMENT:TEXT})
   StructuredExtractionService(adapter).extract(request)
   self.assertNotIn("Authorization",seen)
+
+ def test_rejects_unexpected_top_level_keys_with_safe_diagnostic(self):
+  payload={"entities":[],"events":[],"topics":[],"relations":[],"action_items":[],"reasoning":"not allowed"}
+  adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",
+      model="qwen3:4b",model_version="qwen3:4b@sha256:test",
+      transport=lambda *a:{"choices":[{"message":{"content":json.dumps(payload)}}]})
+  request=StructuredExtractionRequest(DOC,ASSET,TRANSCRIPT,1,"fa-IR",{SEGMENT:TEXT})
+  with self.assertRaises(LLMAdapterError) as raised:
+   adapter.extract(request)
+  self.assertIn("unexpected output keys",str(raised.exception.__cause__))
+
  def test_requires_https_and_key(self):
   with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="http://remote.example/v1",model="m",model_version="v1",api_key="x")
   with self.assertRaises(ValueError): OpenAICompatibleStructuredAdapter(endpoint="https://x",model="m",model_version="test-1",api_key="")

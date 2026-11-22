@@ -3,7 +3,7 @@ name: Local Ollama structured extraction smoke test
 
 on:
   push:
-    branches: [feat/phase2-6-execution-foundation]
+    branches: [feat/phase2-6-execution-foundation, feat/vp-0028-qwen-json-schema]
     paths:
       - "scripts/run_ollama_structured_smoke.py"
       - "src/voxpipe/structuring/**"
