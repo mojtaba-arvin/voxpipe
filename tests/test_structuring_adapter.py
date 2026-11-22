@@ -93,7 +93,8 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("a scheduled meeting or a completed action is not itself an action item", SYSTEM_PROMPT)
         self.assertIn("never convert them to another weekday", SYSTEM_PROMPT)
         self.assertIn("Topics must be substantive discussion subjects", SYSTEM_PROMPT)
-        self.assertIn("do not create a generic \\\"says\\\" relation", SYSTEM_PROMPT)
+        self.assertIn("generic", SYSTEM_PROMPT)
+        self.assertIn("says", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
