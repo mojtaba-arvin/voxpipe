@@ -15,6 +15,8 @@ import (
 	"github.com/mojtaba-arvin/voxpipe/internal/httpapi"
 )
 
+var version = "dev"
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -61,7 +63,7 @@ func main() {
 		MaxHeaderBytes:    1 << 20,
 	}
 	go func() {
-		log.Printf("VoxPipe ingestion API listening on %s", server.Addr)
+		log.Printf("VoxPipe ingestion API %s listening on %s", version, server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("HTTP server failed: %v", err)
 			cancel()
