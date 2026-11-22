@@ -144,6 +144,10 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Redaction is sentence-scoped, never transcript-scoped", SYSTEM_PROMPT)
         self.assertIn("omit that segment completely from model input", SYSTEM_PROMPT)
         self.assertIn("Do not discard, suppress, or empty otherwise-supported facts", SYSTEM_PROMPT)
+        self.assertIn("Event fidelity is mandatory", SYSTEM_PROMPT)
+        self.assertIn("copy the complete time expression verbatim into start_time", SYSTEM_PROMPT)
+        self.assertIn("never translate a Persian event name into English", SYSTEM_PROMPT)
+        self.assertIn("Never create a generic", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
         with self.assertRaises(ValueError):
