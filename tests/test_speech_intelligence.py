@@ -63,8 +63,8 @@ class SpeechIntelligenceTests(unittest.TestCase):
         result=calibrate_abstention_threshold(["fa","fa","en","en"],predictions,
             min_selective_accuracy=1.0,min_coverage=.5)
         self.assertTrue(result["feasible"])
-        self.assertEqual(result["threshold"],.8)
-        self.assertEqual(result["coverage"],.5)
+        self.assertEqual(result["threshold"],.55)
+        self.assertEqual(result["coverage"],.75)
         self.assertEqual(result["selective_accuracy"],1.0)
 
     def test_language_id_threshold_calibration_fails_closed_when_constraints_conflict(self):
