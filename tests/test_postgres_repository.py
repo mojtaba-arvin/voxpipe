@@ -274,7 +274,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
 
         rows = self.repository.search_transcript_segments(
             tenant_a, "جلسه", transcript_id=transcript_id, language="fa-IR",
-            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10,
+            speaker_id=speaker_id, start_ms=0, end_ms=3000, limit=10, revision=1,
         )
         self.assertEqual(len(rows), 2)
         # More occurrences of the term rank higher; ties remain stable by time and ID.
@@ -298,7 +298,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         )
         self.assertEqual(wrong_source, [])
         page = self.repository.search_transcript_segments(
-            tenant_a, "جلسه", transcript_id=transcript_id, limit=1, offset=1
+            tenant_a, "جلسه", transcript_id=transcript_id, revision=1, limit=1, offset=1
         )
         self.assertEqual(len(page), 1)
         self.assertEqual(str(page[0]["segment_id"]), segment_id)
