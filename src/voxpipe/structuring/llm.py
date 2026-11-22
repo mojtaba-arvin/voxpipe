@@ -4,7 +4,7 @@ import json, os, ipaddress, re, urllib.request
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from typing import Callable
-from uuid import UUID
+from uuid import uuid4
 from voxpipe.structuring.contracts import EvidenceSpan, ExtractionProvenance, StructuredClaim, StructuredIntelligence
 from voxpipe.structuring.service import StructuredExtractionRequest
 
@@ -23,7 +23,7 @@ Evidence protocol is mandatory. Each evidence entry MUST contain exactly one fie
 
 For action items, distinguish an explicit obligation from a mere description. Preserve an explicitly stated assignee and deadline. For meetings, include explicitly stated time and location. For agreements, extract the parties, signing event, and directly stated relation when supported.
 
-Every claim_id MUST be a fresh UUID unique across ALL five arrays. Return only one JSON object with exactly these five arrays: entities, events, topics, relations, action_items. Every item must contain a UUID claim_id, a typed value object using only the allowed fields, a non-empty evidence array of span_id objects, and confidence from 0 to 1. Do not include explanations, markdown, extra keys, or inferred facts."""
+Claim identity is assigned by the trusted adapter; do not output claim_id. Return only one JSON object with exactly these five arrays: entities, events, topics, relations, action_items. Every item must contain a typed value object using only the allowed fields, a non-empty evidence array of span_id objects, and confidence from 0 to 1. Do not include explanations, markdown, extra keys, or inferred facts."""
 
 class LLMAdapterError(RuntimeError): pass
 
@@ -200,7 +200,7 @@ class OpenAICompatibleStructuredAdapter:
                         if not isinstance(span_id,str) or span_id not in candidates:
                             raise ValueError("evidence references an unknown candidate span")
                         selected.append(candidates[span_id])
-                    claims.append(StructuredClaim(str(UUID(row["claim_id"])),row["value"],tuple(selected),row["confidence"]))
+                    claims.append(StructuredClaim(str(uuid4()),row["value"],tuple(selected),row["confidence"]))
                 groups[name]=tuple(claims)
             return StructuredIntelligence(request.document_id,request.asset_id,request.transcript_id,request.transcript_revision,
                 ExtractionProvenance(self.provider_name,self.model,self.model_version,self.prompt_version,"1.0.0",datetime.now(timezone.utc)),**groups)
