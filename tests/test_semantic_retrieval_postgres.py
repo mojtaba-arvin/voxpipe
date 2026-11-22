@@ -89,6 +89,13 @@ class PgvectorIntegrationTests(unittest.TestCase):
             self.adapter.store_embedding(self.tenant, self.candidate_a,
                 Embedding(MODEL, "wrong-version", 384, tuple([0.0] * 384)))
 
+    def test_zero_vectors_are_rejected_and_tenant_uuid_is_canonicalized(self):
+        with self.assertRaises(ValueError):
+            self.adapter.search_similar(self.tenant, self.vector(0, 0),
+                filters=RetrievalFilters(self.tenant), limit=5)
+        self.assertEqual(self.adapter.search_similar(self.tenant.upper(), self.vector(1, 0),
+            filters=RetrievalFilters(self.tenant.upper()), limit=5), ())
+
     def test_entity_filter_fails_closed_until_entity_index_exists(self):
         with self.assertRaises(ValueError):
             self.adapter.search_similar(self.tenant, self.vector(1, 0),

@@ -33,6 +33,8 @@ class PostgresSemanticSearchAdapter:
     def _vector_literal(cls, embedding: Embedding) -> str:
         if not isinstance(embedding, Embedding) or embedding.dimensions != cls.DIMENSIONS:
             raise ValueError(f"embedding must have exactly {cls.DIMENSIONS} dimensions")
+        if not any(value != 0 for value in embedding.values):
+            raise ValueError("cosine similarity does not accept a zero vector")
         return "[" + ",".join(format(float(value), ".9g") for value in embedding.values) + "]"
 
     def store_embedding(self, tenant_id: str, candidate: SearchCandidate, embedding: Embedding) -> None:
@@ -74,7 +76,13 @@ class PostgresSemanticSearchAdapter:
             tenant = str(UUID(tenant_id))
         except (ValueError, TypeError, AttributeError):
             raise ValueError("tenant_id must be a UUID") from None
-        if not isinstance(filters, RetrievalFilters) or filters.tenant_id != tenant:
+        if not isinstance(filters, RetrievalFilters):
+            raise ValueError("filters must be RetrievalFilters")
+        try:
+            filter_tenant = str(UUID(filters.tenant_id))
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError("retrieval filter tenant_id must be a UUID") from None
+        if filter_tenant != tenant:
             raise ValueError("semantic search tenant must match authenticated retrieval filters")
         if filters.entity_ids:
             raise ValueError("entity filters require the not-yet-implemented extraction entity index")
