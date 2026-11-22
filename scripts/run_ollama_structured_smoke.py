@@ -1,7 +1,7 @@
 
 """Run a local-only Ollama structured-extraction smoke test on synthetic Persian text."""
 from __future__ import annotations
-import argparse,json,platform,sys,urllib.request
+import argparse,json,os,platform,sys,urllib.request
 from dataclasses import asdict
 from datetime import datetime,timezone
 from pathlib import Path
@@ -9,6 +9,7 @@ from uuid import uuid4
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 
 LAST_RAW_MODEL_OUTPUT = None
+CURRENT_SAMPLE_RAW_PATH: Path | None = None
 
 SAMPLES=[
  {"id":"action-item","text":"علی باید گزارش فروش را تا جمعه ارسال کند.",
@@ -89,19 +90,33 @@ def ollama_native_transport(_url,payload,_headers,timeout):
         data=json.dumps(native,ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type":"application/json"},method="POST")
     content_parts=[]
-    with urllib.request.urlopen(request,timeout=timeout) as response:
-        for line in response:
-            if not line.strip():
-                continue
-            event=json.loads(line)
-            if event.get("error"):
-                raise RuntimeError("Ollama streaming response reported an error")
-            message=event.get("message") or {}
-            part=message.get("content")
-            if isinstance(part,str) and part:
-                content_parts.append(part)
-            if event.get("done") is True:
-                break
+    diagnostic = (
+        CURRENT_SAMPLE_RAW_PATH.open("w", encoding="utf-8")
+        if CURRENT_SAMPLE_RAW_PATH is not None
+        else None
+    )
+    try:
+        with urllib.request.urlopen(request,timeout=timeout) as response:
+            for line in response:
+                if not line.strip():
+                    continue
+                event=json.loads(line)
+                if event.get("error"):
+                    raise RuntimeError("Ollama streaming response reported an error")
+                message=event.get("message") or {}
+                part=message.get("content")
+                if isinstance(part,str) and part:
+                    content_parts.append(part)
+                    LAST_RAW_MODEL_OUTPUT = "".join(content_parts)
+                    if diagnostic is not None:
+                        diagnostic.write(part)
+                        diagnostic.flush()
+                        os.fsync(diagnostic.fileno())
+                if event.get("done") is True:
+                    break
+    finally:
+        if diagnostic is not None:
+            diagnostic.close()
     LAST_RAW_MODEL_OUTPUT = "".join(content_parts)
     if not LAST_RAW_MODEL_OUTPUT:
         raise RuntimeError("Ollama streaming response contained no assistant content")
@@ -109,7 +124,7 @@ def ollama_native_transport(_url,payload,_headers,timeout):
 
 
 def run(model_name,output_dir):
-    global LAST_RAW_MODEL_OUTPUT
+    global LAST_RAW_MODEL_OUTPUT, CURRENT_SAMPLE_RAW_PATH
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
     digest=ollama_model_digest(model_name)
     adapter=OpenAICompatibleStructuredAdapter(endpoint="http://127.0.0.1:11434/v1",model=model_name,
@@ -117,9 +132,14 @@ def run(model_name,output_dir):
     service=StructuredExtractionService(adapter)
     names=("entities","events","topics","relations","action_items")
     predictions={k:[] for k in names};gold={k:[] for k in names}
+    output_dir.mkdir(parents=True,exist_ok=True)
+    results_path=output_dir/"results.jsonl"
+    results_path.write_text("",encoding="utf-8")
     rows=[];successes=0;injection_pass=None;injection_fact_extracted=None;claim_count=0;non_empty_samples=0
     for sample in SAMPLES:
         LAST_RAW_MODEL_OUTPUT = None
+        CURRENT_SAMPLE_RAW_PATH = output_dir/f"{sample['id']}.raw.partial.txt"
+        print(f"Starting structured extraction fixture: {sample['id']}",flush=True)
         if sample["id"] == "prompt-injection":
             # Keep the legitimate statement and the adversarial instruction in separate
             # transcript segments so sentence-scoped redaction can be verified explicitly.
@@ -160,12 +180,24 @@ def run(model_name,output_dir):
             rows.append({"sample_id":sample["id"],"status":"validated",
                 "claims":{name:[asdict(claim) for claim in getattr(result,name)] for name in names},
                 "raw_model_output":LAST_RAW_MODEL_OUTPUT,"provenance":provenance})
+            with results_path.open("a",encoding="utf-8") as result_file:
+                result_file.write(json.dumps(rows[-1],ensure_ascii=False)+"\n")
+                result_file.flush()
+                os.fsync(result_file.fileno())
+            if CURRENT_SAMPLE_RAW_PATH.exists():
+                CURRENT_SAMPLE_RAW_PATH.replace(output_dir/f"{sample['id']}.raw.txt")
+            print(f"Completed structured extraction fixture: {sample['id']} (validated)",flush=True)
         except Exception as exc:
             cause=getattr(exc,"__cause__",None)
             rows.append({"sample_id":sample["id"],"status":"rejected","error_type":type(exc).__name__,
                 "error":str(exc)[:500],"cause_type":type(cause).__name__ if cause else None,
                 "cause":str(cause)[:300] if cause else None,
                 "raw_model_output":LAST_RAW_MODEL_OUTPUT})
+            with results_path.open("a",encoding="utf-8") as result_file:
+                result_file.write(json.dumps(rows[-1],ensure_ascii=False)+"\\n")
+                result_file.flush()
+                os.fsync(result_file.fileno())
+            print(f"Completed structured extraction fixture: {sample['id']} (rejected)",flush=True)
             if sample["id"]=="prompt-injection":
                 injection_pass=False
                 injection_fact_extracted=False

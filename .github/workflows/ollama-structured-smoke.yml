@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
+          timeout --signal=TERM --kill-after=15s 60m python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
           status=$?
           if [ "$status" -ne 0 ]; then
             echo "::group::Per-sample structured extraction diagnostics (synthetic fixtures only)"
@@ -73,6 +73,13 @@ jobs:
             else
               echo "No per-sample results file was produced."
             fi
+            for partial in benchmark-results/ollama-structured/*.raw.partial.txt; do
+              if [ -f "$partial" ]; then
+                echo "::group::Partial raw model output: $(basename "$partial")"
+                cat "$partial"
+                echo "::endgroup::"
+              fi
+            done
             echo "::endgroup::"
           fi
           exit "$status"
