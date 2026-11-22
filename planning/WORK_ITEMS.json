@@ -723,9 +723,10 @@
         "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
       ],
       "evidence": [
-        "2026-11-22: added provider-neutral Embedding/semantic-search ports, authenticated tenant/source/time/speaker/entity filter contract, immutable source-attributed candidate contract, deterministic weighted reciprocal-rank fusion, duplicate/provenance conflict rejection, and unit tests. This is the retrieval orchestration/fusion foundation only; no pgvector storage adapter or measured relevance benchmark is claimed."
+        "2026-11-22: added provider-neutral Embedding/semantic-search ports, authenticated tenant/source/time/speaker/entity filter contract, immutable source-attributed candidate contract, deterministic weighted reciprocal-rank fusion, duplicate/provenance conflict rejection, and unit tests. This is the retrieval orchestration/fusion foundation only; no pgvector storage adapter or measured relevance benchmark is claimed.",
+        "2026-11-22: added PostgreSQL pgvector 0.8.7-backed 384-dimensional segment embedding storage with HNSW cosine index, model/version isolation, source-text SHA binding, forced tenant RLS, transcript/asset deletion cascade, filtered semantic search, and tenant-scoped obsolete-version cleanup. Added Recall@K/MRR/nDCG evaluator and pgvector integration tests. Embedding generation/model selection and a labelled relevance corpus remain separate gates."
       ],
-      "blocked_reason": "Provider-neutral embedding/vector ports and deterministic hybrid fusion are implemented as a reviewable foundation. A pgvector-backed adapter, tenant-RLS vector persistence/index lifecycle, embedding version migration, and versioned relevance benchmark remain."
+      "blocked_reason": "pgvector storage/search and deterministic relevance metric evaluator are implemented. A production multilingual embedding model/adapter, model quality/latency measurements, a versioned human-judged relevance set, entity-index filters, and index rebuild/recall benchmarking remain."
     },
     {
       "id": "VP-0032",

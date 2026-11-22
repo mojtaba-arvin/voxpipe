@@ -74,6 +74,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
+            connection.execute("DROP TABLE IF EXISTS transcript_segment_embeddings CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcripts CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
             connection.execute("DROP TABLE IF EXISTS ingestion_upload_leases CASCADE")
@@ -121,7 +122,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
         import psycopg
@@ -479,7 +480,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 9))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
