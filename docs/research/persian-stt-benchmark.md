@@ -1,6 +1,6 @@
 # Persian STT Benchmark: corpus and execution protocol
 
-**Status:** protocol prepared; no VoxPipe model scores are claimed yet.  
+**Status:** protocol and pinned 100-item Google FLEURS Persian baseline completed for VP-0022; the measured Faster-Whisper Small CPU/INT8 result is documented in `docs/research/stt-provider-evaluation.md` and `benchmarks/results/fleurs-fa-ir-2026-11-21/`. The result is evidence, not a production-quality pass (normalized WER 52.24%, CER 16.43%).  
 **Normalization:** `fa-norm-v1` in `scripts/benchmark_stt.py`.  
 **Primary implementation:** local faster-whisper adapter (VP-0022).
 

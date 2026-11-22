@@ -53,7 +53,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 3 — Structured Intelligence
 
-- [ ] Define versioned extraction schemas and evidence/provenance contracts (VP-0027; v1 schema, provider-neutral data types and exact evidence validator are implemented; cross-tenant persistence integration and prompt-injection regression tests remain).
+- [x] Define versioned extraction schemas and evidence/provenance contracts (VP-0027; typed v1 schemas, immutable claim contracts, exact Unicode evidence offsets, provenance validation, and regression tests are implemented; see the work ledger and CI evidence).
 - [ ] Implement structured extraction pipeline and quality gates (VP-0028; local Qwen3 4B endpoint and prompt-injection smoke complete, but the run produced zero validated extractions; concrete usable extraction output, persisted outputs, human-reviewed gold set and quality evaluation remain).
 
 **Exit gate:** Structured outputs pass schema and provenance checks, with measurable extraction quality.
