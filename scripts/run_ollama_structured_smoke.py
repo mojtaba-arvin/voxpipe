@@ -76,8 +76,8 @@ def ollama_output_schema(span_ids):
 def ollama_native_transport(_url,payload,_headers,timeout):
     global LAST_RAW_MODEL_OUTPUT
     user_message=next(message["content"] for message in payload["messages"] if message["role"]=="user")
-    opening="<EVIDENCE_CANDIDATES_JSON>\\n"
-    closing="\\n</EVIDENCE_CANDIDATES_JSON>"
+    opening="<EVIDENCE_CANDIDATES_JSON>\n"
+    closing="\n</EVIDENCE_CANDIDATES_JSON>"
     start=user_message.index(opening)+len(opening)
     end=user_message.index(closing,start)
     candidates=json.loads(user_message[start:end])
