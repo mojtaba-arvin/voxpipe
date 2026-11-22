@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-22",
   "items": [
     {
       "id": "VP-0001",
@@ -714,7 +714,7 @@
       "title": "Implement hybrid and semantic retrieval",
       "phase": 4,
       "priority": 31,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Compare PostgreSQL full-text and pgvector hybrid retrieval against a versioned relevance set.",
@@ -722,8 +722,10 @@
         "Report Recall@k, MRR/nDCG, latency and index/storage cost.",
         "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added provider-neutral Embedding/semantic-search ports, authenticated tenant/source/time/speaker/entity filter contract, immutable source-attributed candidate contract, deterministic weighted reciprocal-rank fusion, duplicate/provenance conflict rejection, and unit tests. This is the retrieval orchestration/fusion foundation only; no pgvector storage adapter or measured relevance benchmark is claimed."
+      ],
+      "blocked_reason": "Provider-neutral embedding/vector ports and deterministic hybrid fusion are implemented as a reviewable foundation. A pgvector-backed adapter, tenant-RLS vector persistence/index lifecycle, embedding version migration, and versioned relevance benchmark remain."
     },
     {
       "id": "VP-0032",
