@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Iterable
 from uuid import UUID, uuid4
@@ -222,8 +223,8 @@ class PostgresWorkflowRepository:
                     OR (state='running' AND lease_expires_at<=now() AND attempts<max_attempts)
                   )
                 ORDER BY ordinal
-                FOR UPDATE SKIP LOCKED
                 LIMIT 1
+                FOR UPDATE SKIP LOCKED
                 """,
                 (tenant, workflow),
             ).fetchone()
@@ -408,20 +409,11 @@ class PostgresWorkflowRepository:
             (state, state, tenant, workflow),
         )
 
-    @staticmethod
-    def _tenant_connection(tenant_id: str):
-        from contextlib import contextmanager
+    @contextmanager
+    def _tenant_connection(self, tenant_id: str):
         import psycopg
         from psycopg.rows import dict_row
 
-        @contextmanager
-        def connection():
-            with psycopg.connect(PostgresWorkflowRepository._dsn_for(tenant_id), row_factory=dict_row) as conn:
-                conn.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_id,))
-                yield conn
-        return connection()
-
-    @staticmethod
-    def _dsn_for(tenant_id: str) -> str:
-        # This helper is replaced by the repository instance wrapper below.
-        raise NotImplementedError
+        with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_id,))
+            yield connection
