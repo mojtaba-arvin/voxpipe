@@ -1,0 +1,24 @@
+{
+  "dataset": "voxpipe-persian-structured-gold",
+  "version": "0.1.0",
+  "schema_version": "1.0.0",
+  "protocol": "README.md",
+  "record_schema": "record.schema.json",
+  "status": "not_started",
+  "human_reviewed": false,
+  "splits": {
+    "train": {
+      "records": 0,
+      "sha256": null
+    },
+    "dev": {
+      "records": 0,
+      "sha256": null
+    },
+    "test": {
+      "records": 0,
+      "sha256": null
+    }
+  },
+  "note": "No transcript records or gold labels are included. Populate only after consent, privacy review, independent double annotation, and adjudication."
+}
