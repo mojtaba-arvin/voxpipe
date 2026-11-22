@@ -97,6 +97,13 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("says", SYSTEM_PROMPT)
         self.assertIn("مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود", SYSTEM_PROMPT)
         self.assertIn("action_items must be empty", SYSTEM_PROMPT)
+        self.assertIn("never classify an event or meeting name as an entity", SYSTEM_PROMPT)
+        self.assertIn("extract document names such as", SYSTEM_PROMPT)
+        self.assertIn("emit that concise subject as a topic", SYSTEM_PROMPT)
+        self.assertIn("use the source's explicit predicate", SYSTEM_PROMPT)
+        self.assertIn("گزارش فروش", SYSTEM_PROMPT)
+        self.assertIn("بودجه", SYSTEM_PROMPT)
+        self.assertIn("قرارداد همکاری با شرکت بهار", SYSTEM_PROMPT)
         self.assertIn("it is not Saturday", SYSTEM_PROMPT)
 
     def test_output_token_limit_is_bounded(self):
