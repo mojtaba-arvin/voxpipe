@@ -64,7 +64,7 @@ class AdapterTests(unittest.TestCase):
 
         output = StructuredExtractionService(self.make_adapter(transport)).extract(self.make_request(source))
         model_input = seen["messages"][1]["content"]
-        self.assertIn("[REDACTED_MODEL_DIRECTED_INSTRUCTION]", model_input)
+        self.assertNotIn("REDACTED", model_input)
         self.assertIn("مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود", model_input)
         self.assertIn("span-0001", model_input)
         self.assertIn("Redaction applies only to the specific instruction sentence", model_input)
