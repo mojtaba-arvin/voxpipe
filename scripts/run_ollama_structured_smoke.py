@@ -359,7 +359,7 @@ def run(model_name,output_dir):
     (output_dir/"results.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     summary={"duration_seconds":round(time.monotonic()-run_started,3),
         "sample_durations_seconds":sample_durations,
-        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":"structured-fa-v12"},
+        "model":{"provider":"ollama-local","model":model_name,"digest":digest,"endpoint":"loopback-only","device":"cpu","prompt_version":adapter.prompt_version},
         "samples":len(SAMPLES),"validated_samples":successes,"validated_claims":claim_count,
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),
