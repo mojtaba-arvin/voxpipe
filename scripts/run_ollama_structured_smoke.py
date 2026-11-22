@@ -61,8 +61,8 @@ def ollama_output_schema(segment_ids):
 
 def ollama_native_transport(_url,payload,_headers,timeout):
     user_message=next(message["content"] for message in payload["messages"] if message["role"]=="user")
-    opening="<UNTRUSTED_TRANSCRIPT_JSON>\\n"
-    closing="\\n</UNTRUSTED_TRANSCRIPT_JSON>"
+    opening="<UNTRUSTED_TRANSCRIPT_JSON>\n"
+    closing="\n</UNTRUSTED_TRANSCRIPT_JSON>"
     start=user_message.index(opening)+len(opening)
     end=user_message.index(closing,start)
     transcript=json.loads(user_message[start:end])
