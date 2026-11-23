@@ -617,9 +617,10 @@
         "FLEURS ASR benchmark generated a manifest for 100 fa_ir test items with pinned revision and per-item hashes; the successful CI artifact is attached to run 44848225647.",
         "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
         "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence.",
-        "2026-11-23: added rebased independent Persian annotation comparison tool with exact per-category/micro claim agreement and evidence-span agreement, strict sample/transcript coverage, duplicate-claim, canonical value-field and Unicode-offset validation; adds deterministic disagreement queue without transcript text. Pairwise agreement is explicitly not Cohen's kappa or semantic correctness and does not replace adjudication."
+        "2026-11-23: added rebased independent Persian annotation comparison tool with exact per-category/micro claim agreement and evidence-span agreement, strict sample/transcript coverage, duplicate-claim, canonical value-field and Unicode-offset validation; adds deterministic disagreement queue without transcript text. Pairwise agreement is explicitly not Cohen's kappa or semantic correctness and does not replace adjudication.",
+        "2026-11-23: PR #66 merged after exact-head repository CI run 45168663845 passed; independent annotation comparison/disagreement queue and strict export validation are now in main."
       ],
-      "blocked_reason": "Annotation export validation and independent agreement diagnostics are implemented; exact-head CI is pending. Qualified Persian-proficient independent annotators, consented natural recordings, third-party adjudication and deletion/redistribution evidence are still required."
+      "blocked_reason": "Annotation export validation and independent agreement diagnostics are merged and CI-verified. Qualified Persian-proficient independent annotators, consented natural recordings, third-party adjudication and deletion/redistribution evidence are still required for a human-reviewed corpus."
     },
     {
       "id": "VP-0027",
