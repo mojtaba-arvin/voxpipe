@@ -130,7 +130,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE workflow_steps, workflow_runs, transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
         import psycopg
