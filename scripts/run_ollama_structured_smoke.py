@@ -273,6 +273,35 @@ def ollama_native_transport(_url,payload,_headers,timeout):
     return {"choices":[{"message":{"content":LAST_RAW_MODEL_OUTPUT}}]}
 
 
+def build_smoke_acceptance(metrics, *, successes, total_samples, non_empty_samples, injection_pass):
+    """Keep deterministic synthetic category gates separate from human-gold acceptance."""
+    event_f1 = metrics["per_type"]["events"].f1
+    topic_f1 = metrics["per_type"]["topics"].f1
+    relation_f1 = metrics["per_type"]["relations"].f1
+    micro_f1 = metrics["micro"].f1
+    gates = {
+        "all_samples_validated": successes == total_samples,
+        "at_least_three_non_empty_samples": non_empty_samples >= 3,
+        "prompt_injection_passed": injection_pass is True,
+        "exact_event_f1_is_one": event_f1 == 1.0,
+        "topic_f1_at_least_0_5": topic_f1 >= 0.5,
+        "relation_f1_is_one": relation_f1 == 1.0,
+        "micro_f1_at_least_0_9": micro_f1 >= 0.9,
+        "required_topic_f1": 0.5,
+        "required_relation_f1": 1.0,
+        "required_micro_f1": 0.9,
+        "observed_topic_f1": topic_f1,
+        "observed_relation_f1": relation_f1,
+        "observed_micro_f1": micro_f1,
+    }
+    gates["passed"] = all(gates[key] for key in (
+        "all_samples_validated", "at_least_three_non_empty_samples",
+        "prompt_injection_passed", "exact_event_f1_is_one",
+        "topic_f1_at_least_0_5", "relation_f1_is_one", "micro_f1_at_least_0_9",
+    ))
+    return gates
+
+
 def run(model_name,output_dir):
     global LAST_RAW_MODEL_OUTPUT, CURRENT_SAMPLE_RAW_PATH
     from voxpipe.structuring import OpenAICompatibleStructuredAdapter,StructuredExtractionRequest,StructuredExtractionService,evaluate_claims
@@ -353,6 +382,10 @@ def run(model_name,output_dir):
     metrics=evaluate_claims(predictions,gold)
     event_exact_f1=metrics["per_type"]["events"].f1
     event_exact_match_passed=event_exact_f1 == 1.0
+    acceptance=build_smoke_acceptance(
+        metrics,successes=successes,total_samples=len(SAMPLES),
+        non_empty_samples=non_empty_samples,injection_pass=injection_pass,
+    )
     metrics["per_type"]={k:asdict(v) for k,v in metrics["per_type"].items()}
     metrics["micro"]=asdict(metrics["micro"])
     output_dir.mkdir(parents=True,exist_ok=True)
@@ -364,11 +397,7 @@ def run(model_name,output_dir):
         "non_empty_samples":non_empty_samples,
         "evidence_validation_rate":(1.0 if claim_count else None),
         "evidence_validation_denominator_claims":claim_count,
-        "acceptance":{"all_samples_validated":successes==len(SAMPLES),
-            "at_least_three_non_empty_samples":non_empty_samples>=3,
-            "prompt_injection_passed":injection_pass is True,
-            "exact_event_f1_is_one":event_exact_match_passed,
-            "passed":successes==len(SAMPLES) and non_empty_samples>=3 and injection_pass is True and event_exact_match_passed},
+        "acceptance":acceptance,
         "event_fidelity_smoke":{"exact_event_f1":event_exact_f1,"required_exact_event_f1":1.0,
             "passed":event_exact_match_passed,"matching":"exact-json-value-multiset-v1"},
         "prompt_injection_smoke":{"sample":"prompt-injection","passed":injection_pass,
