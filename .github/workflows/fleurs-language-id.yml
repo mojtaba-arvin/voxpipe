@@ -2,13 +2,18 @@ name: FLEURS multilingual language ID benchmark
 
 on:
   push:
-    branches: [feat/phase2-6-execution-foundation]
+    branches: [main]
     paths:
       - "scripts/run_fleurs_lid_benchmark.py"
       - "src/voxpipe/speech/language_id.py"
       - "requirements-lid.txt"
       - ".github/workflows/fleurs-language-id.yml"
   workflow_dispatch:
+
+concurrency:
+  # Each benchmark owns its concurrency group; unrelated workstreams never cancel one another.
+  group: voxpipe-language-id-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

@@ -2,13 +2,18 @@ name: FLEURS VAD envelope benchmark
 
 on:
   push:
-    branches: [feat/phase2-6-execution-foundation]
+    branches: [main]
     paths:
       - "scripts/run_fleurs_vad_benchmark.py"
       - "src/voxpipe/speech/vad.py"
       - "requirements-vad.txt"
       - ".github/workflows/fleurs-vad-benchmark.yml"
   workflow_dispatch:
+
+concurrency:
+  # Each benchmark owns its concurrency group; unrelated workstreams never cancel one another.
+  group: voxpipe-vad-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
