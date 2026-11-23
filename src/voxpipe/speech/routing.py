@@ -131,6 +131,8 @@ class AdaptiveModelRouter:
 
     def __init__(self, registry: ProviderCapabilityRegistry,
                  evidence: Iterable[ModelQualityEvidence]) -> None:
+        if not isinstance(registry, ProviderCapabilityRegistry):
+            raise TypeError("registry must be a ProviderCapabilityRegistry")
         self._registry = registry
         self._evidence: dict[tuple[str, str, str, str], ModelQualityEvidence] = {}
         for item in evidence:
@@ -144,12 +146,21 @@ class AdaptiveModelRouter:
               required_features: Iterable[str] = (), audio_duration_ms: int | None = None,
               audio_bytes: int | None = None, open_circuit_providers: Iterable[str] = (),
               now: datetime | None = None) -> RoutingDecision:
+        if not isinstance(policy, RoutingPolicy):
+            raise TypeError("policy must be a RoutingPolicy")
         instant = now or datetime.now(timezone.utc)
-        if instant.tzinfo is None or instant.utcoffset() is None:
+        if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
             raise ValueError("now must be timezone-aware")
         if not isinstance(language, str) or not language.strip():
             raise ValueError("language is required")
-        open_circuits = frozenset(open_circuit_providers)
+        if isinstance(open_circuit_providers, (str, bytes)):
+            raise ValueError("open_circuit_providers must be an iterable of provider identifiers")
+        try:
+            open_circuits = frozenset(open_circuit_providers)
+        except TypeError:
+            raise ValueError("open_circuit_providers must be an iterable of provider identifiers") from None
+        if any(not isinstance(provider, str) or not provider.strip() for provider in open_circuits):
+            raise ValueError("open_circuit_providers must contain non-empty provider identifiers")
         capabilities = self._registry.find(
             language=language, required_features=required_features,
             require_local=policy.require_local,
