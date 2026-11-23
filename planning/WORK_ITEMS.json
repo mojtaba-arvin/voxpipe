@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -714,7 +714,7 @@
       "title": "Implement hybrid and semantic retrieval",
       "phase": 4,
       "priority": 31,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Compare PostgreSQL full-text and pgvector hybrid retrieval against a versioned relevance set.",
@@ -722,8 +722,17 @@
         "Report Recall@k, MRR/nDCG, latency and index/storage cost.",
         "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added provider-neutral Embedding/semantic-search ports, authenticated tenant/source/time/speaker/entity filter contract, immutable source-attributed candidate contract, deterministic weighted reciprocal-rank fusion, duplicate/provenance conflict rejection, and unit tests. This is the retrieval orchestration/fusion foundation only; no pgvector storage adapter or measured relevance benchmark is claimed.",
+        "2026-11-22: added PostgreSQL pgvector 0.8.7-backed 384-dimensional segment embedding storage with HNSW cosine index, model/version isolation, source-text SHA binding, forced tenant RLS, transcript/asset deletion cascade, filtered semantic search, and tenant-scoped obsolete-version cleanup. Added Recall@K/MRR/nDCG evaluator and pgvector integration tests. Embedding generation/model selection and a labelled relevance corpus remain separate gates.",
+        "CI triage: first pgvector integration run confirmed semantic ranking, tenant filtering, source binding and stale-version deletion path. Two test/permission issues were corrected: the evaluator's Recall@2 expected value was 0.75 (not 1.0) for the defined ranked lists, and the RLS-scoped application role needed DELETE permission on the embeddings table for tenant-scoped model-version cleanup. No tenant or source isolation was relaxed.",
+        "2026-11-23: Added LocalSentenceTransformerEmbeddingAdapter for query/document embeddings from a pre-provisioned local model directory, explicit query/document prefixes, model/version attribution, configured-dimension checks, finite/unit-norm validation, and no runtime weight downloads. Exported from voxpipe.retrieval; added tests/test_local_retrieval_embeddings.py for prefixing, provenance, malformed outputs, and local-only model provisioning. No production embedding model is selected and no relevance quality is claimed.",
+        "2026-11-23: Exact PR head with LocalSentenceTransformerEmbeddingAdapter, package export, tests/test_local_retrieval_embeddings.py and architecture/ledger updates passed Validate run 45138651058 (Python/PostgreSQL and Go/PostgreSQL).",
+        "2026-11-23: Added a PostgreSQL/pgvector integration test that creates local query/document vectors through LocalSentenceTransformerEmbeddingAdapter, stores the document vector and retrieves it with the query vector under tenant/language filters. The fake encoder avoids model downloads while verifying the real adapter-to-database contract; no retrieval relevance claim is made.",
+        "2026-11-23: Exact-head run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL with the end-to-end LocalSentenceTransformerEmbeddingAdapter -> pgvector store -> tenant/language-filtered query test.",
+        "2026-11-23 latest exact-head CI run 45142196038 passed Python/PostgreSQL and Go/PostgreSQL with the local embedding adapter, pgvector round-trip and VP-0031 ledger evidence."
+      ],
+      "blocked_reason": "Hybrid lexical/vector retrieval, local-only embedding adapter and pgvector round-trip are implemented and CI-verified. No human-judged Persian relevance set, selected production embedding model, or measured Recall@k/MRR/nDCG/latency/cost result exists yet."
     },
     {
       "id": "VP-0032",

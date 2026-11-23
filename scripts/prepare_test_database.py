@@ -44,6 +44,9 @@ def main() -> None:
         connection.execute(
             "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
         )
+        connection.execute(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON transcript_segment_embeddings TO voxpipe_app"
+        )
 
     print("PostgreSQL integration database prepared with forced-RLS application role.")
 
