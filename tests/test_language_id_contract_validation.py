@@ -103,18 +103,20 @@ class LanguageIdContractTests(unittest.TestCase):
                     )
 
     def test_calibrator_treats_out_of_inventory_predictions_as_pre_abstained(self):
-        references = ["fa", "fa", "de", "de"]
+        references = ["fa", "fa", "de", "de", "en", "en"]
         predictions = [
             LanguagePrediction("fa", 0.99, raw_language="fa"),
             LanguagePrediction("und", 0.98, raw_language="yi", abstention_reason="out_of_inventory"),
             LanguagePrediction("de", 0.80, raw_language="de"),
             LanguagePrediction("und", 0.95, raw_language="ro", abstention_reason="out_of_inventory"),
+            LanguagePrediction("fa", 0.60, raw_language="fa"),
+            LanguagePrediction("en", 0.70, raw_language="en"),
         ]
         result = calibrate_abstention_threshold(
             references, predictions, min_selective_accuracy=0.95, min_coverage=0.50
         )
         self.assertTrue(result["feasible"])
-        self.assertEqual(result["threshold"], 0.80)
+        self.assertEqual(result["threshold"], 0.70)
         self.assertEqual(result["coverage"], 0.50)
         self.assertEqual(result["selective_accuracy"], 1.0)
 
