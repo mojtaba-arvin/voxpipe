@@ -24,14 +24,15 @@ STEP = str(uuid4())
 
 
 class FakeStorage:
-    def __init__(self, *, digest=DIGEST):
+    def __init__(self, *, digest=DIGEST, data=AUDIO):
         self.digest = digest
+        self.data = data
         self.opens = 0
     def head(self, key):
         return ObjectInfo(key, len(AUDIO), self.digest)
     def open(self, key):
         self.opens += 1
-        return io.BytesIO(AUDIO)
+        return io.BytesIO(self.data)
 
 
 class FakeRepository:
@@ -176,6 +177,30 @@ class SpeechTranscriptionWorkflowTests(unittest.TestCase):
             handler(context())
         self.assertEqual(raised.exception.code, "STT_ASSET_NOT_FOUND")
         self.assertFalse(raised.exception.retryable)
+
+
+    def test_opened_object_bytes_are_reverified_after_head_check(self):
+        adapter = FakeAdapter()
+        handler = SpeechTranscriptionWorkflowHandler(
+            repository=FakeRepository(),
+            object_store=FakeStorage(data=b"tampered bytes"),
+            adapter=adapter, heartbeat_interval_seconds=1,
+        )
+        with self.assertRaises(WorkflowHandlerError) as raised:
+            handler(context())
+        self.assertEqual(raised.exception.code, "STT_AUDIO_INTEGRITY_MISMATCH")
+        self.assertEqual(adapter.requests, [])
+
+    def test_audio_size_limit_is_enforced_before_provider_invocation(self):
+        adapter = FakeAdapter()
+        handler = SpeechTranscriptionWorkflowHandler(
+            repository=FakeRepository(), object_store=FakeStorage(),
+            adapter=adapter, max_audio_bytes=4, heartbeat_interval_seconds=1,
+        )
+        with self.assertRaises(WorkflowHandlerError) as raised:
+            handler(context())
+        self.assertEqual(raised.exception.code, "STT_AUDIO_TOO_LARGE")
+        self.assertEqual(adapter.requests, [])
 
 
 if __name__ == "__main__":
