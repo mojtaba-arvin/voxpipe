@@ -212,8 +212,9 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
     """Choose the lowest confidence threshold meeting validation-set accuracy and coverage floors.
 
     Run only on a calibration split disjoint from the final test split. Predictions must
-    contain the model top label (not a thresholded ``und`` label), so the candidate
-    thresholds can be evaluated without rerunning inference.
+    retain the raw top label; explicit out-of-inventory abstentions are represented as
+    ``und`` with ``raw_language`` and ``abstention_reason`` preserved. The calibrator
+    excludes those pre-abstentions from accepted coverage while selecting a confidence threshold.
     """
     if len(references)!=len(predictions) or not references:
         raise ValueError("equal non-empty reference/prediction arrays required")
