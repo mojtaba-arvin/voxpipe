@@ -8,6 +8,11 @@ from voxpipe.speech.vad import SpeechRegion
 DIGEST = "a" * 64
 
 
+class FakeEmbedder:
+    def embed(self, samples, sample_rate):
+        return [1.0, 0.0]
+
+
 class DiarizationAdapterInputValidationTests(unittest.TestCase):
     def test_request_rejects_fractional_or_boolean_sample_rate(self):
         for sample_rate in (16000.0, True):
@@ -42,7 +47,7 @@ class DiarizationAdapterInputValidationTests(unittest.TestCase):
         ):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(ValueError):
-                    ECAPADiarizationAdapter(embedder=object(), **kwargs)
+                    ECAPADiarizationAdapter(embedder=FakeEmbedder(), **kwargs)
 
     def test_adapter_rejects_inconsistent_embedding_dimensions(self):
         class ChangingEmbedder:
