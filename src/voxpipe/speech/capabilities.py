@@ -26,10 +26,12 @@ class ProviderCapability:
                 raise ValueError(f"{field} must be a non-empty bounded string")
         if not isinstance(self.local, bool):
             raise ValueError("local must be boolean")
-        if any(not isinstance(x, str) or not x.strip() for x in self.supported_languages):
-            raise ValueError("supported_languages must contain non-empty language tags")
-        if any(not isinstance(x, str) or not x.strip() for x in self.features):
-            raise ValueError("features must contain non-empty identifiers")
+        if (not isinstance(self.supported_languages, frozenset) or not self.supported_languages
+                or any(not isinstance(x, str) or not x.strip() for x in self.supported_languages)):
+            raise ValueError("supported_languages must be a non-empty frozenset of language tags")
+        if (not isinstance(self.features, frozenset)
+                or any(not isinstance(x, str) or not x.strip() for x in self.features)):
+            raise ValueError("features must be a frozenset of non-empty identifiers")
         for field in ("max_audio_duration_ms", "max_audio_bytes"):
             value = getattr(self, field)
             if value is not None and (
@@ -74,7 +76,16 @@ class ProviderCapabilityRegistry:
         audio_bytes: int | None = None,
     ) -> tuple[ProviderCapability, ...]:
         """Return deterministic candidates; unknown cost never satisfies a cost ceiling."""
-        features = frozenset(required_features)
+        if language is not None and (not isinstance(language, str) or not language.strip()):
+            raise ValueError("language must be a non-empty language tag or null")
+        if isinstance(required_features, (str, bytes)):
+            raise ValueError("required_features must be an iterable of feature identifiers")
+        try:
+            features = frozenset(required_features)
+        except TypeError:
+            raise ValueError("required_features must be an iterable of feature identifiers") from None
+        if any(not isinstance(feature, str) or not feature.strip() for feature in features):
+            raise ValueError("required_features must contain non-empty identifiers")
         if require_local is not None and not isinstance(require_local, bool):
             raise ValueError("require_local must be boolean or null")
         if max_cost_per_minute_usd is not None and (
