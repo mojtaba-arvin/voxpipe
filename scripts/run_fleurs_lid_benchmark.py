@@ -52,7 +52,7 @@ def load_split(split, max_samples, model, *, dataset_loader, audio_type, soundfi
 
 
 def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_samples:int=100,
-        min_selective_accuracy:float=0.95,min_coverage:float=0.50)->dict:
+        min_selective_accuracy:float=0.99,min_coverage:float=0.50)->dict:
     if not isinstance(max_samples,int) or isinstance(max_samples,bool) or not 1<=max_samples<=264:
         raise ValueError("max_samples must be between 1 and 264")
     if not isinstance(calibration_samples,int) or isinstance(calibration_samples,bool) or calibration_samples<1:
@@ -138,7 +138,7 @@ def main():
     parser.add_argument("--output-dir",type=Path,default=Path("benchmark-results/fleurs-lid"))
     parser.add_argument("--threshold",type=float,default=None,
         help="operator-fixed override; when omitted, calibrate on dev and evaluate on test")
-    parser.add_argument("--min-selective-accuracy",type=float,default=0.95)
+    parser.add_argument("--min-selective-accuracy",type=float,default=0.99)
     parser.add_argument("--min-coverage",type=float,default=0.50)
     args=parser.parse_args()
     print(json.dumps(run(args.max_samples,args.output_dir,args.threshold,
