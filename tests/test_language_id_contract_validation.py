@@ -1,6 +1,8 @@
 import unittest
 
-from voxpipe.speech.language_id import (\n    LanguagePrediction, SpeechBrainLanguageIdentifier, calibrate_abstention_threshold,\n)
+from voxpipe.speech.language_id import (
+    LanguagePrediction, SpeechBrainLanguageIdentifier, calibrate_abstention_threshold,
+)
 
 
 class FakeClassifier:
