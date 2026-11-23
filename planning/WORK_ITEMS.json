@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -606,9 +606,10 @@
         "docs/research/corpus-governance.md — separates public benchmark and customer audio; documents attribution, deletion, retention, redistribution and limits of public-license versus individual-consent evidence.",
         "FLEURS ASR benchmark generated a manifest for 100 fa_ir test items with pinned revision and per-item hashes; the successful CI artifact is attached to run 44848225647.",
         "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
-        "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence."
+        "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence.",
+        "2026-11-23: Added scripts/compare_persian_annotations.py and tests/test_persian_annotation_agreement.py for pre-adjudication independent-draft comparison: exact per-category/micro claim agreement, exact evidence-span agreement, sample/transcript coverage checks, duplicate rejection and Unicode offset validation. Documented the workflow in benchmarks/persian-gold/README.md. This diagnostic is explicitly not Cohen's kappa and does not replace human adjudication; no gold records were fabricated."
       ],
-      "blocked_reason": "The 20-item Public Dataset Proxy is a minimal reproducibility/governance fallback only. Public licensing does not establish individual speaker consent; natural conversational data with explicit consent and deletion/redistribution evidence remains required for full corpus-governance acceptance."
+      "blocked_reason": "Annotation workflow now includes protocol, record validation, scoring, and independent annotator-agreement diagnostics. Real consented Persian transcripts, two qualified independent annotators, and a third adjudicator are still required before the dataset can be marked human_reviewed or scored as gold."
     },
     {
       "id": "VP-0027",
