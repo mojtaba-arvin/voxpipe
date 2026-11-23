@@ -30,8 +30,9 @@ class DiarizationRequest:
                 raise ValueError("samples must be finite normalized values between -1 and 1")
             normalized.append(float(sample))
         object.__setattr__(self, "samples", tuple(normalized))
-        if self.sample_rate != 16000:
-            raise ValueError("the current ECAPA adapter requires mono 16 kHz audio")
+        if (not isinstance(self.sample_rate, int) or isinstance(self.sample_rate, bool)
+                or self.sample_rate != 16000):
+            raise ValueError("the current ECAPA adapter requires integer mono 16 kHz audio")
         if not isinstance(self.audio_sha256, str) or not _SHA256.fullmatch(self.audio_sha256):
             raise ValueError("audio_sha256 must be lowercase SHA-256")
         if not isinstance(self.speech_regions, (tuple, list)):
@@ -119,16 +120,24 @@ class ECAPADiarizationAdapter:
     """
     provider_name="speechbrain-ecapa-diarization"
     def __init__(self,*,embedder=None,model_dir=None,window_ms=1500,similarity_threshold: float):
-        if window_ms<1000 or not 0<similarity_threshold<1: raise ValueError("invalid diarization options")
+        if (not isinstance(window_ms, int) or isinstance(window_ms, bool) or window_ms < 1000
+                or not isinstance(similarity_threshold, (int, float)) or isinstance(similarity_threshold, bool)
+                or not math.isfinite(similarity_threshold) or not 0 < similarity_threshold < 1):
+            raise ValueError("invalid diarization options")
         if embedder is None:
             if model_dir is None: raise ValueError("provide local ECAPA model_dir or an embedder")
             embedder=SpeechBrainECAPAEmbedder(model_dir)
         self.embedder,self.window_ms,self.threshold=embedder,window_ms,similarity_threshold
     @staticmethod
     def _normalize(vector):
+        if not isinstance(vector, (tuple, list)) or not vector:
+            raise ValueError("invalid speaker embedding")
+        if any(not isinstance(value, (int, float)) or isinstance(value, bool)
+               or not math.isfinite(value) for value in vector):
+            raise ValueError("invalid speaker embedding")
         values=[float(x) for x in vector]
         norm=math.sqrt(sum(x*x for x in values))
-        if not values or norm==0 or not math.isfinite(norm): raise ValueError("invalid speaker embedding")
+        if norm==0 or not math.isfinite(norm): raise ValueError("invalid speaker embedding")
         return [x/norm for x in values]
     def diarize_request(self, request: DiarizationRequest) -> DiarizationResult:
         if not isinstance(request, DiarizationRequest):
@@ -137,10 +146,15 @@ class ECAPADiarizationAdapter:
             audio_sha256=request.audio_sha256, speech_regions=request.speech_regions)
 
     def diarize(self,samples,*,sample_rate=16000,audio_sha256,speech_regions):
-        if sample_rate!=16000: raise ValueError("diarization requires mono 16 kHz audio")
-        if not _SHA256.fullmatch(audio_sha256): raise ValueError("audio_sha256 must be lowercase SHA-256")
+        request = DiarizationRequest(
+            tuple(samples), audio_sha256, tuple(speech_regions), sample_rate=sample_rate,
+        )
+        samples = request.samples
+        sample_rate = request.sample_rate
+        speech_regions = request.speech_regions
         window=sample_rate*self.window_ms//1000
         vectors=[]; windows=[]
+        embedding_dimensions = None
         for region in sorted(speech_regions, key=lambda x: x.start_ms):
             start=max(0,region.start_ms*sample_rate//1000)
             end=min(len(samples),region.end_ms*sample_rate//1000)
@@ -152,6 +166,10 @@ class ECAPADiarizationAdapter:
                 right=min(end,left+window)
                 if right-left<sample_rate: continue
                 emb=self._normalize(self.embedder.embed(samples[left:right],sample_rate))
+                if embedding_dimensions is None:
+                    embedding_dimensions = len(emb)
+                elif len(emb) != embedding_dimensions:
+                    raise ValueError("speaker embedder returned inconsistent vector dimensions")
                 windows.append((left,right)); vectors.append(emb)
         centroids=[]; counts=[]; assigned=[]
         for vector in vectors:
@@ -174,7 +192,16 @@ class ECAPADiarizationAdapter:
 
 def evaluate_diarization(reference,hypothesis,*,duration_ms:int,collar_ms:int=250,frame_ms:int=10,skip_overlap:bool=False):
     """Frame-based DER/JER with one-to-one speaker mapping and explicit collar policy."""
-    if duration_ms<1 or frame_ms<1 or collar_ms<0: raise ValueError("invalid diarization evaluation options")
+    if (not isinstance(duration_ms, int) or isinstance(duration_ms, bool) or duration_ms < 1
+            or not isinstance(frame_ms, int) or isinstance(frame_ms, bool) or frame_ms < 1
+            or not isinstance(collar_ms, int) or isinstance(collar_ms, bool) or collar_ms < 0
+            or not isinstance(skip_overlap, bool)):
+        raise ValueError("invalid diarization evaluation options")
+    for name, turns in (("reference", reference), ("hypothesis", hypothesis)):
+        if not isinstance(turns, (tuple, list)) or any(
+            not isinstance(turn, SpeakerTurn) or turn.end_ms > duration_ms for turn in turns
+        ):
+            raise ValueError(f"{name} turns must be SpeakerTurn values within duration_ms")
     refs=sorted({x.speaker_id for x in reference}); hyps=sorted({x.speaker_id for x in hypothesis})
     overlap={(h,r):0 for h in hyps for r in refs}
     def active(turns,t): return {x.speaker_id for x in turns if x.start_ms<=t<x.end_ms}
