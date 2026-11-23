@@ -191,6 +191,8 @@ def candidate_schema_constraints(candidates):
             if explicit_status_cue.search(quote):
                 allow_action_item_status = True
 
+    entity_order = {"person": 0, "organization": 1, "location": 2, "document": 3}
+    ordered_entities = tuple(sorted(entity_candidates, key=lambda item: entity_order[item["entity_type"]]))
     ordered_entity_types = tuple(
         kind for kind in ("person", "organization", "location", "document")
         if kind in entity_types
@@ -198,7 +200,7 @@ def candidate_schema_constraints(candidates):
     return {
         "max_entities": len(entity_candidates),
         "required_entities": len(entity_candidates),
-        "allowed_entities": tuple(entity_candidates),
+        "allowed_entities": ordered_entities,
         "allowed_entity_types": ordered_entity_types or ("person", "organization", "location", "document"),
         "max_events": len(event_names),
         "allowed_event_types": tuple(event_types),
