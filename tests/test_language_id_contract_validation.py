@@ -107,7 +107,7 @@ class LanguageIdContractTests(unittest.TestCase):
 
     def test_identifier_rejects_empty_predicted_language_label(self):
         identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, 0.2], ("", "en")))
-        with self.assertRaisesRegex(ValueError, "empty language label"):
+        with self.assertRaisesRegex(ValueError, "malformed probability or label arrays"):
             identifier.identify([0.0] * 16000, sample_rate=16000)
 
 
