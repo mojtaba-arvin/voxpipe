@@ -747,7 +747,7 @@
         "2026-11-23: Capability metadata now requires non-empty frozenset language claims and typed feature sets; discovery rejects malformed language and required-feature inputs instead of interpreting strings as iterables. Added tests for malformed capability declarations and filters.",
         "2026-11-23: Exact current PR head including strict capability declaration/discovery and routing input validation passed Validate run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
       ],
-      "blocked_reason": "The in-memory registry and strict input validation are implemented. Production activation still requires a persistent operator-controlled registry, verified vendor/deployment capability claims, model deprecation/rollback metadata and auditable allowlist changes."
+      "blocked_reason": "Capability registry and validation are implemented and CI-verified. No production provider is operator-allowlisted; measured quality/latency/availability/cost evidence and vendor-sourced data-handling/deprecation records are still required. Hosted providers remain disabled."
     },
     {
       "id": "VP-0033",
@@ -773,7 +773,7 @@
         "2026-11-23: Latest exact-head Validate run 45142991047 passed Python/PostgreSQL and Go/PostgreSQL with the fenced CircuitPermit construction and breaker-to-router integration tests.",
         "2026-11-23 latest exact-head CI run 45143571050 passed Python/PostgreSQL and Go/PostgreSQL with strict capability/routing validation, fenced circuit permits and breaker-to-router integration."
       ],
-      "blocked_reason": "The deterministic policy router now has strict inputs and a fenced process-local provider circuit breaker. Multi-process production still needs shared circuit state or an explicitly accepted per-process policy, verified capability/evaluation data, provider execution/timeout integration and operator allowlisting."
+      "blocked_reason": "Deterministic policy routing and a fenced process-local circuit breaker are implemented and CI-verified. Real provider execution/timeout integration, measured routing evidence and shared multi-process circuit state remain open; process-local state is not a distributed availability guarantee."
     },
     {
       "id": "VP-0034",
