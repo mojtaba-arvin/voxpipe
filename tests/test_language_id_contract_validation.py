@@ -55,7 +55,7 @@ class LanguageIdContractTests(unittest.TestCase):
             LanguagePrediction("de", 0.60),
         ]
         result = calibrate_abstention_threshold(
-            references, predictions, min_selective_accuracy=0.95, min_coverage=0.50
+            references, predictions, min_selective_accuracy=0.99, min_coverage=0.50
         )
         self.assertTrue(result["feasible"])
         self.assertEqual(result["threshold"], 0.80)
