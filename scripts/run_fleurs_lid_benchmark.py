@@ -11,7 +11,8 @@ CONFIGS={
  "en_us":{"language":"en","sha256":"6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"},
  "de_de":{"language":"de","sha256":"3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"},
 }
-MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"\nMODEL_REVISION="0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"
+MODEL_REVISION="0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
 
 
 def hash_file(path):
