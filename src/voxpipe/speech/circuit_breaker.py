@@ -19,6 +19,14 @@ class CircuitPermit:
     provider: str
     probe_token: str | None = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.provider, str) or not self.provider.strip() or len(self.provider) > 128:
+            raise ValueError("provider must be a non-empty bounded identifier")
+        if self.probe_token is not None and (
+            not isinstance(self.probe_token, str) or not self.probe_token.strip() or len(self.probe_token) > 256
+        ):
+            raise ValueError("probe_token must be a non-empty bounded string or null")
+
     @property
     def is_probe(self) -> bool:
         return self.probe_token is not None
