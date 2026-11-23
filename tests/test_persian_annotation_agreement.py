@@ -109,7 +109,7 @@ class AnnotationAgreementTests(unittest.TestCase):
         bad = row(entities=[claim({"name": "علی"}, "علی")])
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "annotations.jsonl"
-            path.write_text(json.dumps(bad, ensure_ascii=False) + "\\n", encoding="utf-8")
+            path.write_text(json.dumps(bad, ensure_ascii=False) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(AnnotationError, "value fields"):
                 read_rows(path)
 
@@ -122,7 +122,7 @@ class AnnotationAgreementTests(unittest.TestCase):
         }])
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "annotations.jsonl"
-            path.write_text(json.dumps(bad, ensure_ascii=False) + "\\n", encoding="utf-8")
+            path.write_text(json.dumps(bad, ensure_ascii=False) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(AnnotationError, "unknown segment_id"):
                 read_rows(path)
 
