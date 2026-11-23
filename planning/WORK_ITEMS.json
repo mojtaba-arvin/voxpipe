@@ -605,7 +605,7 @@
         "2026-11-23: The first post-fix inventory-aware benchmark run 45144342514 found the same `frozenset(CONFIGS.values())` mistake remained in the held-out model constructor even though the validation constructor was corrected. All occurrences now use the shared `SUPPORTED_LANGUAGES` constant; the final exact-head run is pending.",
         "2026-11-23: Inventory-aware Validate run 45145018134 caught the FLEURS loader test double lacking the new `raw_language`/`abstention_reason` attributes. The artifact serializer now uses safe optional-field access (`getattr`) while actual LanguagePrediction objects continue to carry both fields. No inference or acceptance behavior changed."
       ],
-      "blocked_reason": "The inventory-aware runner now uses a single explicit {fa,en,de} language set derived from pinned FLEURS config metadata for both validation and test. The previous attempt failed before inference because it passed config dictionaries instead of language codes; corrected exact-head 300+300 run is pending. Code-switch/noisy/production data remain absent."
+      "blocked_reason": "A pinned 300-validation/300-test FLEURS baseline exposed German out-of-inventory confusions (Romanian/Russian/Yiddish). The adapter now supports a configured language inventory with raw-label/abstention provenance; the corrected exact-head 0.99 inventory-aware benchmark is pending. Code-switch, noisy speech and representative production data remain absent."
     },
     {
       "id": "VP-0026",
