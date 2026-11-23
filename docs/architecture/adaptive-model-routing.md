@@ -6,6 +6,10 @@
 
 The default policy shape is local-only and zero-cost. Remote execution requires a separate policy with `require_local=false`, an explicit remote model allowlist, and a positive cost ceiling. Unknown costs fail closed when a ceiling is active.
 
+## Provider circuit breaker
+
+`ProviderCircuitBreaker` opens after a configurable number of consecutive provider failures, excludes the provider during a monotonic cooldown, allows exactly one half-open probe, closes on probe success, and restarts the cooldown on probe failure. A cancelled pre-dispatch probe can be released. The breaker is process-local and exposes only provider-level operational counters/timestamps; it is not a distributed circuit state store. Multi-process deployments must use a shared coordination backend or accept per-process breaker behavior. Callers should invoke `try_acquire()` before routing and pass `open_providers()` to the policy router for ordinary requests; only the request that acquired the half-open probe may bypass that provider exclusion.
+
 ## Input validation
 
 Capability declarations require explicit immutable language/feature sets; discovery filters reject string-as-iterable and malformed feature/language values. Route requests require a typed policy, typed capability registry, and a validated set of open-circuit provider identifiers. Malformed control inputs fail before candidate selection rather than being interpreted as partial policy.
