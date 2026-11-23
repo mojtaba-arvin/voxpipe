@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   benchmark:
-    name: Local SpeechBrain dev calibration and held-out test
+    name: Local SpeechBrain validation calibration and held-out test
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
