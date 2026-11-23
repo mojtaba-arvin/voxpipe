@@ -44,7 +44,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Evaluate STT providers and implement the first selected adapter (VP-0022; local Faster-Whisper adapter and 100-item pinned FLEURS Persian test run completed; normalized WER 52.24%, CER 16.43%, RTF 0.1652. This is reproducible evidence, but WER remains below production quality).
 - [ ] Evaluate and implement VAD independently (VP-0023; WebRTC/Silero compared on 60 FLEURS utterances, but labels are utterance-envelope proxies rather than frame-level ground truth).
 - [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024; controlled six-clip synthetic Neyshekar split is reproducible, but natural overlapping conversation and explicit consent evidence remain missing).
-- [ ] Implement language identification with calibrated abstention (VP-0025; 60-sample Persian/English/German FLEURS run completed at 95% accuracy, but no code-switch set and no calibrated abstention threshold).
+- [ ] Implement language identification with calibrated abstention (VP-0025; inventory-aware SpeechBrain adapter and pinned validation-calibration/disjoint-test runner are implemented; selective-accuracy/coverage gate and exact-head CI are required. FLEURS does not cover code-switching or production noise).
 - [ ] Establish consent/provenance-managed corpus governance (VP-0026).
 - [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
 - [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
