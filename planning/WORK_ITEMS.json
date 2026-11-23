@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -780,9 +780,10 @@
         "2026-11-22: implemented PostgreSQL-backed workflow run/step journal with tenant RLS, ordered steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, safe reference-only payload validation and source-asset deletion cascade. Added PostgreSQL 16 integration tests for lifecycle, idempotency, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and lease recovery. This is a bounded single-workflow sequential PoC, not yet a production worker integration or throughput benchmark.",
         "CI triage: run 45065248976 found a literal backslash-n appended after the JSON document by the file-generation step, causing repository ledger parsing to fail before unit tests. Rewrote the ledger with a real trailing newline; no application behavior or acceptance criteria were changed.",
         "CI triage: PostgreSQL integration surfaced two API/test-contract issues: the migration-upgrade assertion still expected versions 2–7 after adding migration 0008, and psycopg UUID objects were returned instead of stable string IDs. Updated the migration assertion and normalized UUID fields at repository boundaries; sequential-step, approval, lease and retry behavior itself passed.",
-        "Added tenant-scoped ready-workflow enumeration and scheduler-friendly claim_next_ready_step loop. Independent workflows can be claimed by separate workers without shared in-memory state; step row locks, ordered predecessor gating and lease fencing remain authoritative. Added integration test that two workflows are claimed independently."
+        "Added tenant-scoped ready-workflow enumeration and scheduler-friendly claim_next_ready_step loop. Independent workflows can be claimed by separate workers without shared in-memory state; step row locks, ordered predecessor gating and lease fencing remain authoritative. Added integration test that two workflows are claimed independently.",
+        "2026-11-23: Added PostgresWorkflowWorker, explicit WorkflowHandlerRegistry and immutable WorkflowStepContext. The worker claims one tenant-scoped ready step, dispatches only registered handlers, supports explicit retryable/permanent errors and durable approval pauses, fails closed on missing handlers/invalid result references, and provides a graceful-stop run_forever loop for externally supervised processes. Added tests/test_workflow_runner.py covering completion, retries, permanent failure, approval, unknown handlers, invalid/sensitive output and poll validation. Worker processes can run independently across workflows; lease renewal and deployment-specific supervisor configuration remain open."
       ],
-      "blocked_reason": "PostgreSQL durable step journal, ready-workflow scan, claim loop, bounded retries, lease recovery/fencing, cancellation and approval gates are implemented. A supervised process manager/handler registry, high-concurrency throughput benchmark, backup/restore rehearsal and measured Temporal/DBOS comparison remain."
+      "blocked_reason": "The PostgreSQL journal now has an explicit handler registry and worker loop, but it is not production-ready: long-running steps have no lease heartbeat/renewal, deployment-specific process supervision and graceful shutdown integration are not packaged, and high-concurrency/crash-recovery plus backup/restore rehearsals remain."
     },
     {
       "id": "VP-0035",
