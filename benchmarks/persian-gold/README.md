@@ -52,6 +52,18 @@ The current `scripts/run_ollama_structured_smoke.py` fixtures remain integration
 - A quality claim requires a non-empty, fully adjudicated test split and published per-category metrics. Until then, benchmark status remains **not evaluated**.
 
 
+## Independent annotation agreement
+
+Before adjudication, export the two annotators' independent drafts as separate UTF-8 JSONL files. Each row contains `sample_id`, the exact `transcript_segments` map, and all five `annotations` arrays; each claim contains a typed `value` and exact `evidence` spans. The files must cover the same sample IDs and carry byte-for-byte equivalent transcript text.
+
+Run:
+
+```sh
+python scripts/compare_persian_annotations.py --annotator-a annotations-a.jsonl --annotator-b annotations-b.jsonl
+```
+
+The report gives per-category and micro exact-value agreement (matched, annotator-only claims, precision/recall/F1) plus exact evidence-span agreement for claims whose values match. It validates each category's required/allowed value fields and entity types, and rejects mismatched sample coverage, changed source transcripts, duplicate claims, unknown segment IDs, and invalid Unicode offsets. This is a pairwise diagnostic only: it is **not Cohen's kappa**, does not model true negatives, does not establish semantic correctness, and does not replace third-party adjudication. Keep annotator exports access-controlled; do not commit raw personal or customer transcripts.
+
 ## Local validation and evaluation
 
 Run `python scripts/evaluate_persian_gold.py validate` (also included in `make check`) to validate every populated split against the JSON Schema, manifest record counts, SHA-256 checksums, adjudicator independence, unique sample IDs/claims, and exact Unicode code-point evidence offsets. Empty, not-yet-collected splits are valid while the manifest remains `not_started`; this does **not** mean the benchmark is ready.
