@@ -73,7 +73,8 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
 
     model_revision=MODEL_REVISION
     model_dir=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
-    raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision,\n        supported_languages=frozenset(CONFIGS.values()))
+    raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision,
+        supported_languages=frozenset(CONFIGS.values()))
 
     if threshold is None:
         calibration_references,calibration_predictions,calibration_rows=load_split(
