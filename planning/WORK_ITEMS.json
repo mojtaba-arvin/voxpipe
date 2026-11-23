@@ -732,7 +732,7 @@
         "2026-11-23: Exact-head run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL with the end-to-end LocalSentenceTransformerEmbeddingAdapter -> pgvector store -> tenant/language-filtered query test.",
         "2026-11-23 latest exact-head CI run 45142196038 passed Python/PostgreSQL and Go/PostgreSQL with the local embedding adapter, pgvector round-trip and VP-0031 ledger evidence."
       ],
-      "blocked_reason": "A local-only SentenceTransformer adapter now exists, but a production multilingual model is not selected or provisioned. Persian model quality/latency/storage benchmarking, a versioned human-judged relevance set, entity-index filters, and index rebuild/recall benchmarking remain."
+      "blocked_reason": "Hybrid lexical/vector retrieval, local-only embedding adapter and pgvector round-trip are implemented and CI-verified. No human-judged Persian relevance set, selected production embedding model, or measured Recall@k/MRR/nDCG/latency/cost result exists yet."
     },
     {
       "id": "VP-0032",
