@@ -5,4 +5,4 @@ huggingface_hub>=0.25,<1
 numpy>=1.26,<3
 soundfile>=0.12,<1
 -r requirements-stt.txt
-jsonschema>=4.23,<5
+jsonschema>=4.26.0,<5
