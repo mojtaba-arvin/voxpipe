@@ -120,7 +120,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "samples_per_language":max_samples,"total_samples":len(rows)},
         "model":{"id":MODEL_ID,"revision":model_revision,"license":"Apache-2.0",
             "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,
-            "threshold_policy":"calibrated on disjoint pinned FLEURS dev split" if threshold is None else "operator-fixed override"},
+            "threshold_policy":"calibrated on disjoint pinned FLEURS validation split" if threshold is None else "operator-fixed override"},
         "calibration":calibration_report,"metrics":metrics,
         "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch")}},
         "generated_at":datetime.now(timezone.utc).isoformat()}
