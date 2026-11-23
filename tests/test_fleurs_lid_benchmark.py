@@ -72,15 +72,15 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
             return FakeDataset([{"audio": {"bytes": b"audio-fixture"}, "id": 7}])
 
         references, predictions, rows = BENCHMARK.load_split(
-            "dev", 1, FakeModel(), dataset_loader=dataset_loader, audio_type=FakeAudio,
+            "validation", 1, FakeModel(), dataset_loader=dataset_loader, audio_type=FakeAudio,
             soundfile=FakeSoundFile, numpy=FakeNumpy,
         )
         self.assertEqual(len(calls), 3)
-        self.assertTrue(all(call[2] == "dev" and call[3] is True for call in calls))
-        self.assertTrue(all("/dev-00000-of-00001.parquet" in call[1]["dev"] for call in calls))
+        self.assertTrue(all(call[2] == "validation" and call[3] is True for call in calls))
+        self.assertTrue(all("/validation-00000-of-00001.parquet" in call[1]["dev"] for call in calls))
         self.assertEqual(len(references), 3)
         self.assertEqual(len(predictions), 3)
-        self.assertTrue(all(row["dataset_split"] == "dev" for row in rows))
+        self.assertTrue(all(row["dataset_split"] == "validation" for row in rows))
         self.assertTrue(all(row["model_revision"] == "model-sha" for row in rows))
 
     def test_load_split_rejects_missing_audio_bytes(self):
