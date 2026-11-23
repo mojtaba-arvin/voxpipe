@@ -155,7 +155,10 @@ class WebRTCVADAdapter:
     """Frame-based WebRTC VAD baseline for mono PCM16 at supported sample rates."""
     provider_name = "webrtc-vad"
     def __init__(self, *, vad=None, aggressiveness=2, frame_duration_ms=30):
-        if aggressiveness not in (0,1,2,3) or frame_duration_ms not in (10,20,30):
+        if (not isinstance(aggressiveness, int) or isinstance(aggressiveness, bool)
+                or aggressiveness not in (0,1,2,3)
+                or not isinstance(frame_duration_ms, int) or isinstance(frame_duration_ms, bool)
+                or frame_duration_ms not in (10,20,30)):
             raise ValueError("invalid WebRTC VAD configuration")
         if vad is None:
             try:
