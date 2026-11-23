@@ -35,9 +35,10 @@ class LanguagePrediction:
             not isinstance(self.raw_language, str) or not self.raw_language.strip() or len(self.raw_language) > 128
         ):
             raise ValueError("raw_language must be a non-empty bounded string or null")
-        if self.abstention_reason is not None and self.abstention_reason not in {
-            "low_confidence", "out_of_inventory"
-        }:
+        if self.abstention_reason is not None and (
+            not isinstance(self.abstention_reason, str)
+            or self.abstention_reason not in {"low_confidence", "out_of_inventory"}
+        ):
             raise ValueError("unsupported abstention_reason")
         if self.abstention_reason is not None and self.language != "und":
             raise ValueError("abstention reasons require language='und'")
@@ -222,8 +223,13 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
     for reference, prediction in zip(references, predictions):
         if not isinstance(reference, str) or not reference.strip():
             raise ValueError("reference labels must be non-empty strings")
-        if not isinstance(prediction.language, str) or not prediction.language.strip() or prediction.language == "und":
-            raise ValueError("calibration predictions must contain an unthresholded top language label")
+        if not isinstance(prediction.language, str) or not prediction.language.strip():
+            raise ValueError("calibration predictions must contain a language label")
+        if prediction.language == "und" and (
+            prediction.abstention_reason not in {"low_confidence", "out_of_inventory"}
+            or not prediction.raw_language
+        ):
+            raise ValueError("pre-abstained calibration predictions require a raw label and reason")
         if (not isinstance(prediction.confidence, (int, float)) or isinstance(prediction.confidence, bool)
                 or not math.isfinite(prediction.confidence) or not 0 <= prediction.confidence <= 1):
             raise ValueError("prediction confidence must be finite and between 0 and 1")
