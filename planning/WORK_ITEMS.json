@@ -547,7 +547,7 @@
         "2026-11-23 latest exact-head PR #41 validation: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL after VAD direct-input/result invariants and evaluator-bound tests.",
         "2026-11-23 latest PR #41 exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL."
       ],
-      "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
+      "blocked_reason": "Provider contracts, Silero/WebRTC input validation and evaluator invariants are implemented and CI-verified. FLEURS still supplies utterance-level references, not frame-level speech/non-speech labels; frame-labelled Persian data plus silence/music/overlap/noisy held-out tests are required for model-quality acceptance."
     },
     {
       "id": "VP-0024",
@@ -573,7 +573,7 @@
         "2026-11-23 latest exact-head PR #42 validation: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL after direct ECAPA request/embedding validation and evaluator-bound tests.",
         "2026-11-23 latest PR #42 exact-head CI run 45142258461 passed Python/PostgreSQL and Go/PostgreSQL."
       ],
-      "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
+      "blocked_reason": "Provider-neutral ECAPA contracts, explicit overlap capability and injected-embedder validation are implemented and CI-verified. Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable."
     },
     {
       "id": "VP-0025",
@@ -597,7 +597,7 @@
         "2026-11-23: C2 adds strict classifier array, threshold, sample-rate and window validation. A dedicated pinned local CPU FLEURS calibration workflow now calibrates on the actual `validation` split and evaluates on disjoint `test`. The first attempt failed on the incorrect `dev` split name; corrected runs 45140505877/45140553574 are pending. No threshold or held-out metrics are claimed.",
         "2026-11-23: 300+300 pinned FLEURS run 45142127746 passed at the 0.95 floor but test selective accuracy was 94.77%; German clips were mislabelled ro/ru/yi. The adapter now supports an explicit supported_languages inventory and records raw label/abstention reason; calibration excludes inventory-abstained predictions. Latest 0.99 inventory-aware exact-head benchmark run 45143511545 is pending; no new metrics are claimed yet."
       ],
-      "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
+      "blocked_reason": "A pinned 300-validation/300-test FLEURS baseline exposed German out-of-inventory confusions (Romanian/Russian/Yiddish). The adapter now supports a configured language inventory with raw-label/abstention provenance; the corrected exact-head 0.99 inventory-aware benchmark is pending. Code-switch, noisy speech and representative production data remain absent."
     },
     {
       "id": "VP-0026",
@@ -622,7 +622,7 @@
         "2026-11-23 latest exact-head PR #50 validation: run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation value/evidence validation and corrected JSONL fixtures. Agreement tooling remains diagnostic, not human gold.",
         "2026-11-23 latest PR #50 exact-head CI run 45142280280 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation export validation."
       ],
-      "blocked_reason": "The 20-item Public Dataset Proxy is a minimal reproducibility/governance fallback only. Public licensing does not establish individual speaker consent; natural conversational data with explicit consent and deletion/redistribution evidence remains required for full corpus-governance acceptance."
+      "blocked_reason": "Annotation protocol/export validation and independent agreement diagnostics are CI-verified, but the public dataset proxy does not establish individual speaker consent. Explicitly consented natural conversations, annotator qualification, adjudication and deletion/redistribution evidence are still required."
     },
     {
       "id": "VP-0027",
@@ -677,7 +677,7 @@
         "2026-11-23: v13 exact-head Qwen baseline remains 4/4 synthetic fixtures and 8/8 evidence claims valid, exact Event/Action Item F1=1.0, Entity F1=0.8889, synthetic micro F1=0.7273, Topic/Relation F1=0. v14 adds positive source-grounded Topic/Relation guidance and corrected synthetic fixture semantics; exact-head smoke run 45140255856 is still running. Synthetic data is not human-reviewed gold.",
         "2026-11-23: v14 Qwen exact-head smoke 45140255856 passed 4/4 synthetic fixtures and 11/11 evidence claims; Event/Relation/Action F1=1.0, Entity F1=0.8889, Topic F1=0.6667, micro F1=0.9167. v15 regressed (run 45141457901: Topic F1=0, micro F1=0.7692). v16 adds strict Topic name-only/participant exclusions and synthetic gates (Topic>=0.5, Relation=1, micro>=0.9); exact-head smoke run 45143051319 is pending. All are synthetic diagnostics, not human-reviewed gold."
       ],
-      "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
+      "blocked_reason": "v14 local Qwen synthetic smoke is the latest verified quality baseline (micro F1=0.9167, Topic F1=0.6667, Relation/Event/Action F1=1.0); v15 regressed, and v16 adds name-only Topic constraints plus regression gates with exact-head smoke pending. A human-reviewed, versioned Persian gold set and independent annotation/adjudication remain mandatory before production quality claims."
     },
     {
       "id": "VP-0029",
@@ -745,7 +745,7 @@
         "2026-11-23: PR #39 adds local-only SentenceTransformer query/document embeddings with no runtime downloads, model/version attribution, prefix and vector validation. Exact-head pgvector integration run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL; no production model or human relevance score is claimed.",
         "2026-11-23 latest PR #39 exact-head CI run 45142196038 passed Python/PostgreSQL and Go/PostgreSQL with local embedding-to-pgvector round-trip coverage."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "Hybrid lexical/vector retrieval, local-only embedding adapter and pgvector round-trip are implemented and CI-verified. No human-judged Persian relevance set, selected production embedding model, or measured Recall@k/MRR/nDCG/latency/cost result exists yet."
     },
     {
       "id": "VP-0032",
@@ -770,7 +770,7 @@
         "2026-11-23: PR #40 now rejects malformed capability sets and discovery filters; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL.",
         "2026-11-23: PR #40 strict capability declaration/discovery validation passed exact-head run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
       ],
-      "blocked_reason": null
+      "blocked_reason": "Capability registry and validation are implemented and CI-verified. No production provider is operator-allowlisted; measured quality/latency/availability/cost evidence and vendor-sourced data-handling/deprecation records are still required. Hosted providers remain disabled."
     },
     {
       "id": "VP-0033",
@@ -791,7 +791,7 @@
         "2026-11-23: PR #40 includes strict router input validation and fenced process-local ProviderCircuitBreaker/CircuitPermit; breaker-to-router integration and stale-permit tests passed exact-head run 45142991047 (Python/PostgreSQL and Go/PostgreSQL). Multi-process shared state remains a production gap.",
         "2026-11-23 latest PR #40 exact-head CI run 45143571050 passed Python/PostgreSQL and Go/PostgreSQL with strict routing inputs, fenced circuit permits and breaker-to-router integration."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "Deterministic policy routing and a fenced process-local circuit breaker are implemented and CI-verified. Real provider execution/timeout integration, measured routing evidence and shared multi-process circuit state remain open; process-local state is not a distributed availability guarantee."
     },
     {
       "id": "VP-0034",
@@ -812,7 +812,7 @@
         "2026-11-23: PR #44 includes explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; latest exact-head run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL.",
         "2026-11-23 latest PR #44 exact-head CI run 45142265756 passed Python/PostgreSQL and Go/PostgreSQL with worker heartbeat/fencing tests."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "PostgreSQL durable journal, handler registry, worker loop, cooperative fenced heartbeat and stale-worker tests are implemented and CI-verified. Production supervision, sustained concurrency/load testing, crash/restart failure injection and backup/restore rehearsal remain outstanding."
     },
     {
       "id": "VP-0035",
@@ -830,7 +830,7 @@
       "evidence": [
         "2026-11-23: Tenant-safe aggregate worker metrics, processing-duration aggregates, provisional SLOs, alert thresholds and queue-backlog runbook are implemented in open PR #43. Run 45064775076 passed Python/PostgreSQL and Go/PostgreSQL. Exporter/tracing backend, alert manager, dashboards and staging validation remain open."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "Tenant-safe metrics and SLO contracts/runbooks are implemented in an open PR. Production exporters/traces, actionable alert rules, dashboards, synthetic checks and staging-workload verification are not yet deployed or demonstrated."
     },
     {
       "id": "VP-0036",
@@ -848,7 +848,7 @@
       "evidence": [
         "2026-11-23: Checksummed build-only release artifacts, Linux amd64/arm64 binaries, source archive, CycloneDX SBOM, manifest and disposable PostgreSQL/pgvector validation are implemented in open PR #45. Latest PR validation run 45106194175 passed Python/PostgreSQL and Go/PostgreSQL. Signing/attestation, production target, migration rehearsal, canary/rollback and restore remain open."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "Release-candidate artifacts, checksums and SBOM generation are implemented in an open PR. Signed provenance/model manifests, migration compatibility gates, canary promotion, safe rollback and production-like restore rehearsal remain unverified."
     },
     {
       "id": "VP-0037",
@@ -866,7 +866,7 @@
       "evidence": [
         "2026-11-23: Bounded dependency/security automation is implemented in open PR #46: grouped Dependabot, pinned pip-audit/govulncheck workflows, dependency remediation and PR-only/no-auto-merge policy. Validate run 45067775307 and security audit run 45067775295 passed. General autonomous issue triage/patch generation, approval orchestration and canary rollback remain open."
       ],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "blocked_reason": "Bounded dependency/security maintenance workflow foundations are implemented in an open PR. Human approval for high-impact changes, explicit spending/permission/blast-radius controls and audited safe-stop/rollback tests remain to be demonstrated; no branch-protection changes are authorized."
     }
   ]
 }
