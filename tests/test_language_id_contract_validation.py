@@ -1,6 +1,6 @@
 import unittest
 
-from voxpipe.speech.language_id import LanguagePrediction, SpeechBrainLanguageIdentifier
+from voxpipe.speech.language_id import (\n    LanguagePrediction, SpeechBrainLanguageIdentifier, calibrate_abstention_threshold,\n)
 
 
 class FakeClassifier:
@@ -43,6 +43,34 @@ class LanguageIdContractTests(unittest.TestCase):
         identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, float("nan")]))
         with self.assertRaisesRegex(ValueError, "invalid probability"):
             identifier.identify([0.0] * 16000, sample_rate=16000)
+
+    def test_abstention_calibrator_meets_accuracy_and_coverage_floors(self):
+        references = ["fa", "fa", "de", "de"]
+        predictions = [
+            LanguagePrediction("fa", 0.99),
+            LanguagePrediction("fa", 0.80),
+            LanguagePrediction("en", 0.70),
+            LanguagePrediction("de", 0.60),
+        ]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.95, min_coverage=0.50
+        )
+        self.assertTrue(result["feasible"])
+        self.assertEqual(result["threshold"], 0.80)
+        self.assertEqual(result["coverage"], 0.50)
+        self.assertEqual(result["selective_accuracy"], 1.0)
+
+    def test_abstention_calibrator_fails_closed_when_no_threshold_is_feasible(self):
+        references = ["fa", "de"]
+        predictions = [
+            LanguagePrediction("fa", 0.5),
+            LanguagePrediction("fa", 0.5),
+        ]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.95, min_coverage=0.50
+        )
+        self.assertFalse(result["feasible"])
+        self.assertIsNone(result["threshold"])
 
     def test_identifier_rejects_boolean_probabilities_and_non_sequence_labels(self):
         for scores, labels in (([True, 0.2], ("fa", "en")), ([0.8, 0.2], "fa"), ([0.8, 0.2], (None, "en"))):
