@@ -744,7 +744,8 @@
         "The registry is intentionally not populated with guessed provider claims; deployment configuration must supply verified capabilities. Adaptive routing remains a separate VP-0033 item.",
         "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
         "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6.",
-        "2026-11-23: Capability metadata now requires non-empty frozenset language claims and typed feature sets; discovery rejects malformed language and required-feature inputs instead of interpreting strings as iterables. Added tests for malformed capability declarations and filters."
+        "2026-11-23: Capability metadata now requires non-empty frozenset language claims and typed feature sets; discovery rejects malformed language and required-feature inputs instead of interpreting strings as iterables. Added tests for malformed capability declarations and filters.",
+        "2026-11-23: Exact current PR head including strict capability declaration/discovery and routing input validation passed Validate run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
       ],
       "blocked_reason": "The in-memory registry and strict input validation are implemented. Production activation still requires a persistent operator-controlled registry, verified vendor/deployment capability claims, model deprecation/rollback metadata and auditable allowlist changes."
     },
@@ -764,7 +765,8 @@
       "evidence": [
         "2026-11-22: implemented an evidence-based adaptive routing policy over the explicit provider capability registry. Routing requires an operator model allowlist, fresh measured task-quality evidence, availability, quality floor, latency ceiling, locality, and cost ceiling; excludes open-circuit providers; returns a bounded deterministic fallback list and content-free audit metadata. Added unit tests for stale/missing evidence, privacy, budget, circuit breaker and fail-closed behavior. No automatic hosted routing or paid inference is enabled.",
         "CI triage: the first routing metadata test used substring 'transcript', which also matched the legitimate task name 'transcription'. Narrowed the regression assertions to prohibited payload fields (transcript_text/audio_payload/query_text/tenant_id); the audit metadata contract remains content-free and production code is unchanged.",
-        "2026-11-23: Router now validates the registry type, RoutingPolicy type, timezone-aware clock and open-circuit provider collection; malformed route controls fail closed before candidate selection. Added tests for invalid policy, circuit input and registry types."
+        "2026-11-23: Router now validates the registry type, RoutingPolicy type, timezone-aware clock and open-circuit provider collection; malformed route controls fail closed before candidate selection. Added tests for invalid policy, circuit input and registry types.",
+        "2026-11-23: Exact current PR head including strict capability declaration/discovery and routing input validation passed Validate run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
       ],
       "blocked_reason": "The deterministic policy router and strict request validation are implemented. Production use still requires persistent independently verified capability/evaluation evidence, real task-specific quality/latency/availability measurements, and an operator-controlled allowlist; no hosted routing is enabled."
     },
