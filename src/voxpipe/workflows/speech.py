@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import threading
+import tempfile
 from dataclasses import replace
 from typing import Any, Protocol
 from uuid import UUID
@@ -183,19 +184,36 @@ class SpeechTranscriptionWorkflowHandler:
         heartbeat.start()
         try:
             try:
-                with self._object_store.open(object_key) as audio_stream:
-                    request = TranscriptionRequest(
-                        asset_id=asset_id,
-                        audio_stream=audio_stream,
-                        content_type=content_type,
-                        audio_sha256=audio_sha256,
-                        language_hint=language_hint,
-                        word_timestamps=word_timestamps,
-                        diarization=diarization,
-                        duration_ms=duration_ms,
-                        idempotency_key=idempotency_key,
-                    )
-                    transcript = self._service.transcribe(request)
+                with self._object_store.open(object_key) as source_stream:
+                    with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as audio_stream:
+                        digest = hashlib.sha256()
+                        actual_size = 0
+                        while True:
+                            chunk = source_stream.read(1024 * 1024)
+                            if not isinstance(chunk, bytes):
+                                raise WorkflowHandlerError("STT_AUDIO_STREAM_INVALID", retryable=False)
+                            if not chunk:
+                                break
+                            actual_size += len(chunk)
+                            if actual_size > self._max_audio_bytes:
+                                raise WorkflowHandlerError("STT_AUDIO_TOO_LARGE", retryable=False)
+                            digest.update(chunk)
+                            audio_stream.write(chunk)
+                        if actual_size != info.size_bytes or digest.hexdigest() != audio_sha256:
+                            raise WorkflowHandlerError("STT_AUDIO_INTEGRITY_MISMATCH", retryable=False)
+                        audio_stream.seek(0)
+                        request = TranscriptionRequest(
+                            asset_id=asset_id,
+                            audio_stream=audio_stream,
+                            content_type=content_type,
+                            audio_sha256=audio_sha256,
+                            language_hint=language_hint,
+                            word_timestamps=word_timestamps,
+                            diarization=diarization,
+                            duration_ms=duration_ms,
+                            idempotency_key=idempotency_key,
+                        )
+                        transcript = self._service.transcribe(request)
             except TranscriptionError as exc:
                 raise WorkflowHandlerError(
                     exc.code,
