@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "scripts/run_ollama_structured_smoke.py"
+      - "tests/test_structured_smoke_gates.py"
       - "src/voxpipe/structuring/**"
       - "contracts/schemas/structured-intelligence.v1.schema.json"
       - ".github/workflows/ollama-structured-smoke.yml"
@@ -17,6 +18,10 @@ on:
       - "contracts/schemas/structured-intelligence.v1.schema.json"
       - ".github/workflows/ollama-structured-smoke.yml"
   workflow_dispatch:
+
+concurrency:
+  group: ollama-structured-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
