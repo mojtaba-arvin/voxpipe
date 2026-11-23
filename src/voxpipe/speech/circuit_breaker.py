@@ -6,20 +6,33 @@ intentionally makes no cross-process coordination claim.
 from __future__ import annotations
 
 import math
+import secrets
 import threading
 import time
 from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class CircuitPermit:
+    """Admission returned by try_acquire; half-open permits carry a fencing token."""
+
+    provider: str
+    probe_token: str | None = None
+
+    @property
+    def is_probe(self) -> bool:
+        return self.probe_token is not None
 
 
 @dataclass(slots=True)
 class _Circuit:
     failures: int = 0
     opened_at: float | None = None
-    probe_in_flight: bool = False
+    probe_token: str | None = None
 
 
 class ProviderCircuitBreaker:
-    """Consecutive-failure breaker with one half-open probe after cooldown."""
+    """Consecutive-failure breaker with one fenced half-open probe after cooldown."""
 
     def __init__(
         self,
@@ -54,54 +67,79 @@ class ProviderCircuitBreaker:
             raise ValueError("circuit clock value must be finite")
         return float(value)
 
-    def try_acquire(self, provider: str, *, now: float | None = None) -> bool:
-        """Allow a closed provider or exactly one half-open probe after cooldown."""
+    def try_acquire(self, provider: str, *, now: float | None = None) -> CircuitPermit | None:
+        """Return a permit for closed providers or one fenced probe after cooldown."""
         name, instant = self._provider(provider), self._now(now)
         with self._lock:
             circuit = self._circuits.get(name)
             if circuit is None or circuit.opened_at is None:
+                return CircuitPermit(name)
+            if instant - circuit.opened_at < self.cooldown_seconds or circuit.probe_token is not None:
+                return None
+            token = secrets.token_urlsafe(18)
+            circuit.probe_token = token
+            return CircuitPermit(name, token)
+
+    def record_success(self, permit: CircuitPermit) -> bool:
+        """Record success; stale non-probe calls cannot close a newly opened circuit."""
+        if not isinstance(permit, CircuitPermit):
+            raise TypeError("permit must be a CircuitPermit")
+        with self._lock:
+            circuit = self._circuits.get(permit.provider)
+            if permit.is_probe:
+                if circuit is None or circuit.probe_token != permit.probe_token:
+                    return False
+                self._circuits.pop(permit.provider, None)
                 return True
-            if instant - circuit.opened_at < self.cooldown_seconds or circuit.probe_in_flight:
+            if circuit is not None and circuit.opened_at is not None:
                 return False
-            circuit.probe_in_flight = True
+            self._circuits.pop(permit.provider, None)
             return True
 
-    def record_success(self, provider: str) -> None:
-        name = self._provider(provider)
+    def record_failure(self, permit: CircuitPermit, *, now: float | None = None) -> bool:
+        """Record failure; only the current probe permit may reopen a half-open circuit."""
+        if not isinstance(permit, CircuitPermit):
+            raise TypeError("permit must be a CircuitPermit")
+        instant = self._now(now)
         with self._lock:
-            self._circuits.pop(name, None)
-
-    def record_failure(self, provider: str, *, now: float | None = None) -> None:
-        name, instant = self._provider(provider), self._now(now)
-        with self._lock:
-            circuit = self._circuits.setdefault(name, _Circuit())
-            circuit.failures += 1
-            if circuit.opened_at is not None or circuit.failures >= self.failure_threshold:
-                circuit.failures = max(circuit.failures, self.failure_threshold)
+            circuit = self._circuits.setdefault(permit.provider, _Circuit())
+            if permit.is_probe:
+                if circuit.probe_token != permit.probe_token:
+                    return False
+                circuit.failures = max(circuit.failures + 1, self.failure_threshold)
                 circuit.opened_at = instant
-                circuit.probe_in_flight = False
+                circuit.probe_token = None
+                return True
+            if circuit.opened_at is not None:
+                return False
+            circuit.failures += 1
+            if circuit.failures >= self.failure_threshold:
+                circuit.opened_at = instant
+                circuit.probe_token = None
+                return True
+            return False
 
-    def release_probe(self, provider: str) -> None:
-        """Release a half-open probe reservation when a request was cancelled pre-dispatch."""
-        name = self._provider(provider)
+    def release_probe(self, permit: CircuitPermit) -> bool:
+        """Release an acquired half-open probe when the request is cancelled pre-dispatch."""
+        if not isinstance(permit, CircuitPermit):
+            raise TypeError("permit must be a CircuitPermit")
+        if not permit.is_probe:
+            return False
         with self._lock:
-            circuit = self._circuits.get(name)
-            if circuit is not None and circuit.opened_at is not None:
-                circuit.probe_in_flight = False
+            circuit = self._circuits.get(permit.provider)
+            if circuit is None or circuit.probe_token != permit.probe_token:
+                return False
+            circuit.probe_token = None
+            return True
 
     def open_providers(self, *, now: float | None = None) -> frozenset[str]:
-        """Return providers to exclude from ordinary routing.
-
-        A caller that successfully acquires the single half-open probe with
-        try_acquire() may route that one request directly; all other callers
-        must continue excluding the provider returned here.
-        """
+        """Return providers that ordinary routing must exclude."""
         instant = self._now(now)
         with self._lock:
             return frozenset(
                 name for name, circuit in self._circuits.items()
                 if circuit.opened_at is not None and (
-                    instant - circuit.opened_at < self.cooldown_seconds or circuit.probe_in_flight
+                    instant - circuit.opened_at < self.cooldown_seconds or circuit.probe_token is not None
                 )
             )
 
@@ -112,7 +150,7 @@ class ProviderCircuitBreaker:
                 name: {
                     "consecutive_failures": circuit.failures,
                     "opened_at_monotonic": circuit.opened_at,
-                    "probe_in_flight": circuit.probe_in_flight,
+                    "probe_in_flight": circuit.probe_token is not None,
                 }
                 for name, circuit in sorted(self._circuits.items())
             }
