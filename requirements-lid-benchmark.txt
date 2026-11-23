@@ -1,0 +1,7 @@
+# Direct benchmark runtime versions from the verified 2026-11-23 CPU run.
+numpy==2.5.5
+soundfile==0.14.0
+datasets==4.8.5
+huggingface-hub==1.33.0
+speechbrain==1.1.2
+torch==2.15.0
