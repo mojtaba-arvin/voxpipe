@@ -76,13 +76,13 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
 
     if threshold is None:
         calibration_references,calibration_predictions,calibration_rows=load_split(
-            "dev",calibration_samples,raw_model,dataset_loader=load_dataset,audio_type=Audio,
+            "validation",calibration_samples,raw_model,dataset_loader=load_dataset,audio_type=Audio,
             soundfile=sf,numpy=np)
         calibration=calibrate_abstention_threshold(
             calibration_references,calibration_predictions,
             min_selective_accuracy=min_selective_accuracy,min_coverage=min_coverage)
         calibration_report={
-            "mode":"validation-calibrated","split":"dev","dataset_revision":REVISION,
+            "mode":"validation-calibrated","split":"validation","dataset_revision":REVISION,
             "samples_per_language":calibration_samples,"total_samples":len(calibration_rows),
             "constraints":{"min_selective_accuracy":min_selective_accuracy,"min_coverage":min_coverage},
             "result":calibration,
