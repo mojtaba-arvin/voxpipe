@@ -141,5 +141,54 @@ class SpeechReliabilityTests(unittest.TestCase):
             CircuitBreakingSpeechToTextPort(FakeAdapter(), breaker=object())
 
 
+    def test_opentelemetry_observer_records_bounded_metrics_and_closes_span(self):
+        from voxpipe.speech.observability import OpenTelemetrySpeechObserver
+
+        class Instrument:
+            def __init__(self):
+                self.records = []
+            def add(self, value, attributes):
+                self.records.append((value, attributes))
+            def record(self, value, attributes):
+                self.records.append((value, attributes))
+        class Span:
+            def __init__(self):
+                self.attributes = {}
+                self.ended = False
+            def set_attribute(self, key, value):
+                self.attributes[key] = value
+            def end(self):
+                self.ended = True
+        class Tracer:
+            def __init__(self):
+                self.spans = []
+            def start_span(self, name, attributes):
+                span = Span()
+                self.spans.append((name, span, attributes))
+                return span
+        class Meter:
+            def __init__(self):
+                self.counter, self.histogram = Instrument(), Instrument()
+            def create_counter(self, *args, **kwargs):
+                return self.counter
+            def create_histogram(self, *args, **kwargs):
+                return self.histogram
+
+        meter, tracer = Meter(), Tracer()
+        observer = OpenTelemetrySpeechObserver(meter=meter, tracer=tracer)
+        event_id = str(uuid4())
+        observer.record(SpeechOperationEvent(event_id, "started", "fake-stt"))
+        observer.record(SpeechOperationEvent(
+            event_id, "failed", "fake-stt", 42, "STT_RATE_LIMITED", True,
+        ))
+        self.assertEqual(len(meter.counter.records), 2)
+        self.assertEqual(meter.histogram.records[0][0], 42)
+        span = tracer.spans[0][1]
+        self.assertTrue(span.ended)
+        self.assertEqual(span.attributes["stt.error_code"], "STT_RATE_LIMITED")
+        self.assertNotIn("asset_id", meter.counter.records[-1][1])
+        self.assertNotIn("transcript", meter.counter.records[-1][1])
+
+
 if __name__ == "__main__":
     unittest.main()
