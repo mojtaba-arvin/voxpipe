@@ -13,6 +13,8 @@ class LanguagePrediction:
     end_ms: int | None = None
     provider: str = "speechbrain-voxlingua107"
     model_version: str = "unknown"
+    raw_language: str | None = None
+    abstention_reason: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.language, str) or not self.language.strip():
@@ -29,12 +31,22 @@ class LanguagePrediction:
         for name, value in (("provider", self.provider), ("model_version", self.model_version)):
             if not isinstance(value, str) or not value.strip() or len(value) > 128:
                 raise ValueError(f"{name} must be a non-empty bounded string")
+        if self.raw_language is not None and (
+            not isinstance(self.raw_language, str) or not self.raw_language.strip() or len(self.raw_language) > 128
+        ):
+            raise ValueError("raw_language must be a non-empty bounded string or null")
+        if self.abstention_reason is not None and self.abstention_reason not in {
+            "low_confidence", "out_of_inventory"
+        }:
+            raise ValueError("unsupported abstention_reason")
+        if self.abstention_reason is not None and self.language != "und":
+            raise ValueError("abstention reasons require language='und'")
 
 class SpeechBrainLanguageIdentifier:
     """SpeechBrain VoxLingua107 adapter; model weights must already exist locally."""
     provider_name="speechbrain-voxlingua107"
     def __init__(self, *, model=None, model_dir: str|Path|None=None, threshold: float=0.65,
-                 model_version="voxlingua107-ecapa"):
+                 model_version="voxlingua107-ecapa", supported_languages: frozenset[str] | None = None):
         if (not isinstance(threshold, (int, float)) or isinstance(threshold, bool)
                 or not math.isfinite(threshold) or not 0.0 <= threshold <= 1.0):
             raise ValueError("threshold must be finite and in [0,1]")
@@ -45,7 +57,13 @@ class SpeechBrainLanguageIdentifier:
                 raise FileNotFoundError("provide a pre-provisioned local SpeechBrain model directory")
             from speechbrain.inference.classifiers import EncoderClassifier
             model=EncoderClassifier.from_hparams(source=str(model_dir),savedir=str(model_dir),run_opts={"device":"cpu"})
+        if supported_languages is not None and (
+            not isinstance(supported_languages, frozenset) or not supported_languages
+            or any(not isinstance(label, str) or not label.strip() for label in supported_languages)
+        ):
+            raise ValueError("supported_languages must be a non-empty frozenset of language labels or null")
         self.model,self.threshold,self.model_version=model,threshold,model_version
+        self.supported_languages = supported_languages
     @staticmethod
     def _label(value):
         label=str(value).strip()
@@ -112,11 +130,21 @@ class SpeechBrainLanguageIdentifier:
             raise ValueError("language model returned invalid probability scores")
         index=max(range(len(probabilities)),key=probabilities.__getitem__)
         confidence=probabilities[index]
-        label=self._label(labels[index])
-        if not label:
+        raw_label=self._label(labels[index])
+        if not raw_label:
             raise ValueError("language model returned an empty language label")
-        return LanguagePrediction(label if confidence>=self.threshold else "und",confidence,start_ms,
-                                   start_ms+round(len(values)*1000/sample_rate))
+        label=raw_label
+        abstention_reason=None
+        if self.supported_languages is not None and raw_label not in self.supported_languages:
+            label="und"
+            abstention_reason="out_of_inventory"
+        elif confidence < self.threshold:
+            label="und"
+            abstention_reason="low_confidence"
+        return LanguagePrediction(label,confidence,start_ms,
+                                  start_ms+round(len(values)*1000/sample_rate),
+                                  provider=self.provider_name,model_version=self.model_version,
+                                  raw_language=raw_label,abstention_reason=abstention_reason)
     def identify_windows(self,samples,*,sample_rate=16000,window_ms=4000,hop_ms=2000):
         if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate != 16000:
             raise ValueError("language windows require integer mono 16 kHz audio")
@@ -199,11 +227,12 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
         if (not isinstance(prediction.confidence, (int, float)) or isinstance(prediction.confidence, bool)
                 or not math.isfinite(prediction.confidence) or not 0 <= prediction.confidence <= 1):
             raise ValueError("prediction confidence must be finite and between 0 and 1")
-    candidates=sorted({0.0, *(float(prediction.confidence) for prediction in predictions)})
+    candidates=sorted({0.0, *(float(prediction.confidence) for prediction in predictions
+                                  if prediction.language != "und")})
     feasible=[]
     for threshold in candidates:
         accepted=[(reference,prediction) for reference,prediction in zip(references,predictions)
-                  if prediction.confidence >= threshold]
+                  if prediction.language != "und" and prediction.confidence >= threshold]
         coverage=len(accepted)/len(references)
         accuracy=(sum(reference==prediction.language for reference,prediction in accepted)/len(accepted)
                   if accepted else None)
