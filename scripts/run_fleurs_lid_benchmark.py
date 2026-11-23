@@ -1,6 +1,6 @@
 """Calibrate local VoxLingua107 abstention on FLEURS dev; evaluate only on held-out test."""
 from __future__ import annotations
-import argparse, hashlib, io, itertools, json, platform, sys
+import argparse, hashlib, importlib.metadata, io, itertools, json, platform, sys
 from datetime import datetime, timezone
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -11,7 +11,7 @@ CONFIGS={
  "en_us":{"language":"en","sha256":"6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"},
  "de_de":{"language":"de","sha256":"3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"},
 }
-MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"
+MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"\nMODEL_REVISION="0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
 
 
 def hash_file(path):
@@ -65,7 +65,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     import numpy as np
     import soundfile as sf
     from datasets import Audio,load_dataset
-    from huggingface_hub import model_info,snapshot_download
+    from huggingface_hub import snapshot_download
     from voxpipe.speech.language_id import (SpeechBrainLanguageIdentifier,evaluate_language_id,
         calibrate_abstention_threshold)
 
@@ -122,7 +122,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
             "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,
             "threshold_policy":"calibrated on disjoint pinned FLEURS dev split" if threshold is None else "operator-fixed override"},
         "calibration":calibration_report,"metrics":metrics,
-        "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor()},
+        "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch")}},
         "generated_at":datetime.now(timezone.utc).isoformat()}
     (output_dir/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
     return summary
