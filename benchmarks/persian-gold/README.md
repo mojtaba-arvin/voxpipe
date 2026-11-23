@@ -62,7 +62,7 @@ Run:
 python scripts/compare_persian_annotations.py --annotator-a annotations-a.jsonl --annotator-b annotations-b.jsonl
 ```
 
-The report gives per-category and micro exact-value agreement (matched, annotator-only claims, precision/recall/F1) plus exact evidence-span agreement for claims whose values match. It rejects mismatched sample coverage, changed source transcripts, duplicate claims, and invalid Unicode offsets. This is a pairwise diagnostic only: it is **not Cohen's kappa**, does not model true negatives, does not establish semantic correctness, and does not replace third-party adjudication. Keep annotator exports access-controlled; do not commit raw personal or customer transcripts.
+The report gives per-category and micro exact-value agreement (matched, annotator-only claims, precision/recall/F1) plus exact evidence-span agreement for claims whose values match. It validates each category's required/allowed value fields and entity types, and rejects mismatched sample coverage, changed source transcripts, duplicate claims, unknown segment IDs, and invalid Unicode offsets. This is a pairwise diagnostic only: it is **not Cohen's kappa**, does not model true negatives, does not establish semantic correctness, and does not replace third-party adjudication. Keep annotator exports access-controlled; do not commit raw personal or customer transcripts.
 
 ## Local validation and evaluation
 
