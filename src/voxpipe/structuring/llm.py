@@ -32,6 +32,10 @@ Category rules:
 - Entity type must be supported by the same evidence: company/organization markers support organization; explicit place phrases support location; document nouns such as report, letter, invoice, record or document support document; a person explicitly assigned an obligation supports person. A meeting/event title is not an entity. Do not guess an entity type when the evidence does not support it.
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
+Positive category examples (illustrative only; never copy a claim unless its facts are present in the current transcript):
+- In «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود», «بودجه» is a substantive topic because it is part of the named meeting subject; «جلسه» and «دفتر مرکزی» are not topics.
+- In «علی باید گزارش فروش را تا جمعه ارسال کند», the directly stated relation is {subject: «علی», predicate: «باید ارسال کند», object: «گزارش فروش»}. The document object is not automatically a topic.
+- In «شرکت آریا با شرکت بهار قرارداد همکاری امضا کرد», the directly stated relation is {subject: «شرکت آریا», predicate: «امضا کرد», object: «قرارداد همکاری با شرکت بهار»}; the contract subject can also be a topic.
 Do not copy facts, names, topics, or relations from these instructions unless they are explicitly present in the current sanitized transcript. A sentence assigning a person to send a document by a deadline supports an action item, not an event; the document itself is not an event, and its deadline is not an event time or place. For «مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود», the only claim is exactly one event {name: «جلسه», event_type: "meeting", start_time: «فردا ساعت ۹»}; entities, topics, relations, and action_items must all be empty. The reporting speaker is not an entity, «گفت» is not a relation, «جلسه» alone is not a topic, and a scheduled meeting is not an action item. Do not add claims merely to populate a collection; prefer the smallest directly supported set."""
 
 
@@ -157,7 +161,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v13", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v14", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
