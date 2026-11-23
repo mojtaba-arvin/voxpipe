@@ -58,6 +58,21 @@ class ProviderCapabilityRegistryTests(unittest.TestCase):
         self.assertEqual(registry.find(audio_duration_ms=60_000), ())
         self.assertEqual(registry.find(audio_bytes=1024), ())
 
+    def test_rejects_non_frozenset_capability_claims(self):
+        with self.assertRaisesRegex(ValueError, "supported_languages"):
+            self.capability(supported_languages=["fa"])
+        with self.assertRaisesRegex(ValueError, "features"):
+            self.capability(features="transcription")
+
+    def test_rejects_malformed_discovery_filters(self):
+        registry = ProviderCapabilityRegistry([self.capability()])
+        with self.assertRaises(ValueError):
+            registry.find(language="")
+        with self.assertRaises(ValueError):
+            registry.find(required_features="word_timestamps")
+        with self.assertRaises(ValueError):
+            registry.find(required_features=None)
+
     def test_rejects_invalid_cost_and_audio_limits(self):
         with self.assertRaises(ValueError):
             self.capability(estimated_cost_per_minute_usd=float("nan"))
