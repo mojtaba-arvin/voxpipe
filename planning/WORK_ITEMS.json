@@ -548,9 +548,10 @@
         "2026-11-23: Exact current PR head including strict direct-adapter and VADResult validation passed repository CI run 45139134580 (Python/PostgreSQL and Go/PostgreSQL).",
         "2026-11-23: Current PR head after Work Ledger synchronization passed validation run 45139438594; Python/PostgreSQL and Go/PostgreSQL both succeeded.",
         "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL.",
-        "2026-11-23 latest exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL after VAD contract and ledger updates."
+        "2026-11-23 latest exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL after VAD contract and ledger updates.",
+        "2026-11-23: Additional A2 hardening validates Silero threshold/duration types, requires integer sample boundaries from provider timestamps, validates the injected WebRTC detector interface and digest, and rejects unsorted/overlapping regions in the evaluator. Added VADResult/adapter/evaluator negative-path tests; exact-head CI is pending."
       ],
-      "blocked_reason": "The provider-neutral adapters and strict input/result contracts are implemented, but frame-level Persian speech/non-speech labels are still absent. Current FLEURS utterance-envelope proxy metrics cannot satisfy frame-level precision/recall, boundary-error or false-activation acceptance. Silence/music/noisy/overlap conditions need a frozen labelled test split."
+      "blocked_reason": "Provider contracts, adapters and evaluator invariants are hardened, but current evaluation still relies on FLEURS utterance-envelope proxies. Frame-labelled Persian speech/non-speech data, consent, annotation protocol and held-out frame-level metrics are still required."
     },
     {
       "id": "VP-0024",
