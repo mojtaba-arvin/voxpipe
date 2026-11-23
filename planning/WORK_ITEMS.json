@@ -573,9 +573,10 @@
         "scripts/run_neyshekar_diarization_benchmark.py — threshold selected on Neyshekar validation speakers and evaluated on disjoint test speakers.",
         "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
         "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
-        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation."
+        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
+        "2026-11-23: rebased provider-neutral DiarizationRequest/DiarizationPort contract onto current main; ECAPA direct calls validate normalized mono 16 kHz audio, SHA-256, ordered/in-bounds VAD regions, finite normalized dimension-consistent embeddings, SpeakerTurn bounds and explicit overlap capability. Added direct-input, overlap and common contract tests."
       ],
-      "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
+      "blocked_reason": "Provider-neutral ECAPA contracts, explicit overlap capability and injected-embedder validation are implemented; CI verification on the rebased head is pending. Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable."
     },
     {
       "id": "VP-0025",
