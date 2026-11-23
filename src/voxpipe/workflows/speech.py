@@ -177,7 +177,7 @@ class SpeechTranscriptionWorkflowHandler:
             not isinstance(content_type, str) or not content_type.startswith("audio/")
             or not isinstance(duration_ms, int) or isinstance(duration_ms, bool) or duration_ms < 1
             or not isinstance(media.get("size_bytes"), int) or isinstance(media.get("size_bytes"), bool) or media.get("size_bytes") < 1
-            or not isinstance(audio_sha256, str) or len(audio_sha256) != 64
+            or not isinstance(audio_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", audio_sha256)
             or not isinstance(object_key, str) or not object_key
         ):
             raise WorkflowHandlerError("STT_ASSET_METADATA_INVALID", retryable=False)
