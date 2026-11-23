@@ -53,7 +53,7 @@ class AdapterTests(unittest.TestCase):
         value = result.action_items[0].value
         self.assertEqual(value["description"], "ارسال گزارش فروش")
         self.assertEqual(value["due_date"], "تا جمعه")
-        self.assertEqual(result.provenance.prompt_version, "structured-fa-v13")
+        self.assertEqual(result.provenance.prompt_version, "structured-fa-v14")
 
     def test_action_item_deadline_normalization_does_not_remove_unverified_or_internal_dates(self):
         from voxpipe.structuring.llm import _normalize_action_item_value
@@ -176,9 +176,10 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("A deadline is not an event start time", SYSTEM_PROMPT)
         self.assertIn("A person appearing only as the grammatical speaker", SYSTEM_PROMPT)
         self.assertIn("Entity types are exactly person, organization, location, or document", SYSTEM_PROMPT)
-        self.assertNotIn("جلسه بودجه", SYSTEM_PROMPT)
-        self.assertNotIn("قرارداد همکاری", SYSTEM_PROMPT)
-        self.assertNotIn("گزارش فروش", SYSTEM_PROMPT)
+        self.assertIn("«بودجه» is a substantive topic", SYSTEM_PROMPT)
+        self.assertIn('predicate: «باید ارسال کند»', SYSTEM_PROMPT)
+        self.assertIn('predicate: «امضا کرد»', SYSTEM_PROMPT)
+        self.assertIn("The document object is not automatically a topic", SYSTEM_PROMPT)
         self.assertIn("Never create a generic", SYSTEM_PROMPT)
         self.assertIn("Action items are explicit actionable obligations or requests", SYSTEM_PROMPT)
         self.assertIn("Preserve date/time expressions exactly as spoken", SYSTEM_PROMPT)
