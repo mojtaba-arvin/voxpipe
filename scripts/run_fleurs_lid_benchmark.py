@@ -40,6 +40,7 @@ def load_split(split, max_samples, model, *, dataset_loader, audio_type, soundfi
             references.append(reference);predictions.append(prediction)
             rows.append({"sample_id":f"{config}:{row.get('id',len(rows))}",
                 "reference_language":reference,"predicted_language":prediction.language,
+                "raw_language":prediction.raw_language,"abstention_reason":prediction.abstention_reason,
                 "confidence":prediction.confidence,"audio_sha256":hashlib.sha256(raw).hexdigest(),
                 "duration_ms":round(len(waveform)*1000/sample_rate),"dataset_config":config,
                 "dataset_split":split,"dataset_revision":REVISION,"model_id":MODEL_ID,
@@ -72,7 +73,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
 
     model_revision=MODEL_REVISION
     model_dir=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
-    raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision)
+    raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision,\n        supported_languages=frozenset(CONFIGS.values()))
 
     if threshold is None:
         calibration_references,calibration_predictions,calibration_rows=load_split(
@@ -119,7 +120,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "configs":{k:{"language":v["language"],"test_parquet_sha256":v["sha256"]} for k,v in CONFIGS.items()},
         "samples_per_language":max_samples,"total_samples":len(rows)},
         "model":{"id":MODEL_ID,"revision":model_revision,"license":"Apache-2.0",
-            "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,
+            "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,"supported_languages":sorted(CONFIGS.values()),
             "threshold_policy":"calibrated on disjoint pinned FLEURS validation split" if threshold is None else "operator-fixed override"},
         "calibration":calibration_report,"metrics":metrics,
         "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"runtime_lock_sha256":hash_file(Path("requirements-lid-benchmark.txt")),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch","torchaudio")}},
