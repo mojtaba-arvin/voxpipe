@@ -58,6 +58,12 @@ class FakeModel:
 
 
 class LanguageIdBenchmarkSplitTests(unittest.TestCase):
+    def test_model_revision_is_pinned_for_reproducible_inference(self):
+        self.assertEqual(
+            BENCHMARK.MODEL_REVISION,
+            "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
+        )
+
     def test_load_split_uses_requested_frozen_split_and_checks_per_language_count(self):
         calls = []
 
