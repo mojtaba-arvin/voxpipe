@@ -89,20 +89,19 @@ class ProviderCircuitBreaker:
             if circuit is not None and circuit.opened_at is not None:
                 circuit.probe_in_flight = False
 
-    def open_providers(
-        self, *, now: float | None = None, acquired_probe_for: str | None = None,
-    ) -> frozenset[str]:
-        """Return providers to exclude; the caller may exempt its own acquired half-open probe."""
+    def open_providers(self, *, now: float | None = None) -> frozenset[str]:
+        """Return providers to exclude from ordinary routing.
+
+        A caller that successfully acquires the single half-open probe with
+        try_acquire() may route that one request directly; all other callers
+        must continue excluding the provider returned here.
+        """
         instant = self._now(now)
-        probe_provider = self._provider(acquired_probe_for) if acquired_probe_for is not None else None
         with self._lock:
             return frozenset(
                 name for name, circuit in self._circuits.items()
                 if circuit.opened_at is not None and (
-                    instant - circuit.opened_at < self.cooldown_seconds
-                    or (circuit.probe_in_flight and not (
-                        name == probe_provider and instant - circuit.opened_at >= self.cooldown_seconds
-                    ))
+                    instant - circuit.opened_at < self.cooldown_seconds or circuit.probe_in_flight
                 )
             )
 
