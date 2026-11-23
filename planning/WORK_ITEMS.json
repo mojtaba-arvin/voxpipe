@@ -787,7 +787,7 @@
         "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL.",
         "2026-11-23 latest exact-head CI run 45142265756 passed Python/PostgreSQL and Go/PostgreSQL after worker heartbeat, fencing and ledger updates."
       ],
-      "blocked_reason": "The PostgreSQL journal now includes a handler registry, supervised run loop, cooperative lease renewal, retries, approvals and stale-worker fencing. Production gaps remain: deployment-specific process supervisor/configuration, automatic heartbeat scheduling (handlers must renew cooperatively), parallel branches/compensation, high-concurrency/crash-recovery benchmarks, tracing and backup/restore rehearsal."
+      "blocked_reason": "PostgreSQL durable journal, handler registry, worker loop, cooperative fenced heartbeat and stale-worker tests are implemented and CI-verified. Production supervision, sustained concurrency/load testing, crash/restart failure injection and backup/restore rehearsal remain outstanding."
     },
     {
       "id": "VP-0035",
