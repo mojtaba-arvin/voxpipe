@@ -569,7 +569,8 @@
         "2026-11-23: Hardened direct ECAPA diarize() calls by routing them through DiarizationRequest validation; rejected boolean/fractional sample rates and window settings, validated finite normalized audio and ordered in-duration speech regions, enforced finite non-zero normalized embedding vectors with stable dimensions across windows, and validated DER/JER duration/turn bounds. Added tests/test_diarization_adapter_input_validation.py. These are deterministic contract guarantees, not natural-conversation DER/JER evidence.",
         "2026-11-23: Exact current PR head including direct ECAPA request validation, embedding-vector consistency and evaluator bounds passed repository CI run 45139242210 (Python/PostgreSQL and Go/PostgreSQL).",
         "2026-11-23: Current PR head after Work Ledger synchronization passed validation run 45139532081; Python/PostgreSQL and Go/PostgreSQL both succeeded.",
-        "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL."
+        "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL.",
+        "2026-11-23 latest exact-head CI run 45142258461 passed Python/PostgreSQL and Go/PostgreSQL after diarization overlap contract and ledger updates."
       ],
       "blocked_reason": "The anonymous ECAPA baseline and strict direct/request contracts are implemented, but natural conversational DER/JER, overlap-aware diarization, speaker-turn ground truth and explicit per-speaker consent evidence are still unavailable. The controlled read-speech corpus cannot satisfy production acceptance."
     },
