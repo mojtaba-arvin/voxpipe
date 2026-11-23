@@ -47,3 +47,10 @@ See [STT provider reliability](stt-provider-reliability.md) and [ADR-0023](../de
 ## Diarization adapter contract
 
 `DiarizationRequest` standardizes normalized mono 16 kHz samples, the source-audio SHA-256 and ordered VAD speech regions. The ECAPA adapter exposes `DiarizationPort.diarize_request`; direct calls reuse the same request validation. Embedding outputs must be finite, non-zero, normalized and dimension-consistent across windows. The evaluator validates duration and turn bounds. Speaker labels are anonymous and scoped to one asset. Results explicitly declare overlap support; the current ECAPA sliding-window baseline reports `overlap_supported=false` and rejects overlapping turns. The controlled Neyshekar read-speech benchmark is not natural multi-speaker conversation. Production DER/JER acceptance requires consented natural conversations with overlap annotations.
+
+
+## Durable transcription execution
+
+`SpeechTranscriptionWorkflowHandler` connects the ingestion asset, object-storage port, provider-neutral STT service and immutable PostgreSQL transcript revisions. Workflow inputs contain only asset/transcript UUIDs, revision number and bounded capability flags; audio and transcript text never enter the workflow journal. Before inference, the handler verifies the stored object's key, size and SHA-256 against immutable asset metadata. It streams audio from storage, uses a stable SHA-256 idempotency key derived from tenant/workflow/step/transcript revision, validates the canonical result, and persists speakers, segments and word timings as an immutable revision. Result references contain only identifiers, provenance and counts.
+
+The handler heartbeats during long inference using the active workflow lease duration. If fencing is lost, it discards the result and does not persist or complete the step. Provider adapters receive the stable idempotency key and may forward it only when the vendor documents idempotent submission; ambiguous non-idempotent timeouts must not be retried automatically.
