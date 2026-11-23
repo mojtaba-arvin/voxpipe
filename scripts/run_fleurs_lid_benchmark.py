@@ -107,7 +107,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         }
 
     model=SpeechBrainLanguageIdentifier(model=raw_model.model,threshold=selected_threshold,
-        model_version=model_revision,supported_languages=frozenset(CONFIGS.values()))
+        model_version=model_revision,supported_languages=SUPPORTED_LANGUAGES)
     references,predictions,rows=load_split(
         "test",max_samples,model,dataset_loader=load_dataset,audio_type=Audio,soundfile=sf,numpy=np)
     metrics=evaluate_language_id(references,predictions)
