@@ -1,6 +1,8 @@
 import unittest
 
-from voxpipe.speech.vad import (\n    SpeechRegion, VADRequest, VADResult, SileroVADAdapter, WebRTCVADAdapter, evaluate_vad,\n)
+from voxpipe.speech.vad import (
+    SpeechRegion, VADRequest, VADResult, SileroVADAdapter, WebRTCVADAdapter, evaluate_vad,
+)
 
 
 class SpeechRegionContractTests(unittest.TestCase):
