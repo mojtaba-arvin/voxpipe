@@ -71,6 +71,8 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         cls.migrations_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgres"
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
+            connection.execute("DROP TABLE IF EXISTS workflow_steps CASCADE")
+            connection.execute("DROP TABLE IF EXISTS workflow_runs CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
@@ -113,6 +115,9 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             )
             connection.execute(
                 "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
+            )
+            connection.execute(
+                "GRANT SELECT, INSERT, UPDATE ON workflow_runs, workflow_steps TO voxpipe_app"
             )
             connection.execute(
                 "GRANT SELECT, INSERT, UPDATE, DELETE ON transcript_segment_embeddings TO voxpipe_app"
