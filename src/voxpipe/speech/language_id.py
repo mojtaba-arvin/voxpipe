@@ -65,7 +65,8 @@ class SpeechBrainLanguageIdentifier:
             raise ValueError("SpeechBrain label inventory does not match model output dimensions") from None
 
     def identify(self, samples, *, sample_rate: int, start_ms: int=0) -> LanguagePrediction:
-        if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate != 16000:\n            raise ValueError("language identification requires integer mono 16 kHz audio")
+        if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate != 16000:
+            raise ValueError("language identification requires integer mono 16 kHz audio")
         raw_values = list(samples)
         if any(isinstance(x, bool) for x in raw_values):
             raise ValueError("audio samples must be numeric normalized values")
