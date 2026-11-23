@@ -54,7 +54,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         min_selective_accuracy:float=0.90,min_coverage:float=0.50)->dict:
     if not isinstance(max_samples,int) or isinstance(max_samples,bool) or not 1<=max_samples<=264:
         raise ValueError("max_samples must be between 1 and 264")
-    if not isinstance(calibration_samples,int) or isinstance(calibration_samples,bool) or not 1<=calibration_samples<=264:
+    if not isinstance(calibration_samples,int) or isinstance(calibration_samples,bool) or calibration_samples<1:
         raise ValueError("calibration_samples must be between 1 and 264")
     if threshold is not None and (not isinstance(threshold,(int,float)) or isinstance(threshold,bool)
             or not 0.0<=threshold<=1.0):
@@ -90,7 +90,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         }
         output_dir.mkdir(parents=True,exist_ok=True)
         (output_dir/"calibration_predictions.jsonl").write_text(
-            "".join(json.dumps(row,ensure_ascii=False)+"\\n" for row in calibration_rows),encoding="utf-8")
+            "".join(json.dumps(row,ensure_ascii=False)+"\n" for row in calibration_rows),encoding="utf-8")
         if not calibration["feasible"]:
             (output_dir/"calibration.json").write_text(
                 json.dumps(calibration_report,ensure_ascii=False,indent=2),encoding="utf-8")
@@ -111,7 +111,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     metrics=evaluate_language_id(references,predictions)
     output_dir.mkdir(parents=True,exist_ok=True)
     (output_dir/"predictions.jsonl").write_text(
-        "".join(json.dumps(row,ensure_ascii=False)+"\\n" for row in rows),encoding="utf-8")
+        "".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     weight_hashes={p.name:hash_file(p) for p in sorted(model_dir.iterdir())
         if p.is_file() and p.suffix in (".ckpt",".txt",".yaml")}
     summary={"dataset":{"id":"google/fleurs","revision":REVISION,"split":"test",
