@@ -27,6 +27,9 @@ class FakeDataset:
 class FakeArray(list):
     ndim = 1
 
+    def tolist(self):
+        return list(self)
+
 
 class FakeNumpy:
     float32 = object()
