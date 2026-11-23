@@ -118,6 +118,20 @@ class SpeechTranscriptionWorkflowHandler:
         self._heartbeat_interval = float(heartbeat_interval_seconds)
 
     @staticmethod
+    def _retry_failure(context: WorkflowStepContext, code: str, *, retryable: bool, retry_after_seconds: int | None = None) -> WorkflowHandlerError:
+        if not retryable:
+            return WorkflowHandlerError(code, retryable=False)
+        if retry_after_seconds is not None:
+            if retry_after_seconds > 3600:
+                # Do not retry earlier than a provider's long Retry-After.
+                return WorkflowHandlerError(code, retryable=False)
+            delay = retry_after_seconds
+        else:
+            attempt = max(1, int(getattr(context, "attempt", 1)))
+            delay = min(300, 2 ** min(attempt - 1, 8))
+        return WorkflowHandlerError(code, retryable=True, retry_delay_seconds=delay)
+
+    @staticmethod
     def _uuid(value: Any, field: str) -> str:
         try:
             return str(UUID(str(value)))
@@ -142,7 +156,7 @@ class SpeechTranscriptionWorkflowHandler:
         try:
             asset = self._repository.get_asset(context.tenant_id, asset_id)
         except Exception:
-            raise WorkflowHandlerError("STT_ASSET_LOOKUP_FAILED", retryable=True) from None
+            raise self._retry_failure(context, "STT_ASSET_LOOKUP_FAILED", retryable=True) from None
         if not isinstance(asset, dict) or asset.get("asset_id") != asset_id or asset.get("tenant_id") != context.tenant_id:
             raise WorkflowHandlerError("STT_ASSET_NOT_FOUND", retryable=False)
 
@@ -169,7 +183,7 @@ class SpeechTranscriptionWorkflowHandler:
         except ObjectNotFoundError:
             raise WorkflowHandlerError("STT_AUDIO_OBJECT_NOT_FOUND", retryable=False) from None
         except StorageIOError:
-            raise WorkflowHandlerError("STT_STORAGE_UNAVAILABLE", retryable=True) from None
+            raise self._retry_failure(context, "STT_STORAGE_UNAVAILABLE", retryable=True) from None
         except StorageError:
             raise WorkflowHandlerError("STT_STORAGE_FAILURE", retryable=False) from None
         if info.sha256 != audio_sha256 or info.size_bytes < 1:
@@ -215,17 +229,16 @@ class SpeechTranscriptionWorkflowHandler:
                         )
                         transcript = self._service.transcribe(request)
             except TranscriptionError as exc:
-                raise WorkflowHandlerError(
-                    exc.code,
-                    retryable=exc.retryable and (exc.retry_after_seconds is None or exc.retry_after_seconds <= 3600),
-                    retry_delay_seconds=exc.retry_after_seconds or 0 if exc.retry_after_seconds is None or exc.retry_after_seconds <= 3600 else 0,
+                raise self._retry_failure(
+                    context, exc.code, retryable=exc.retryable,
+                    retry_after_seconds=exc.retry_after_seconds,
                 ) from None
             except TranscriptValidationError:
                 raise WorkflowHandlerError("STT_RESPONSE_INVALID", retryable=False) from None
             except ObjectNotFoundError:
                 raise WorkflowHandlerError("STT_AUDIO_OBJECT_NOT_FOUND", retryable=False) from None
             except StorageIOError:
-                raise WorkflowHandlerError("STT_STORAGE_UNAVAILABLE", retryable=True) from None
+                raise self._retry_failure(context, "STT_STORAGE_UNAVAILABLE", retryable=True) from None
             except StorageError:
                 raise WorkflowHandlerError("STT_STORAGE_FAILURE", retryable=False) from None
             except ValueError:
@@ -252,7 +265,7 @@ class SpeechTranscriptionWorkflowHandler:
                     raise WorkflowHandlerError("STT_REVISION_CONFLICT", retryable=False) from None
                 if isinstance(exc, ValueError):
                     raise WorkflowHandlerError("STT_PERSISTENCE_INVALID", retryable=False) from None
-                raise WorkflowHandlerError("STT_PERSISTENCE_UNAVAILABLE", retryable=True) from None
+                raise self._retry_failure(context, "STT_PERSISTENCE_UNAVAILABLE", retryable=True) from None
             heartbeat.ensure_owned()
             return {
                 "asset_id": asset_id,
