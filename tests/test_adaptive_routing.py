@@ -82,6 +82,23 @@ class AdaptiveRoutingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RoutingPolicy("task", "v1", frozenset({("p", "m", "v")}), max_fallbacks=6)
 
+    def test_rejects_malformed_route_policy_and_circuit_inputs(self):
+        router = AdaptiveModelRouter(self.registry, self.evidence)
+        with self.assertRaises(TypeError):
+            router.route({}, language="fa-IR", now=NOW)
+        with self.assertRaises(ValueError):
+            router.route(self.policy, language="fa-IR", now=NOW,
+                open_circuit_providers="local")
+        with self.assertRaises(ValueError):
+            router.route(self.policy, language="fa-IR", now=NOW,
+                open_circuit_providers={"local", None})
+        with self.assertRaises(ValueError):
+            router.route(self.policy, language="fa-IR", now="2026-11-22T12:00:00Z")
+
+    def test_router_requires_a_typed_capability_registry(self):
+        with self.assertRaises(TypeError):
+            AdaptiveModelRouter(object(), self.evidence)
+
     def test_future_evidence_and_naive_clock_are_rejected_or_ignored(self):
         future = ModelQualityEvidence("transcription", "local", "whisper-small", "v1", .99,
             50, True, NOW + timedelta(seconds=1), "future")
