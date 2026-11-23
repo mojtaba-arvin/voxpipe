@@ -67,55 +67,81 @@ def required_event_fields_for_candidates(candidates):
 
 
 def candidate_schema_constraints(candidates):
-    """Derive collection/type/field constraints only from explicit candidate evidence."""
+    """Derive bounded collection and value constraints from source evidence only."""
     event_types = []
+    event_names = []
     entity_types = set()
+    topic_names = []
+    relation_required = False
     max_action_items = 0
     required_action_item_fields = set()
     action_item_description_pattern = None
     allow_action_item_status = False
 
     event_cue = re.compile(
-        r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود|امضا\s+کرد(?:ه|ند)?"
+        r"برگزار\\s+(?:می‌شود|خواهد\\s+شد)|تشکیل\\s+می‌شود|امضا\\s+کرد(?:ه|ند)?"
     )
-    action_cue = re.compile(r"\s+باید\s+|موظف\s+است|لازم\s+است|درخواست\s+کرد")
+    action_cue = re.compile(r"\\s+باید\\s+|موظف\\s+است|لازم\\s+است|درخواست\\s+کرد")
     deadline_cue = re.compile(
-        r"تا\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\s+هفته|پایان\s+هفته|[۰-۹0-9]{1,2}[/-][۰-۹0-9]{1,2})"
+        r"تا\\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\\s+هفته|پایان\\s+هفته|[۰-۹0-9]{1,2}[/-][۰-۹0-9]{1,2})"
     )
     explicit_status_cue = re.compile(
-        r"انجام\s+شد|تکمیل\s+شد|در\s+حال\s+انجام|لغو\s+شد|به\s+تعویق\s+افتاد"
+        r"انجام\\s+شد|تکمیل\\s+شد|در\\s+حال\\s+انجام|لغو\\s+شد|به\\s+تعویق\\s+افتاد"
     )
 
     for candidate in candidates:
         quote = candidate["quote"]
         if event_cue.search(quote):
-            if re.search(r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود", quote):
+            if re.search(r"برگزار\\s+(?:می‌شود|خواهد\\s+شد)|تشکیل\\s+می‌شود", quote):
                 if "meeting" not in event_types:
                     event_types.append("meeting")
-            if re.search(r"امضا\s+کرد(?:ه|ند)?", quote):
+                # Strip a reporting frame before identifying the complete event
+                # title. The schema then requires the source-grounded full title.
+                event_text = re.sub(r"^.*?گفت\\s+", "", quote)
+                name_match = re.search(
+                    r"(.+?)(?=\\s+(?:فردا|امروز|پس‌فردا|دیروز|ساعت|در\\s+|برگزار|تشکیل))",
+                    event_text,
+                )
+                if name_match:
+                    event_name = name_match.group(1).strip()
+                    if event_name and event_name not in event_names:
+                        event_names.append(event_name)
+                    topic = re.sub(r"^(?:جلسه|نشست|گردهمایی)\\s*", "", event_name).strip()
+                    if topic and topic not in topic_names:
+                        topic_names.append(topic)
+            if re.search(r"امضا\\s+کرد(?:ه|ند)?", quote):
                 if "contract-signing" not in event_types:
                     event_types.append("contract-signing")
+                signed = re.search(
+                    r"(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\\s+.+?)\\s+امضا\\s+کرد(?:ه|ند)?",
+                    quote,
+                )
+                if signed:
+                    subject = signed.group("object").strip()
+                    event_name = "امضای " + subject
+                    if event_name not in event_names:
+                        event_names.append(event_name)
+                    if subject not in topic_names:
+                        topic_names.append(subject)
+                relation_required = True
 
-        # Only lexical evidence can authorize a type. In particular, an event
-        # title such as «جلسه بودجه» cannot be emitted as an organization.
         if re.search(r"شرکت|سازمان|مؤسسه|موسسه", quote):
             entity_types.add("organization")
-        if re.search(r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
+        if re.search(r"(?:^|\\s)در\\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
             entity_types.add("location")
         if re.search(r"گزارش|نامه|فاکتور|سند|مدرک", quote):
             entity_types.add("document")
-        if re.search(r"[\u0600-\u06FF]+\s+(?:باید|موظف\s+است|مسئول\s+است)", quote):
+        if re.search(r"[\\u0600-\\u06FF]+\\s+(?:باید|موظف\\s+است|مسئول\\s+است)", quote):
             entity_types.add("person")
 
         if action_cue.search(quote):
             max_action_items = 32
-            if re.search(r"[\u0600-\u06FF]+\s+باید\s+", quote):
+            relation_required = True
+            if re.search(r"[\\u0600-\\u06FF]+\\s+باید\\s+", quote):
                 required_action_item_fields.add("assignee")
             deadline = deadline_cue.search(quote)
             if deadline:
                 required_action_item_fields.add("due_date")
-                # Keep the deadline in its dedicated field, not duplicated in
-                # the action description. The exact phrase comes from evidence.
                 action_item_description_pattern = (
                     r"^(?!.*" + re.escape(deadline.group(0)) + r").+"
                 )
@@ -129,8 +155,14 @@ def candidate_schema_constraints(candidates):
     return {
         "max_entities": 32 if ordered_entity_types else 0,
         "allowed_entity_types": ordered_entity_types or ("person", "organization", "location", "document"),
-        "max_events": 32 if event_types else 0,
+        "max_events": len(event_names),
         "allowed_event_types": tuple(event_types),
+        "allowed_event_names": tuple(event_names),
+        "max_topics": len(topic_names),
+        "required_topics": 1 if topic_names else 0,
+        "allowed_topic_names": tuple(topic_names),
+        "max_relations": 1 if relation_required else 0,
+        "required_relations": 1 if relation_required else 0,
         "max_action_items": max_action_items,
         "required_action_item_fields": tuple(
             field for field in ("assignee", "due_date")
@@ -139,7 +171,6 @@ def candidate_schema_constraints(candidates):
         "action_item_description_pattern": action_item_description_pattern,
         "allow_action_item_status": allow_action_item_status,
     }
-
 
 def ollama_output_schema(
     span_ids,
