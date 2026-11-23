@@ -14,6 +14,20 @@ from pathlib import Path
 from typing import Any
 
 COLLECTIONS = ("entities", "events", "topics", "relations", "action_items")
+_REQUIRED_VALUE_FIELDS = {
+    "entities": {"name", "entity_type"},
+    "events": {"name", "event_type"},
+    "topics": {"name"},
+    "relations": {"subject", "predicate", "object"},
+    "action_items": {"description"},
+}
+_ALLOWED_VALUE_FIELDS = {
+    "entities": {"name", "entity_type", "aliases", "description"},
+    "events": {"name", "event_type", "start_time", "end_time", "location", "participants"},
+    "topics": {"name", "description", "keywords"},
+    "relations": {"subject", "predicate", "object"},
+    "action_items": {"description", "assignee", "due_date", "status"},
+}
 
 
 class AnnotationError(ValueError):
@@ -64,7 +78,18 @@ def read_rows(path: Path) -> dict[str, dict[str, Any]]:
                 prefix = f"{path}:{line_no}: {collection}[{claim_index}]"
                 if not isinstance(claim, dict) or not isinstance(claim.get("value"), dict):
                     raise AnnotationError(f"{prefix}: value must be an object")
-                key = (collection, canonical(claim["value"]))
+                value = claim["value"]
+                required = _REQUIRED_VALUE_FIELDS[collection]
+                allowed = _ALLOWED_VALUE_FIELDS[collection]
+                if not required.issubset(value) or set(value) - allowed:
+                    raise AnnotationError(f"{prefix}: value fields do not match the {collection} contract")
+                if any(not isinstance(value[field], str) or not value[field].strip() for field in required):
+                    raise AnnotationError(f"{prefix}: required value fields must be non-empty strings")
+                if collection == "entities" and value["entity_type"] not in {
+                    "person", "organization", "location", "document"
+                }:
+                    raise AnnotationError(f"{prefix}: unsupported entity_type")
+                key = (collection, canonical(value))
                 if key in seen:
                     raise AnnotationError(f"{prefix}: duplicate claim value")
                 seen.add(key)
@@ -77,7 +102,7 @@ def read_rows(path: Path) -> dict[str, dict[str, Any]]:
                         raise AnnotationError(f"{ep}: evidence must be an object")
                     segment_id = span.get("segment_id")
                     start, end, quote = span.get("start_char"), span.get("end_char"), span.get("quote")
-                    if segment_id not in segments:
+                    if not isinstance(segment_id, str) or segment_id not in segments:
                         raise AnnotationError(f"{ep}: unknown segment_id")
                     if (not isinstance(start, int) or isinstance(start, bool)
                             or not isinstance(end, int) or isinstance(end, bool)
