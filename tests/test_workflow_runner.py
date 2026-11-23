@@ -7,6 +7,7 @@ from voxpipe.workflows.runner import (
     WorkflowHandlerError,
     WorkflowHandlerRegistry,
 )
+from voxpipe.workflows.postgres import WorkflowLeaseLost
 
 
 TENANT = "00000000-0000-0000-0000-000000000001"
@@ -74,6 +75,18 @@ class WorkflowRunnerTests(unittest.TestCase):
         heartbeat = next(call for call in repository.calls if call[0] == "heartbeat")
         self.assertEqual(heartbeat[1:5], (TENANT, WORKFLOW, STEP, WORKER))
         self.assertEqual(heartbeat[5]["lease_seconds"], 60)
+
+    def test_lost_lease_propagates_without_attempting_stale_failure_transition(self):
+        repository = FakeRepository()
+        def lost_heartbeat(*args, **kwargs):
+            raise WorkflowLeaseLost("lease expired")
+        repository.heartbeat_step = lost_heartbeat
+        def handler(context):
+            context.heartbeat()
+            return {"result_ref": "never-completed"}
+        with self.assertRaises(WorkflowLeaseLost):
+            self.worker(repository, handler).run_once(TENANT)
+        self.assertFalse(any(call[0] in {"complete", "fail"} for call in repository.calls))
 
     def test_unknown_handler_fails_without_dynamic_import(self):
         repository = FakeRepository()
