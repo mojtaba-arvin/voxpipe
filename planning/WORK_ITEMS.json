@@ -614,7 +614,7 @@
         "2026-11-23: Latest exact-head validation run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL after strict export-schema checks and the corrected JSONL fixtures.",
         "2026-11-23 latest exact-head CI run 45142280280 passed Python/PostgreSQL and Go/PostgreSQL after strict annotation export validation and ledger updates."
       ],
-      "blocked_reason": "Annotation workflow now includes protocol, record validation, scoring, and independent annotator-agreement diagnostics. Real consented Persian transcripts, two qualified independent annotators, and a third adjudicator are still required before the dataset can be marked human_reviewed or scored as gold."
+      "blocked_reason": "Annotation protocol/export validation and independent agreement diagnostics are CI-verified, but the public dataset proxy does not establish individual speaker consent. Explicitly consented natural conversations, annotator qualification, adjudication and deletion/redistribution evidence are still required."
     },
     {
       "id": "VP-0027",
