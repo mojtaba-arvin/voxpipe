@@ -22,7 +22,7 @@ class DiarizationAdapterInputValidationTests(unittest.TestCase):
 
     def test_direct_adapter_reuses_request_validation_for_samples_and_regions(self):
         adapter = ECAPADiarizationAdapter(
-            embedder=lambda samples, sample_rate: [1.0, 0.0],
+            embedder=FakeEmbedder(),
             window_ms=1000, similarity_threshold=0.8,
         )
         invalid = (
