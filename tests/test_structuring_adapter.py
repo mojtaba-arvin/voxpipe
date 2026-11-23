@@ -181,7 +181,7 @@ class AdapterTests(unittest.TestCase):
         self.assertIn('predicate: «امضا کرد»', SYSTEM_PROMPT)
         self.assertIn("The document object is not automatically a topic", SYSTEM_PROMPT)
         self.assertIn("«گزارش فروش» is a document entity", SYSTEM_PROMPT)
-        self.assertIn("«قرارداد همکاری» is a topic", SYSTEM_PROMPT)
+        self.assertIn("the only topic is «قرارداد همکاری»", SYSTEM_PROMPT)
         self.assertIn("Topic values must contain only the required", SYSTEM_PROMPT)
         self.assertIn("Never emit people, organizations, locations", SYSTEM_PROMPT)
         self.assertIn("Never create a generic", SYSTEM_PROMPT)
