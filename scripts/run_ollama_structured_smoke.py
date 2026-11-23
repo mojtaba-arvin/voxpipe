@@ -72,7 +72,7 @@ def candidate_schema_constraints(candidates):
     event_names = []
     entity_types = set()
     topic_names = []
-    relation_required = False
+    relation_triples = []
     max_action_items = 0
     required_action_item_fields = set()
     action_item_description_pattern = None
@@ -123,7 +123,16 @@ def candidate_schema_constraints(candidates):
                         event_names.append(event_name)
                     if subject not in topic_names:
                         topic_names.append(subject)
-                relation_required = True
+                relation = re.search(
+                    r"(?P<subject>[\u0600-\u06FF\s]+?)\s+با\s+[\u0600-\u06FF\s]+?\s+(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\s+.+?)\s+امضا\s+کرد(?:ه|ند)?",
+                    quote,
+                )
+                if relation:
+                    relation_triples.append({
+                        "subject": relation.group("subject").strip(),
+                        "predicate": "امضا کرد",
+                        "object": relation.group("object").strip(),
+                    })
 
         if re.search(r"شرکت|سازمان|مؤسسه|موسسه", quote):
             entity_types.add("organization")
@@ -136,7 +145,16 @@ def candidate_schema_constraints(candidates):
 
         if action_cue.search(quote):
             max_action_items = 32
-            relation_required = True
+            action_relation = re.search(
+                r"(?P<subject>[\u0600-\u06FF]+)\s+باید\s+(?P<object>.+?)\s+را(?:\s+تا\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\s+هفته|پایان\s+هفته))?\s+(?P<verb>ارسال|ارائه|تهیه|تکمیل|بررسی|پرداخت|ثبت|تحویل)\s+کند",
+                quote,
+            )
+            if action_relation:
+                relation_triples.append({
+                    "subject": action_relation.group("subject").strip(),
+                    "predicate": "باید " + action_relation.group("verb") + " کند",
+                    "object": action_relation.group("object").strip(),
+                })
             if re.search(r"[\u0600-\u06FF]+\s+باید\s+", quote):
                 required_action_item_fields.add("assignee")
             deadline = deadline_cue.search(quote)
@@ -161,8 +179,9 @@ def candidate_schema_constraints(candidates):
         "max_topics": len(topic_names),
         "required_topics": 1 if topic_names else 0,
         "allowed_topic_names": tuple(topic_names),
-        "max_relations": 1 if relation_required else 0,
-        "required_relations": 1 if relation_required else 0,
+        "max_relations": len(relation_triples),
+        "required_relations": len(relation_triples),
+        "allowed_relation_triples": tuple(relation_triples),
         "max_action_items": max_action_items,
         "required_action_item_fields": tuple(
             field for field in ("assignee", "due_date")
@@ -185,6 +204,7 @@ def ollama_output_schema(
     action_item_description_pattern=None,
     allow_action_item_status=False,
     allowed_event_names=(),
+    allowed_relation_triples=(),
     max_topics=32,
     required_topics=0,
     allowed_topic_names=(),
@@ -201,6 +221,17 @@ def ollama_output_schema(
         event_name_schema["enum"] = list(allowed_event_names)
     elif tuple(allowed_event_types) == ("contract-signing",):
         event_name_schema["pattern"] = "^امضای .+"
+    if allowed_relation_triples:
+        relation_properties = {
+            "subject": {"type": "string", "minLength": 1},
+            "predicate": {"type": "string", "minLength": 1},
+            "object": {"type": "string", "minLength": 1},
+        }
+        for field in ("subject", "predicate", "object"):
+            relation_properties[field]["enum"] = list(dict.fromkeys(
+                relation[field] for relation in allowed_relation_triples
+            ))
+
     value_schemas={
         "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
             "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":list(allowed_entity_types)},
@@ -213,7 +244,7 @@ def ollama_output_schema(
             "properties":{"name":{"type":"string","minLength":1, **({"enum":list(allowed_topic_names)} if allowed_topic_names else {})},"description":{"type":"string"},
                 "keywords":{"type":"array","items":{"type":"string"}}}},
         "relations":{"type":"object","additionalProperties":False,"required":["subject","predicate","object"],
-            "properties":{"subject":{"type":"string","minLength":1},"predicate":{"type":"string","minLength":1},
+            "properties":relation_properties if allowed_relation_triples else {"subject":{"type":"string","minLength":1},"predicate":{"type":"string","minLength":1},
                 "object":{"type":"string","minLength":1}}},
         "action_items":{"type":"object","additionalProperties":False,
             "required":["description",*required_action_item_fields],
