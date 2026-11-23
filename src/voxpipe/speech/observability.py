@@ -105,3 +105,55 @@ class SpeechToTextService:
             max(0, round((self._clock() - started) * 1000)),
         ))
         return result
+
+
+class OpenTelemetrySpeechObserver:
+    """Bridge lifecycle events to injected OpenTelemetry meter and tracer.
+
+    The observer accepts API objects instead of configuring global providers;
+    applications retain control over exporters, sampling, resource attributes
+    and shutdown. Metric attributes are deliberately bounded and content-free.
+    """
+
+    def __init__(self, *, meter, tracer) -> None:
+        self._counter = meter.create_counter(
+            "voxpipe.stt.operations", unit="{operation}",
+            description="Speech-to-text operation lifecycle events",
+        )
+        self._duration = meter.create_histogram(
+            "voxpipe.stt.duration", unit="ms",
+            description="Speech-to-text operation duration",
+        )
+        self._tracer = tracer
+        self._spans = {}
+        import threading
+        self._lock = threading.Lock()
+
+    def record(self, event: SpeechOperationEvent) -> None:
+        attributes = {"provider": event.provider, "outcome": event.event}
+        if event.error_code is not None:
+            attributes["error_code"] = event.error_code
+        if event.retryable is not None:
+            attributes["retryable"] = event.retryable
+        self._counter.add(1, attributes)
+        if event.event == "started":
+            span = self._tracer.start_span(
+                "voxpipe.stt.transcribe",
+                attributes={"stt.provider": event.provider},
+            )
+            with self._lock:
+                self._spans[event.operation_id] = span
+            return
+        if event.duration_ms is not None:
+            self._duration.record(event.duration_ms, attributes)
+        with self._lock:
+            span = self._spans.pop(event.operation_id, None)
+        if span is not None:
+            span.set_attribute("stt.outcome", event.event)
+            if event.error_code is not None:
+                span.set_attribute("stt.error_code", event.error_code)
+            if event.retryable is not None:
+                span.set_attribute("stt.retryable", event.retryable)
+            if event.event == "failed":
+                span.set_attribute("error", True)
+            span.end()
