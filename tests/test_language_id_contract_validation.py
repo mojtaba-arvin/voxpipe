@@ -74,6 +74,50 @@ class LanguageIdContractTests(unittest.TestCase):
         self.assertFalse(result["feasible"])
         self.assertIsNone(result["threshold"])
 
+    def test_supported_language_inventory_abstains_on_out_of_inventory_top_label(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.9, 0.1], ("yi", "fa")),
+            supported_languages=frozenset({"fa", "en", "de"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "und")
+        self.assertEqual(prediction.raw_language, "yi")
+        self.assertEqual(prediction.abstention_reason, "out_of_inventory")
+
+    def test_supported_language_inventory_preserves_in_inventory_label(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.9, 0.1], ("fa", "en")),
+            supported_languages=frozenset({"fa", "en", "de"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "fa")
+        self.assertEqual(prediction.raw_language, "fa")
+        self.assertIsNone(prediction.abstention_reason)
+
+    def test_supported_language_inventory_must_be_explicit_frozenset(self):
+        for inventory in (["fa", "en"], frozenset(), frozenset({"fa", 1})):
+            with self.subTest(inventory=inventory):
+                with self.assertRaises(ValueError):
+                    SpeechBrainLanguageIdentifier(
+                        model=FakeClassifier([0.8, 0.2]), supported_languages=inventory
+                    )
+
+    def test_calibrator_treats_out_of_inventory_predictions_as_pre_abstained(self):
+        references = ["fa", "fa", "de", "de"]
+        predictions = [
+            LanguagePrediction("fa", 0.99, raw_language="fa"),
+            LanguagePrediction("und", 0.98, raw_language="yi", abstention_reason="out_of_inventory"),
+            LanguagePrediction("de", 0.80, raw_language="de"),
+            LanguagePrediction("und", 0.95, raw_language="ro", abstention_reason="out_of_inventory"),
+        ]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.95, min_coverage=0.50
+        )
+        self.assertTrue(result["feasible"])
+        self.assertEqual(result["threshold"], 0.80)
+        self.assertEqual(result["coverage"], 0.50)
+        self.assertEqual(result["selective_accuracy"], 1.0)
+
     def test_identifier_rejects_boolean_probabilities_and_non_sequence_labels(self):
         for scores, labels in (([True, 0.2], ("fa", "en")), ([0.8, 0.2], "fa"), ([0.8, 0.2], (None, "en"))):
             identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier(scores, labels))
