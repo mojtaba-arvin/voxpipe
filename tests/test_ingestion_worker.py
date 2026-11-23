@@ -159,6 +159,19 @@ class IngestionJobWorkerTests(unittest.TestCase):
         self.assertEqual(snapshot[self.tenant_id]["outcomes"]["completed"], 1)
         self.assertEqual(snapshot[self.tenant_id]["execution_count"], 1)
 
+
+    def test_aggregate_metrics_snapshot_contains_no_tenant_labels(self) -> None:
+        worker = self.worker(FakeQueue(), FakeService())
+        other_tenant = str(uuid4())
+        worker.metrics.record(self.tenant_id, "completed", 1.25)
+        worker.metrics.record(other_tenant, "dead", 0.75)
+        snapshot = worker.metrics.aggregate_snapshot()
+        self.assertEqual(snapshot["outcomes"], {"completed": 1, "dead": 1})
+        self.assertEqual(snapshot["execution_count"], 2)
+        self.assertEqual(snapshot["processing_duration_seconds_total"], 2.0)
+        self.assertNotIn(self.tenant_id, str(snapshot))
+        self.assertNotIn(other_tenant, str(snapshot))
+
     def test_supervisor_retries_database_failure_instead_of_exiting(self) -> None:
         worker = self.worker(FailingClaimQueue(), FakeService())
         stop = StopAfterWait()
