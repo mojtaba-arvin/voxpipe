@@ -45,7 +45,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [ ] Evaluate and implement VAD independently (VP-0023; WebRTC/Silero compared on 60 FLEURS utterances, but labels are utterance-envelope proxies rather than frame-level ground truth).
 - [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024; controlled six-clip synthetic Neyshekar split is reproducible, but natural overlapping conversation and explicit consent evidence remain missing).
 - [ ] Implement language identification with calibrated abstention (VP-0025; 60-sample Persian/English/German FLEURS run completed at 95% accuracy, but no code-switch set and no calibrated abstention threshold).
-- [ ] Establish consent/provenance-managed corpus governance (VP-0026).
+- [ ] Establish consent/provenance-managed corpus governance (VP-0026; manifest validation and independent annotation agreement/disagreement diagnostics are implemented; qualified annotators, consented natural recordings and third-party adjudication remain).
 - [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
 - [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
 
