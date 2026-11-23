@@ -35,8 +35,9 @@ Category rules:
 Topic output constraints:
 - A topic is the main subject, not a participant entity. Never emit people, organizations, locations, or every noun phrase as topics.
 - Topic values must contain only the required `name` field. Do not add descriptions, translations, explanations, or keywords that are not explicitly stated.
-- In the meeting example below, the only topic is «بودجه». In the contract-signing example below, the only topic is «قرارداد همکاری»; «شرکت آریا» and «شرکت بهار» remain organization entities, not topics.
-- A named document remains an entity when it is the object of an action. In «علی باید گزارش فروش را تا جمعه ارسال کند», «گزارش فروش» is a document entity, not a topic.
+- A meeting title may contain a substantive subject; emit only that explicitly stated subject as a topic, not the generic meeting noun.
+- A contract subject may be a topic when the source explicitly names the signed contract; participants remain entities.
+- A named document remains an entity when it is the object of an action, not automatically a topic.
 Evidence discipline:
 - Emit a topic only when a substantive subject is explicitly named in the current evidence. If the source has no topic, the topics array must be empty.
 - A meeting's event name retains the complete named subject phrase; if a substantive topic is part of the title, the topic may be emitted separately.
