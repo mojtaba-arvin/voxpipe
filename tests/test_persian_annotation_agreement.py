@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from compare_persian_annotations import AnnotationError, compare, read_rows
+from compare_persian_annotations import AnnotationError, compare, find_disagreements, read_rows, write_disagreements
 
 
 def row(*, sample_id="sample-1", text="علی گزارش فروش را ارسال کرد.", entities=None, topics=None):
@@ -81,6 +81,47 @@ class AnnotationAgreementTests(unittest.TestCase):
         self.assertEqual(report["micro"]["matched"], 1)
         self.assertEqual(report["evidence"]["exact_evidence_matches"], 0)
         self.assertEqual(report["evidence"]["exact_evidence_match_rate"], 0.0)
+
+    def test_disagreement_queue_contains_claim_and_evidence_differences_only(self):
+        text = "علی و مریم گزارش فروش را بررسی کردند."
+        value = {"name": "گزارش فروش", "entity_type": "document"}
+        left = {
+            "sample-1": row(
+                text=text,
+                entities=[claim(value, "گزارش فروش", text)],
+                topics=[claim({"name": "گزارش فروش"}, "گزارش فروش", text)],
+            )
+        }
+        right = {
+            "sample-1": row(
+                text=text,
+                entities=[claim(value, "مریم", text)],
+            )
+        }
+        queue = find_disagreements(left, right)
+        self.assertEqual(len(queue), 2)
+        self.assertEqual(queue[0]["disagreement_type"], "evidence_mismatch")
+        self.assertEqual(queue[1]["disagreement_type"], "annotator_a_only")
+        self.assertNotIn("transcript_segments", queue[0])
+        self.assertEqual(queue[0]["annotator_a"]["evidence"][0]["quote"], "گزارش فروش")
+        self.assertEqual(queue[0]["annotator_b"]["evidence"][0]["quote"], "مریم")
+
+    def test_disagreement_queue_write_is_atomic_and_never_overwrites_inputs(self):
+        text = "علی گزارش فروش را ارسال کرد."
+        left = {"sample-1": row(text=text, topics=[claim({"name": "گزارش فروش"}, "گزارش فروش", text)])}
+        right = {"sample-1": row(text=text)}
+        queue = find_disagreements(left, right)
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "adjudication" / "queue.jsonl"
+            write_disagreements(output, queue)
+            rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["disagreement_type"], "annotator_a_only")
+            source = Path(tmp) / "annotator-a.jsonl"
+            source.write_text("do not overwrite", encoding="utf-8")
+            with self.assertRaisesRegex(AnnotationError, "must not overwrite"):
+                write_disagreements(source, queue, input_paths=(source,))
+            self.assertEqual(source.read_text(encoding="utf-8"), "do not overwrite")
 
     def test_rejects_different_sample_coverage(self):
         with self.assertRaisesRegex(AnnotationError, "sample coverage differs"):
