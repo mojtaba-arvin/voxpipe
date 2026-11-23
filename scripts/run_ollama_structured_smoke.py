@@ -79,41 +79,41 @@ def candidate_schema_constraints(candidates):
     allow_action_item_status = False
 
     event_cue = re.compile(
-        r"برگزار\\s+(?:می‌شود|خواهد\\s+شد)|تشکیل\\s+می‌شود|امضا\\s+کرد(?:ه|ند)?"
+        r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود|امضا\s+کرد(?:ه|ند)?"
     )
-    action_cue = re.compile(r"\\s+باید\\s+|موظف\\s+است|لازم\\s+است|درخواست\\s+کرد")
+    action_cue = re.compile(r"\s+باید\s+|موظف\s+است|لازم\s+است|درخواست\s+کرد")
     deadline_cue = re.compile(
-        r"تا\\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\\s+هفته|پایان\\s+هفته|[۰-۹0-9]{1,2}[/-][۰-۹0-9]{1,2})"
+        r"تا\s+(?:امروز|فردا|پس‌فردا|شنبه|یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|آخر\s+هفته|پایان\s+هفته|[۰-۹0-9]{1,2}[/-][۰-۹0-9]{1,2})"
     )
     explicit_status_cue = re.compile(
-        r"انجام\\s+شد|تکمیل\\s+شد|در\\s+حال\\s+انجام|لغو\\s+شد|به\\s+تعویق\\s+افتاد"
+        r"انجام\s+شد|تکمیل\s+شد|در\s+حال\s+انجام|لغو\s+شد|به\s+تعویق\s+افتاد"
     )
 
     for candidate in candidates:
         quote = candidate["quote"]
         if event_cue.search(quote):
-            if re.search(r"برگزار\\s+(?:می‌شود|خواهد\\s+شد)|تشکیل\\s+می‌شود", quote):
+            if re.search(r"برگزار\s+(?:می‌شود|خواهد\s+شد)|تشکیل\s+می‌شود", quote):
                 if "meeting" not in event_types:
                     event_types.append("meeting")
                 # Strip a reporting frame before identifying the complete event
                 # title. The schema then requires the source-grounded full title.
-                event_text = re.sub(r"^.*?گفت\\s+", "", quote)
+                event_text = re.sub(r"^.*?گفت\s+", "", quote)
                 name_match = re.search(
-                    r"(.+?)(?=\\s+(?:فردا|امروز|پس‌فردا|دیروز|ساعت|در\\s+|برگزار|تشکیل))",
+                    r"(.+?)(?=\s+(?:فردا|امروز|پس‌فردا|دیروز|ساعت|در\s+|برگزار|تشکیل))",
                     event_text,
                 )
                 if name_match:
                     event_name = name_match.group(1).strip()
                     if event_name and event_name not in event_names:
                         event_names.append(event_name)
-                    topic = re.sub(r"^(?:جلسه|نشست|گردهمایی)\\s*", "", event_name).strip()
+                    topic = re.sub(r"^(?:جلسه|نشست|گردهمایی)\s*", "", event_name).strip()
                     if topic and topic not in topic_names:
                         topic_names.append(topic)
-            if re.search(r"امضا\\s+کرد(?:ه|ند)?", quote):
+            if re.search(r"امضا\s+کرد(?:ه|ند)?", quote):
                 if "contract-signing" not in event_types:
                     event_types.append("contract-signing")
                 signed = re.search(
-                    r"(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\\s+.+?)\\s+امضا\\s+کرد(?:ه|ند)?",
+                    r"(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\s+.+?)\s+امضا\s+کرد(?:ه|ند)?",
                     quote,
                 )
                 if signed:
@@ -127,17 +127,17 @@ def candidate_schema_constraints(candidates):
 
         if re.search(r"شرکت|سازمان|مؤسسه|موسسه", quote):
             entity_types.add("organization")
-        if re.search(r"(?:^|\\s)در\\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
+        if re.search(r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
             entity_types.add("location")
         if re.search(r"گزارش|نامه|فاکتور|سند|مدرک", quote):
             entity_types.add("document")
-        if re.search(r"[\\u0600-\\u06FF]+\\s+(?:باید|موظف\\s+است|مسئول\\s+است)", quote):
+        if re.search(r"[\u0600-\u06FF]+\s+(?:باید|موظف\s+است|مسئول\s+است)", quote):
             entity_types.add("person")
 
         if action_cue.search(quote):
             max_action_items = 32
             relation_required = True
-            if re.search(r"[\\u0600-\\u06FF]+\\s+باید\\s+", quote):
+            if re.search(r"[\u0600-\u06FF]+\s+باید\s+", quote):
                 required_action_item_fields.add("assignee")
             deadline = deadline_cue.search(quote)
             if deadline:
