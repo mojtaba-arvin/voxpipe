@@ -7,6 +7,11 @@ from voxpipe.speech.vad import (
 DIGEST = "a" * 64
 
 
+class FakeVAD:
+    def is_speech(self, frame, sample_rate):
+        return False
+
+
 class VADAdapterInputValidationTests(unittest.TestCase):
     def setUp(self):
         self.silero = SileroVADAdapter(
@@ -49,8 +54,8 @@ class VADAdapterInputValidationTests(unittest.TestCase):
         ):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(ValueError):
-                    WebRTCVADAdapter(vad=object(), **kwargs)
-        adapter = WebRTCVADAdapter(vad=object())
+                    WebRTCVADAdapter(vad=FakeVAD(), **kwargs)
+        adapter = WebRTCVADAdapter(vad=FakeVAD())
         with self.assertRaisesRegex(ValueError, "sample rate"):
             adapter.detect(b"\x00\x00" * 160, sample_rate=16000.0, audio_sha256=DIGEST)
 
