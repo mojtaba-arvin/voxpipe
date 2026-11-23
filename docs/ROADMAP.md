@@ -79,7 +79,9 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 ## Phase 6 — Autonomous Operations
 
-- [ ] Implement durable workflow orchestration (VP-0034).
+The first PostgreSQL-native workflow journal is a bounded sequential proof of concept that complements the ingestion queue; it is not yet the final orchestration-engine selection. See [durable workflow architecture](architecture/durable-workflows.md) and [ADR-0034](decisions/ADR-0034-postgres-native-workflows.md).
+
+- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS run/step journal, idempotent creation, bounded retries, lease fencing, cancellation, approval pause/resume and explicit handler worker are in a rebased implementation PR; exact-head CI, sustained load, supervision, restore rehearsal and DBOS/Temporal comparison remain).
 - Add bounded self-healing for known transient failures.
 - Detect regressions and open evidence-rich remediation tasks.
 - [ ] Add production alerting and SLOs (VP-0035).
