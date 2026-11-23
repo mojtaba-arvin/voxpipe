@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -795,7 +795,7 @@
       "evidence": [
         "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels."
       ],
-      "blocked_reason": "Tenant-safe worker aggregates are implemented. End-to-end SLO instrumentation for upload latency, queue age, processing success, transcription latency and deletion completion, plus alert export/dashboard validation, still requires a configured metrics backend and production-like staging workload."
+      "blocked_reason": "Tenant-safe metrics and SLO contracts/runbooks are implemented in an open PR. Production exporters/traces, actionable alert rules, dashboards, synthetic checks and staging-workload verification are not yet deployed or demonstrated."
     },
     {
       "id": "VP-0036",
