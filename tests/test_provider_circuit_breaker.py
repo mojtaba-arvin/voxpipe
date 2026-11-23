@@ -82,6 +82,14 @@ class ProviderCircuitBreakerTests(unittest.TestCase):
         self.assertNotIn("request", repr(snapshot))
         self.assertNotIn("transcript", repr(snapshot))
 
+    def test_circuit_permit_rejects_malformed_provider_and_probe_token(self):
+        with self.assertRaises(ValueError):
+            CircuitPermit("")
+        with self.assertRaises(ValueError):
+            CircuitPermit("provider-a", "")
+        with self.assertRaises(ValueError):
+            CircuitPermit("provider-a", "x" * 257)
+
     def test_rejects_invalid_configuration_provider_and_clock(self):
         for kwargs in (
             {"failure_threshold": True},
