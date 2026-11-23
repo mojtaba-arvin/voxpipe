@@ -17,6 +17,7 @@ from voxpipe.speech.contracts import (
 from voxpipe.speech.faster_whisper import FasterWhisperAdapter
 from voxpipe.speech.observability import (
     NoopSpeechObserver,
+    OpenTelemetrySpeechObserver,
     SpeechObserver,
     SpeechOperationEvent,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "CircuitPermit",
     "FasterWhisperAdapter",
     "NoopSpeechObserver",
+    "OpenTelemetrySpeechObserver",
     "ProviderCapability",
     "ProviderCapabilityRegistry",
     "ProviderCircuitBreaker",
