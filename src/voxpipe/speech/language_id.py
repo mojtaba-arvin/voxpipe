@@ -90,6 +90,8 @@ class SpeechBrainLanguageIdentifier:
                 if isinstance(labels, (str, bytes)):
                     raise ValueError("labels must be a sequence of language labels")
                 labels = list(labels)
+                if any(not isinstance(label, str) or not label.strip() for label in labels):
+                    raise ValueError("labels must contain non-empty strings")
             except (TypeError, ValueError, OverflowError):
                 raise ValueError("language model returned malformed probability or label arrays") from None
         else:
