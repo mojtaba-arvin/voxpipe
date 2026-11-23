@@ -799,7 +799,7 @@
       "title": "Implement durable workflow orchestration",
       "phase": 6,
       "priority": 34,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Run ingestion, transcription, enrichment and indexing as versioned durable workflows.",
@@ -807,8 +807,11 @@
         "Prove restart recovery and duplicate-delivery safety with failure injection.",
         "Select orchestration engine through an ADR and measured operational PoC."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-23: added PostgreSQL 16 tenant-RLS workflow run/step journal with ordered versioned steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, reference-only bounded payload validation and asset-deletion cascade. Added explicit WorkflowHandlerRegistry, cooperative fenced heartbeat and graceful worker loop; added repository and worker tests.",
+        "2026-11-23: added migration 0008, PostgreSQL test database grants and workflow table cleanup to the integration setup. Exact-head CI on the rebased branch is pending."
+      ],
+      "blocked_reason": "The PostgreSQL-native journal and sequential worker PoC are implemented; exact-head integration CI, sustained concurrency/load tests, process supervision, automatic heartbeat strategy, backup/restore rehearsal and measured comparison against DBOS/Temporal remain required before production selection."
     },
     {
       "id": "VP-0035",
