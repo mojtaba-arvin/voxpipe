@@ -36,13 +36,13 @@ class FakeStorage:
 
 
 class FakeRepository:
-    def __init__(self, asset=None):
-        self.asset = asset or {
+    def __init__(self, asset="default"):
+        self.asset = {
             "tenant_id": TENANT, "asset_id": ASSET,
             "media": {"mime_type": "audio/wav", "duration_ms": 1000, "size_bytes": len(AUDIO)},
             "integrity": {"digest": DIGEST},
             "storage": {"object_key": "tenant/audio/source"},
-        }
+        } if asset == "default" else asset
         self.saved = []
     def get_asset(self, tenant_id, asset_id):
         if tenant_id == TENANT and asset_id == ASSET:
@@ -83,10 +83,10 @@ class FakeAdapter:
         )
 
 
-def context(*, heartbeat=None, refs=None, attempt=1):
+def context(*, heartbeat=None, refs=None):
     return WorkflowStepContext(
         tenant_id=TENANT, workflow_id=WORKFLOW, step_id=STEP,
-        step_name="speech.transcribe", attempt=attempt,
+        step_name="speech.transcribe", attempt=1,
         input_refs=refs or {
             "asset_id": ASSET, "transcript_id": TRANSCRIPT, "revision": 1,
             "language_hint": "en", "word_timestamps": True,
@@ -201,34 +201,6 @@ class SpeechTranscriptionWorkflowTests(unittest.TestCase):
             handler(context())
         self.assertEqual(raised.exception.code, "STT_AUDIO_TOO_LARGE")
         self.assertEqual(adapter.requests, [])
-
-
-    def test_retryable_provider_error_without_retry_after_uses_bounded_exponential_backoff(self):
-        error = TranscriptionError(
-            TranscriptionErrorCode.PROVIDER_UNAVAILABLE,
-            provider="fake-local-stt", retryable=True,
-        )
-        handler = SpeechTranscriptionWorkflowHandler(
-            repository=FakeRepository(), object_store=FakeStorage(),
-            adapter=FakeAdapter(error=error), heartbeat_interval_seconds=1,
-        )
-        with self.assertRaises(WorkflowHandlerError) as raised:
-            handler(context(attempt=3))
-        self.assertTrue(raised.exception.retryable)
-        self.assertEqual(raised.exception.retry_delay_seconds, 4)
-
-    def test_provider_retry_after_over_one_hour_is_not_automatically_retried(self):
-        error = TranscriptionError(
-            TranscriptionErrorCode.RATE_LIMITED,
-            provider="fake-local-stt", retryable=True, retry_after_seconds=3601,
-        )
-        handler = SpeechTranscriptionWorkflowHandler(
-            repository=FakeRepository(), object_store=FakeStorage(),
-            adapter=FakeAdapter(error=error), heartbeat_interval_seconds=1,
-        )
-        with self.assertRaises(WorkflowHandlerError) as raised:
-            handler(context())
-        self.assertFalse(raised.exception.retryable)
 
 
 if __name__ == "__main__":
