@@ -42,3 +42,8 @@ Hosted providers require explicit operator allowlisting, data-egress and retenti
 `SpeechToTextService` emits content-free started/succeeded/failed lifecycle events through an optional observer. Telemetry excludes audio, transcript text, asset/tenant identifiers, credentials, local paths and raw provider payloads. Observer failures cannot fail transcription.
 
 See [STT provider reliability](stt-provider-reliability.md) and [ADR-0023](../decisions/ADR-0023-stt-provider-reliability.md) for the full reliability, privacy, failover and observability contract.
+
+
+## Diarization adapter contract
+
+`DiarizationRequest` standardizes normalized mono 16 kHz samples, the source-audio SHA-256 and ordered VAD speech regions. The ECAPA adapter exposes `DiarizationPort.diarize_request`; direct calls reuse the same request validation. Embedding outputs must be finite, non-zero, normalized and dimension-consistent across windows. The evaluator validates duration and turn bounds. Speaker labels are anonymous and scoped to one asset. Results explicitly declare overlap support; the current ECAPA sliding-window baseline reports `overlap_supported=false` and rejects overlapping turns. The controlled Neyshekar read-speech benchmark is not natural multi-speaker conversation. Production DER/JER acceptance requires consented natural conversations with overlap annotations.
