@@ -550,9 +550,10 @@
         "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL.",
         "2026-11-23 latest exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL after VAD contract and ledger updates.",
         "2026-11-23: Additional A2 hardening validates Silero threshold/duration types, requires integer sample boundaries from provider timestamps, validates the injected WebRTC detector interface and digest, and rejects unsorted/overlapping regions in the evaluator. Added VADResult/adapter/evaluator negative-path tests; exact-head CI is pending.",
-        "2026-11-23: Validate run 45144625018 found an existing WebRTC config test injecting `object()` solely to bypass the optional dependency; after enforcing the detector protocol, the test now injects a valid fake `is_speech` implementation while still asserting invalid aggressiveness/frame settings. The dedicated negative test continues to verify malformed detector rejection. No production guard was removed."
+        "2026-11-23: Validate run 45144625018 found an existing WebRTC config test injecting `object()` solely to bypass the optional dependency; after enforcing the detector protocol, the test now injects a valid fake `is_speech` implementation while still asserting invalid aggressiveness/frame settings. The dedicated negative test continues to verify malformed detector rejection. No production guard was removed.",
+        "2026-11-23: Corrected exact-head A2 validation run 45144893187 passed Python/PostgreSQL and Go/PostgreSQL with strict Silero/WebRTC configuration, integer timestamp, VADResult ordering and evaluator overlap checks."
       ],
-      "blocked_reason": "Provider contracts, adapters and evaluator invariants are hardened, but current evaluation still relies on FLEURS utterance-envelope proxies. Frame-labelled Persian speech/non-speech data, consent, annotation protocol and held-out frame-level metrics are still required."
+      "blocked_reason": "Provider contracts, adapters and evaluator invariants are hardened and CI-verified, but current evaluation still relies on FLEURS utterance-envelope proxies. Frame-labelled Persian speech/non-speech data, consent, annotation protocol and held-out frame-level metrics are still required."
     },
     {
       "id": "VP-0024",
