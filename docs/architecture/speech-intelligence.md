@@ -28,6 +28,6 @@ Adapters return the canonical `Transcript` or raise `TranscriptionError` with a 
 
 ## Diarization adapter contract
 
-`DiarizationRequest` standardizes normalized mono 16 kHz samples, the source-audio SHA-256 and ordered VAD speech regions. The ECAPA adapter exposes `DiarizationPort.diarize_request`; speaker labels are anonymous and scoped to the asset. `SpeakerTurn` validates positive time spans and bounded confidence, and result objects declare whether overlap is supported.
+`DiarizationRequest` standardizes normalized mono 16 kHz samples, the source-audio SHA-256 and ordered VAD speech regions. The ECAPA adapter exposes `DiarizationPort.diarize_request`; its direct method now reuses the same request validation instead of bypassing sample, timing, and provenance checks. Embedding outputs must be finite, non-zero, normalized and dimension-consistent across windows. The evaluator validates duration and turn bounds. Speaker labels are anonymous and scoped to the asset. `SpeakerTurn` validates positive time spans and bounded confidence, and result objects declare whether overlap is supported.
 
 The current ECAPA sliding-window baseline explicitly reports `overlap_supported=false`; it must not be represented as overlap-aware diarization. The current Neyshekar experiment is a controlled concatenation of read speech, not naturally recorded multi-speaker conversation. Production DER/JER acceptance still requires a consented natural-conversation corpus with speaker-turn and overlap annotations.
