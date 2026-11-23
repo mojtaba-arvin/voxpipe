@@ -7,6 +7,7 @@ on:
       - "scripts/run_fleurs_lid_benchmark.py"
       - "src/voxpipe/speech/language_id.py"
       - "tests/test_fleurs_lid_benchmark.py"
+      - "requirements-lid-benchmark.txt"
       - ".github/workflows/fleurs-lid-calibration.yml"
   workflow_dispatch:
 
@@ -43,7 +44,9 @@ jobs:
       - name: Install local benchmark dependencies
         run: |
           python -m pip install --disable-pip-version-check -r requirements-speech.txt
-          python -m pip install --disable-pip-version-check "numpy>=1.26,<3" "soundfile>=0.12,<1" "datasets>=3,<5" "huggingface_hub>=0.26,<2"
+          python -m pip install --disable-pip-version-check -r requirements-lid-benchmark.txt
+          mkdir -p benchmark-results/fleurs-lid
+          python -m pip freeze > benchmark-results/fleurs-lid/pip-freeze.txt
       - name: Run strict 95% validation calibration and disjoint test evaluation
         run: |
           python scripts/run_fleurs_lid_benchmark.py \
