@@ -5,6 +5,7 @@ source references and must make external side effects idempotent.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from threading import Event
@@ -147,9 +148,16 @@ class PostgresWorkflowWorker:
             )
             return {"outcome": "failed", "workflow": state}
 
-        state = self._repository.complete_step(
-            tenant_id, context.workflow_id, context.step_id, self.worker_id, result_refs,
-        )
+        try:
+            state = self._repository.complete_step(
+                tenant_id, context.workflow_id, context.step_id, self.worker_id, result_refs,
+            )
+        except (TypeError, ValueError):
+            state = self._repository.fail_step(
+                tenant_id, context.workflow_id, context.step_id, self.worker_id,
+                "WORKFLOW_HANDLER_INVALID_RESULT", retryable=False,
+            )
+            return {"outcome": "failed", "workflow": state}
         return {"outcome": "completed", "workflow": state}
 
     def run_forever(self, tenant_id: str, stop_event: Event, *, poll_interval_seconds: float = 1.0) -> None:
@@ -157,7 +165,7 @@ class PostgresWorkflowWorker:
         if not hasattr(stop_event, "is_set") or not hasattr(stop_event, "wait"):
             raise TypeError("stop_event must provide is_set() and wait()")
         if (not isinstance(poll_interval_seconds, (int, float)) or isinstance(poll_interval_seconds, bool)
-                or poll_interval_seconds <= 0 or poll_interval_seconds > 60):
+                or not math.isfinite(poll_interval_seconds) or poll_interval_seconds <= 0 or poll_interval_seconds > 60):
             raise ValueError("poll_interval_seconds must be between 0 and 60")
         while not stop_event.is_set():
             outcome = self.run_once(tenant_id)
