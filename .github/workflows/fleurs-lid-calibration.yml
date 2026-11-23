@@ -44,7 +44,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r requirements-speech.txt
           python -m pip install --disable-pip-version-check "numpy>=1.26,<3" "soundfile>=0.12,<1" "datasets>=3,<5" "huggingface_hub>=0.26,<2"
-      - name: Run validation-only calibration and disjoint test evaluation
+      - name: Run strict 95% validation calibration and disjoint test evaluation
         run: |
           python scripts/run_fleurs_lid_benchmark.py \
             --calibration-samples 20 \
