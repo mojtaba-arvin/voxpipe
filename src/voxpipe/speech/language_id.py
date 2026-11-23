@@ -14,6 +14,22 @@ class LanguagePrediction:
     provider: str = "speechbrain-voxlingua107"
     model_version: str = "unknown"
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.language, str) or not self.language.strip():
+            raise ValueError("language must be a non-empty label")
+        if (not isinstance(self.confidence, (int, float)) or isinstance(self.confidence, bool)
+                or not math.isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0):
+            raise ValueError("language confidence must be finite and between 0 and 1")
+        if not isinstance(self.start_ms, int) or isinstance(self.start_ms, bool) or self.start_ms < 0:
+            raise ValueError("start_ms must be a non-negative integer")
+        if self.end_ms is not None and (
+            not isinstance(self.end_ms, int) or isinstance(self.end_ms, bool) or self.end_ms <= self.start_ms
+        ):
+            raise ValueError("end_ms must be an integer greater than start_ms")
+        for name, value in (("provider", self.provider), ("model_version", self.model_version)):
+            if not isinstance(value, str) or not value.strip() or len(value) > 128:
+                raise ValueError(f"{name} must be a non-empty bounded string")
+
 class SpeechBrainLanguageIdentifier:
     """SpeechBrain VoxLingua107 adapter; model weights must already exist locally."""
     provider_name="speechbrain-voxlingua107"
@@ -46,9 +62,19 @@ class SpeechBrainLanguageIdentifier:
 
     def identify(self, samples, *, sample_rate: int, start_ms: int=0) -> LanguagePrediction:
         if sample_rate!=16000: raise ValueError("language identification requires mono 16 kHz audio")
-        values=[float(x) for x in samples]
-        if len(values)<16000 or any(not math.isfinite(x) for x in values):
-            raise ValueError("language identification requires at least one second of finite audio")
+        raw_values = list(samples)
+        if any(isinstance(x, bool) for x in raw_values):
+            raise ValueError("audio samples must be numeric normalized values")
+        try:
+            values = [float(x) for x in raw_values]
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("audio samples must be numeric normalized values") from None
+        if len(values) < 16000 or any(
+            not math.isfinite(x) or not -1.0 <= x <= 1.0 for x in values
+        ):
+            raise ValueError("language identification requires at least one second of finite normalized audio")
+        if not isinstance(start_ms, int) or isinstance(start_ms, bool) or start_ms < 0:
+            raise ValueError("start_ms must be a non-negative integer")
         if hasattr(self.model,"classify"):
             probabilities, labels=self.model.classify(values,sample_rate)
             probabilities=[float(x) for x in probabilities]
@@ -64,11 +90,15 @@ class SpeechBrainLanguageIdentifier:
             exponentials = [math.exp(value-peak) for value in logits]
             total = sum(exponentials)
             probabilities = [value/total for value in exponentials]
-        if not probabilities or len(probabilities)!=len(labels): raise ValueError("language model returned inconsistent scores")
+        if not probabilities or len(probabilities)!=len(labels):
+            raise ValueError("language model returned inconsistent scores")
+        if any(not math.isfinite(score) or not 0.0 <= score <= 1.0 for score in probabilities):
+            raise ValueError("language model returned invalid probability scores")
         index=max(range(len(probabilities)),key=probabilities.__getitem__)
         confidence=probabilities[index]
-        if not math.isfinite(confidence) or not 0<=confidence<=1: raise ValueError("invalid language confidence")
         label=self._label(labels[index])
+        if not label:
+            raise ValueError("language model returned an empty language label")
         return LanguagePrediction(label if confidence>=self.threshold else "und",confidence,start_ms,
                                    start_ms+round(len(values)*1000/sample_rate))
     def identify_windows(self,samples,*,sample_rate=16000,window_ms=4000,hop_ms=2000):
