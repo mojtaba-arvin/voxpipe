@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from threading import Event
 from typing import Any, Callable, Mapping
 
+from voxpipe.workflows.postgres import WorkflowLeaseLost
+
 
 class WorkflowHandlerError(RuntimeError):
     """A handler failure with an explicit retry policy and safe error code."""
@@ -133,6 +135,9 @@ class PostgresWorkflowWorker:
                 tenant_id, context.workflow_id, context.step_id, self.worker_id,
             )
             return {"outcome": "waiting_approval", "workflow": state}
+        except WorkflowLeaseLost:
+            # A stale worker must not attempt any further state transition.
+            raise
         except WorkflowHandlerError as exc:
             state = self._repository.fail_step(
                 tenant_id, context.workflow_id, context.step_id, self.worker_id, exc.code,
