@@ -137,6 +137,35 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
             self.repository.create_workflow(self.tenant, str(uuid4()), "unsafe", "1",
                 "unsafe", (WorkflowStepSpec(str(uuid4()), "bad", {"audio_bytes": "secret"}),))
 
+    def test_heartbeat_extends_only_a_current_unexpired_worker_lease(self):
+        self.create((self.step1,))
+        claimed = self.repository.claim_next_step(
+            self.tenant, self.workflow, self.worker, lease_seconds=3
+        )
+        renewed = self.repository.heartbeat_step(
+            self.tenant, self.workflow, self.step1.step_id, self.worker, lease_seconds=3
+        )
+        self.assertEqual(renewed["lease_owner"], self.worker)
+        self.assertGreater(renewed["lease_expires_at"], claimed["lease_expires_at"])
+        with self.repository._tenant_connection(self.tenant) as connection:
+            connection.execute(
+                "UPDATE workflow_steps SET lease_expires_at=now()-interval '1 second' "
+                "WHERE tenant_id=%s AND workflow_id=%s AND step_id=%s",
+                (self.tenant, self.workflow, self.step1.step_id),
+            )
+        with self.assertRaises(WorkflowLeaseLost):
+            self.repository.heartbeat_step(
+                self.tenant, self.workflow, self.step1.step_id, self.worker, lease_seconds=3
+            )
+        new_worker = str(uuid4())
+        self.repository.claim_next_step(
+            self.tenant, self.workflow, new_worker, lease_seconds=3
+        )
+        with self.assertRaises(WorkflowLeaseLost):
+            self.repository.heartbeat_step(
+                self.tenant, self.workflow, self.step1.step_id, self.worker, lease_seconds=3
+            )
+
     def test_expired_lease_is_reclaimed_and_old_worker_is_fenced(self):
         self.create((self.step1,))
         old = self.repository.claim_next_step(self.tenant, self.workflow, self.worker, lease_seconds=3)
