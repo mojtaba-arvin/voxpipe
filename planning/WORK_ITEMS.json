@@ -570,9 +570,10 @@
         "2026-11-23: Exact current PR head including direct ECAPA request validation, embedding-vector consistency and evaluator bounds passed repository CI run 45139242210 (Python/PostgreSQL and Go/PostgreSQL).",
         "2026-11-23: Current PR head after Work Ledger synchronization passed validation run 45139532081; Python/PostgreSQL and Go/PostgreSQL both succeeded.",
         "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL.",
-        "2026-11-23 latest exact-head CI run 45142258461 passed Python/PostgreSQL and Go/PostgreSQL after diarization overlap contract and ledger updates."
+        "2026-11-23 latest exact-head CI run 45142258461 passed Python/PostgreSQL and Go/PostgreSQL after diarization overlap contract and ledger updates.",
+        "2026-11-23: Additional B2 hardening validates the injected ECAPA embedder interface before use and adds request-level tests for ordered/non-overlapping VAD regions, normalized mono 16 kHz samples and deterministic local fake-embedder execution. Exact-head CI is pending."
       ],
-      "blocked_reason": "The anonymous ECAPA baseline and strict direct/request contracts are implemented, but natural conversational DER/JER, overlap-aware diarization, speaker-turn ground truth and explicit per-speaker consent evidence are still unavailable. The controlled read-speech corpus cannot satisfy production acceptance."
+      "blocked_reason": "Provider-neutral ECAPA request/result contracts, overlap declaration and embedder interface are hardened. Current evaluation remains synthetic/read-speech; consented natural conversation, overlap annotations, representative speaker diversity and held-out DER/JER are still required."
     },
     {
       "id": "VP-0025",
