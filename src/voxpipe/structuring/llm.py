@@ -170,7 +170,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v16", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v17", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
