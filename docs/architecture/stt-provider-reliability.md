@@ -104,3 +104,8 @@ Not yet production-accepted:
 - Production workload, load, timeout and failover testing.
 
 No hosted provider is enabled by default. No customer audio is transferred.
+
+
+## Durable workflow integration
+
+The speech transcription workflow passes a stable SHA-256 idempotency key in `TranscriptionRequest`. A vendor adapter forwards that key only if its API guarantees idempotent submission. The durable workflow retries only errors explicitly marked retryable; a timeout after an ambiguous non-idempotent vendor submission must be reconciled or stopped rather than billed twice. The local Faster-Whisper adapter ignores the key and remains fully offline.
