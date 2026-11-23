@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -752,7 +752,7 @@
       "title": "Implement policy-based adaptive model routing",
       "phase": 5,
       "priority": 33,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Route only among explicitly enabled models using measured quality, latency, availability and cost evidence.",
@@ -760,8 +760,10 @@
         "Record routing decision metadata without logging audio/transcript content.",
         "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/resilience.py — provider-scoped, thread-safe process-local circuit breaker with CLOSED/OPEN/HALF_OPEN states, single half-open probe and retryable-error classification; shared multi-process state and routing integration remain open."
+      ],
+      "blocked_reason": "The process-local breaker is a reliability primitive, not distributed availability. Shared state, policy-based routing integration and measured provider health evidence remain outstanding."
     },
     {
       "id": "VP-0034",
@@ -784,7 +786,7 @@
       "title": "Add production alerting and SLOs",
       "phase": 6,
       "priority": 35,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Define SLOs for upload acceptance, queue age, processing success, transcription latency and deletion completion.",
@@ -792,8 +794,11 @@
         "Add actionable alerts, runbooks and synthetic checks for critical paths.",
         "Test alert rules and verify dashboards against staging workload."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "src/voxpipe/speech/observability.py — content-free started/succeeded/failed lifecycle events, stable error codes and duration; observer failure isolation; tests/test_speech_resilience_observability.py.",
+        "docs/architecture/stt-provider-reliability.md and docs/decisions/ADR-0023-stt-provider-reliability.md — provider reliability, privacy-safe telemetry dimensions, hosted-provider gates, idempotency-aware retry policy and SLO measurement plan."
+      ],
+      "blocked_reason": "Lifecycle event contract is implemented, but OpenTelemetry exporter, production metrics/traces, dashboards, actionable alerts, synthetic checks and staging-workload SLO verification remain outstanding."
     },
     {
       "id": "VP-0036",
