@@ -6,6 +6,10 @@
 
 The default policy shape is local-only and zero-cost. Remote execution requires a separate policy with `require_local=false`, an explicit remote model allowlist, and a positive cost ceiling. Unknown costs fail closed when a ceiling is active.
 
+## Input validation
+
+Capability declarations require explicit immutable language/feature sets; discovery filters reject string-as-iterable and malformed feature/language values. Route requests require a typed policy, typed capability registry, and a validated set of open-circuit provider identifiers. Malformed control inputs fail before candidate selection rather than being interpreted as partial policy.
+
 ## Selection and fallback
 
 Eligible models are ordered deterministically by descending measured quality, ascending latency, ascending estimated cost, then provider/model/version. The decision contains one selected model and at most the configured number of fallback candidates. Open-circuit providers are excluded. This component does not itself execute requests, retry side effects, or maintain circuit-breaker state; the caller owns those runtime concerns and must record each attempt idempotently.
