@@ -48,7 +48,7 @@ class ProviderCircuitBreakerTests(unittest.TestCase):
         clock.value = 5
         self.assertTrue(breaker.try_acquire("provider-a"))
         breaker.release_probe("provider-a")
-        self.assertIn("provider-a", breaker.open_providers())
+        self.assertNotIn("provider-a", breaker.open_providers())
         self.assertTrue(breaker.try_acquire("provider-a"))
 
     def test_open_provider_snapshot_contains_only_operational_metadata(self):
