@@ -236,6 +236,8 @@ class SpeechTranscriptionWorkflowHandler:
                             idempotency_key=idempotency_key,
                         )
                         transcript = self._service.transcribe(request)
+            except WorkflowHandlerError:
+                raise
             except TranscriptionError as exc:
                 raise self._retry_failure(
                     context, exc.code, retryable=exc.retryable,
