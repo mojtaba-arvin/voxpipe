@@ -157,6 +157,7 @@ class SpeechTranscriptionWorkflowHandler:
         if (
             not isinstance(content_type, str) or not content_type.startswith("audio/")
             or not isinstance(duration_ms, int) or isinstance(duration_ms, bool) or duration_ms < 1
+            or not isinstance(media.get("size_bytes"), int) or isinstance(media.get("size_bytes"), bool) or media.get("size_bytes") < 1
             or not isinstance(audio_sha256, str) or len(audio_sha256) != 64
             or not isinstance(object_key, str) or not object_key
         ):
@@ -197,8 +198,9 @@ class SpeechTranscriptionWorkflowHandler:
                     transcript = self._service.transcribe(request)
             except TranscriptionError as exc:
                 raise WorkflowHandlerError(
-                    exc.code, retryable=exc.retryable,
-                    retry_delay_seconds=exc.retry_after_seconds or 0,
+                    exc.code,
+                    retryable=exc.retryable and (exc.retry_after_seconds is None or exc.retry_after_seconds <= 3600),
+                    retry_delay_seconds=exc.retry_after_seconds or 0 if exc.retry_after_seconds is None or exc.retry_after_seconds <= 3600 else 0,
                 ) from None
             except TranscriptValidationError:
                 raise WorkflowHandlerError("STT_RESPONSE_INVALID", retryable=False) from None
