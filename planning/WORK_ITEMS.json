@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -586,7 +586,8 @@
         "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
         "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
         "2026-11-22: language-ID evaluation now reports coverage, selective accuracy and abstention rate; a validation-only threshold calibrator enforces minimum selective-accuracy and coverage floors and fails closed when infeasible. FLEURS benchmark runner uses a preselected 0.65 threshold and does not tune on its test split. Unit tests cover feasible/infeasible calibration and invalid confidence.",
-        "CI triage: initial calibration test expected 0.80, but the 0.55 candidate correctly accepted three fully correct samples (0.75 coverage) while still satisfying 100% selective accuracy; corrected the assertion to match the documented maximum-coverage objective. No production code or acceptance threshold was weakened."
+        "CI triage: initial calibration test expected 0.80, but the 0.55 candidate correctly accepted three fully correct samples (0.75 coverage) while still satisfying 100% selective accuracy; corrected the assertion to match the documented maximum-coverage objective. No production code or acceptance threshold was weakened.",
+        "2026-11-23: C1 validates LanguagePrediction confidence/timing/provider metadata, normalized finite audio samples, complete probability vectors and predicted labels; added tests/test_language_id_contract_validation.py. Exact-head CI run 45105854358 passed Python/PostgreSQL and Go/PostgreSQL. This does not replace disjoint human-labelled calibration and code-switch evaluation."
       ],
       "blocked_reason": "A code-switched, noisy and out-of-inventory evaluation set is still unavailable. The 0.65 benchmark threshold is a fixed operating point, not a claim of dataset-calibrated optimality; calibrate it only on a disjoint labelled validation corpus and evaluate on a separate test corpus."
     },
