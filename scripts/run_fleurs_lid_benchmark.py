@@ -41,7 +41,7 @@ def load_split(split, max_samples, model, *, dataset_loader, audio_type, soundfi
             references.append(reference);predictions.append(prediction)
             rows.append({"sample_id":f"{config}:{row.get('id',len(rows))}",
                 "reference_language":reference,"predicted_language":prediction.language,
-                "raw_language":prediction.raw_language,"abstention_reason":prediction.abstention_reason,
+                "raw_language":getattr(prediction,"raw_language",None),"abstention_reason":getattr(prediction,"abstention_reason",None),
                 "confidence":prediction.confidence,"audio_sha256":hashlib.sha256(raw).hexdigest(),
                 "duration_ms":round(len(waveform)*1000/sample_rate),"dataset_config":config,
                 "dataset_split":split,"dataset_revision":REVISION,"model_id":MODEL_ID,
