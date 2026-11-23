@@ -150,7 +150,7 @@ def candidate_schema_constraints(candidates):
                 entity_candidates.append(candidate)
                 entity_types.add("location")
         document = re.search(
-            r"(?P<name>(?:گزارش|نامه|فاکتور|سند|مدرک)\s+[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)?)(?=\s+را|\s+تا|\s+(?:ارسال|ارائه|تهیه|تکمیل|بررسی|پرداخت|ثبت|تحویل))",
+            r"(?P<name>(?:گزارش|نامه|فاکتور|سند|مدرک)\s+[\u0600-\u06FF]+(?:\s+(?!را(?:\s|$))[\u0600-\u06FF]+)?)(?=\s+را|\s+تا|\s+(?:ارسال|ارائه|تهیه|تکمیل|بررسی|پرداخت|ثبت|تحویل))",
             quote,
         )
         if document:
