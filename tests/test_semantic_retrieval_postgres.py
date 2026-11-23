@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 
 from voxpipe.ingestion import apply_migrations
 from voxpipe.retrieval.hybrid import SearchCandidate
+from voxpipe.retrieval.local_embeddings import LocalSentenceTransformerEmbeddingAdapter
 from voxpipe.retrieval.ports import Embedding, RetrievalFilters
 from voxpipe.retrieval.postgres import PostgresSemanticSearchAdapter
 
@@ -78,6 +79,33 @@ class PgvectorIntegrationTests(unittest.TestCase):
         other_tenant = str(uuid4())
         self.assertEqual(self.adapter.search_similar(other_tenant, self.vector(.99, .01),
             filters=RetrievalFilters(other_tenant), limit=10), ())
+
+    def test_local_query_and_document_embeddings_round_trip_through_pgvector(self):
+        class FakeSentenceEncoder:
+            def get_sentence_embedding_dimension(self):
+                return 384
+
+            def encode(self, texts, **kwargs):
+                self_text = texts[0]
+                values = [0.0] * 384
+                values[0] = 1.0 if "جلسه بودجه" in self_text else 0.0
+                values[1] = 1.0 if "گزارش فروش" in self_text else 0.0
+                return [values]
+
+        embeddings = LocalSentenceTransformerEmbeddingAdapter(
+            "/preprovisioned/test-model", model=MODEL, model_version=MODEL_VERSION,
+            dimensions=384, query_prefix="query: ", document_prefix="passage: ",
+            encoder=FakeSentenceEncoder(),
+        )
+        document = embeddings.embed_document(self.text_a)
+        query = embeddings.embed_query("جلسه بودجه")
+        self.adapter.store_embedding(self.tenant, self.candidate_a, document)
+        results = self.adapter.search_similar(
+            self.tenant, query, filters=RetrievalFilters(self.tenant, language="fa-IR"), limit=10
+        )
+        self.assertEqual([item.segment_id for item in results], [self.segment_a])
+        self.assertEqual(document.model_version, MODEL_VERSION)
+        self.assertEqual(query.model_version, MODEL_VERSION)
 
     def test_store_rejects_stale_source_text_and_wrong_embedding_version(self):
         self.adapter.store_embedding(self.tenant, self.candidate_a, self.vector(1, 0))
