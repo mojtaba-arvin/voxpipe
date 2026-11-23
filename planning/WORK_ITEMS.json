@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -677,9 +677,10 @@
         "2026-11-22: Smoke #80 (run 45048493457, artifact 14764567007) completed on v11 parent code SHA 3a0e4fadce5806e7005c6c2cce468e517e5a6124 in 217.168s. All 4/4 samples schema/evidence-valid; 8 claims; exact Event F1=1.0; prompt-injection acceptance passed. However synthetic micro F1=0.5455 (precision 0.75, recall 0.4286); entity F1=0.6667, topics/relations/action_items F1=0.0. Raw outputs show false organization entity 'جلسه بودجه', missing location entity 'دفتر مرکزی', and action item description duplicating due date plus unsupported status=pending. These are synthetic diagnostic scores, not a human-reviewed benchmark. Smoke #81 (run 45048792112) tests event-field candidate scoping on current code SHA 751aa189e95f42c9437727ab6cc35cda49a30645 and remains pending.",
         "2026-11-22: Smoke #84 on exact SHA 0f62aee7724856424fec57e1c8417a57d5c3a0af validated 4/4 synthetic fixtures and 8/8 evidence claims; exact Event F1=1.0 and prompt-injection gate passed. Raw-output review showed action description duplicated its trailing deadline. Added conservative evidence-backed deadline/description field splitting and corrected the synthetic due_date gold to preserve the complete spoken phrase 'تا جمعه'. New Qwen local Smoke v13 is required to verify this exact change; topics/relations and human-reviewed Gold remain open.",
         "Smoke #85 / run 45065677218 passed on exact head 5ec519b3bc1d62a1dfffb18f73e01ad685383cc8: 4/4 synthetic fixtures validated, 8/8 claims evidence-valid, Event F1=1.0, Action Item F1 improved from 0 to 1.0 after evidence-backed deadline splitting, prompt-injection gate passed. Synthetic micro F1=0.7273; Topic and Relation F1 remain 0. The artifact summary mistakenly hard-coded prompt_version v12 although the adapter used v13; changed summary provenance to read adapter.prompt_version and require a fresh exact-head smoke.",
-        "2026-11-22: verified exact-head Smoke #86, run 45066249740, on SHA 46c5cda94d9cd9f2bc1e8a05385a1c4ac6377695. Artifact 14771981033 reports prompt_version structured-fa-v13, 4/4 fixtures validated, 8/8 claims evidence-valid, exact Event F1=1.0, Action Item F1=1.0 after deadline split, prompt-injection gate passed. Synthetic micro F1=0.7273; Topic and Relation F1 remain 0. Validate #510 / run 45066249765 passed Python and Go/PostgreSQL checks on the same SHA."
+        "2026-11-22: verified exact-head Smoke #86, run 45066249740, on SHA 46c5cda94d9cd9f2bc1e8a05385a1c4ac6377695. Artifact 14771981033 reports prompt_version structured-fa-v13, 4/4 fixtures validated, 8/8 claims evidence-valid, exact Event F1=1.0, Action Item F1=1.0 after deadline split, prompt-injection gate passed. Synthetic micro F1=0.7273; Topic and Relation F1 remain 0. Validate #510 / run 45066249765 passed Python and Go/PostgreSQL checks on the same SHA.",
+        "2026-11-23: exact-head validation run 45067109080 passed Python/PostgreSQL and Go/PostgreSQL jobs on PR head 2401731ad18ebc6e99af6ca55f97b3bafa85a590. Local-only Qwen smoke run 45067109156 completed successfully: 4/4 synthetic fixtures schema/evidence-valid, 8/8 claims evidence-valid, exact Event F1=1.0, Action Item F1=1.0, prompt-injection gate passed. Synthetic micro F1=0.7273; Topic and Relation F1 remain 0. These are diagnostic fixtures, not human-reviewed gold or production quality evidence."
       ],
-      "blocked_reason": "A versioned, human-reviewed Persian extraction gold set is still unavailable. v13 synthetic smoke confirms schema/evidence, event, action-item and injection gates, but topic/relation recovery remains zero and broad all-category quality is not established. No production precision/recall/F1 claim is permitted until independent human annotation and adjudication."
+      "blocked_reason": "A versioned, human-reviewed Persian extraction gold set is still unavailable. The v13 synthetic smoke confirms schema/evidence, event, action-item and injection gates, but topic/relation recovery remains zero and broad all-category quality is not established. No production precision/recall/F1 claim is permitted until independent human annotation and adjudication."
     },
     {
       "id": "VP-0029",
