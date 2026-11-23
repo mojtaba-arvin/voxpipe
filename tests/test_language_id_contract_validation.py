@@ -45,7 +45,7 @@ class LanguageIdContractTests(unittest.TestCase):
             identifier.identify([0.0] * 16000, sample_rate=16000)
 
     def test_identifier_rejects_boolean_probabilities_and_non_sequence_labels(self):
-        for scores, labels in (([True, 0.2], ("fa", "en")), ([0.8, 0.2], "fa")):
+        for scores, labels in (([True, 0.2], ("fa", "en")), ([0.8, 0.2], "fa"), ([0.8, 0.2], (None, "en"))):
             identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier(scores, labels))
             with self.subTest(scores=scores, labels=labels):
                 with self.assertRaisesRegex(ValueError, "malformed probability or label arrays"):
