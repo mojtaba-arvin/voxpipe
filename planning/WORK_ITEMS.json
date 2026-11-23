@@ -689,7 +689,7 @@
         "2026-11-23: Validate run 45142594789 caught a stale prompt-string assertion after v16 tightened the wording to «the only topic is …»; the test now asserts the actual v16 contract wording. All other 224 Python tests passed in that run; Go integration passed. No implementation behavior was changed.",
         "2026-11-23: Exact-head Validate run 45143051318 passed Python/PostgreSQL and Go/PostgreSQL after the v16 prompt assertion correction and synthetic Topic/Relation/Micro regression-gate tests."
       ],
-      "blocked_reason": "v14 remains the best verified synthetic baseline (micro F1=0.9167, Topic F1=0.6667, Relation F1=1.0). v15 regressed to micro F1=0.7692 and Topic F1=0 due to over-extraction; v16 adds strict topic schema/participant constraints and explicit synthetic category gates, with exact-head Qwen run pending. Human-reviewed Persian gold remains mandatory."
+      "blocked_reason": "v14 local Qwen synthetic smoke is the latest verified quality baseline (micro F1=0.9167, Topic F1=0.6667, Relation/Event/Action F1=1.0); v15 regressed, and v16 adds name-only Topic constraints plus regression gates with exact-head smoke pending. A human-reviewed, versioned Persian gold set and independent annotation/adjudication remain mandatory before production quality claims."
     },
     {
       "id": "VP-0029",
