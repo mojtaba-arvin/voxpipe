@@ -46,6 +46,18 @@ class SpeechRegion:
     end_ms: int
     confidence: float | None = None
 
+    def __post_init__(self) -> None:
+        if (not isinstance(self.start_ms, int) or isinstance(self.start_ms, bool)
+                or self.start_ms < 0
+                or not isinstance(self.end_ms, int) or isinstance(self.end_ms, bool)
+                or self.end_ms <= self.start_ms):
+            raise ValueError("speech region boundaries must be non-negative integer milliseconds with end > start")
+        if self.confidence is not None and (
+            not isinstance(self.confidence, (int, float)) or isinstance(self.confidence, bool)
+            or not math.isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0
+        ):
+            raise ValueError("speech region confidence must be finite and between 0 and 1")
+
 @dataclass(frozen=True, slots=True)
 class VADResult:
     provider: str
