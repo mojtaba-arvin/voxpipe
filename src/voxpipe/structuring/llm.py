@@ -32,6 +32,9 @@ Category rules:
 - Entity type must be supported by the same evidence: company/organization markers support organization; explicit place phrases support location; document nouns such as report, letter, invoice, record or document support document; a person explicitly assigned an obligation supports person. A meeting/event title is not an entity. Do not guess an entity type when the evidence does not support it.
 - Preserve date/time expressions exactly as spoken; never convert weekdays or infer calendar dates. Avoid duplicate or near-duplicate claims.
 
+Entity/topic boundary guidance:
+- A named document remains an entity even when it is the object of an action. In «علی باید گزارش فروش را تا جمعه ارسال کند», «گزارش فروش» is a document entity; it is not a topic merely because it is mentioned as the action object.
+- When the text explicitly names the subject of a contract-signing event, the contract type itself is a topic. In «شرکت آریا با شرکت بهار قرارداد همکاری امضا کرد», «قرارداد همکاری» is a topic, while the two organizations are entities/participants.
 Positive category examples (illustrative only; never copy a claim unless its facts are present in the current transcript):
 - In «جلسه بودجه فردا ساعت ۹ در دفتر مرکزی برگزار می‌شود», «بودجه» is a substantive topic because it is part of the named meeting subject; «جلسه» and «دفتر مرکزی» are not topics.
 - In «علی باید گزارش فروش را تا جمعه ارسال کند», the directly stated relation is {subject: «علی», predicate: «باید ارسال کند», object: «گزارش فروش»}. The document object is not automatically a topic.
@@ -161,7 +164,7 @@ def _build_evidence_catalog(request: StructuredExtractionRequest):
 class OpenAICompatibleStructuredAdapter:
     provider_name = "openai-compatible"
     def __init__(self, *, endpoint: str, model: str, api_key: str|None=None, model_version: str|None=None,
-                 prompt_version: str="structured-fa-v14", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
+                 prompt_version: str="structured-fa-v15", timeout_seconds: float=45, max_transcript_chars: int=200000, max_output_tokens: int=4096,
                  transport: Callable|None=None):
         parsed = urlparse(endpoint)
         hostname = parsed.hostname or ""
