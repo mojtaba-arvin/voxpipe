@@ -49,7 +49,7 @@ jobs:
           python scripts/run_fleurs_lid_benchmark.py \
             --calibration-samples 20 \
             --max-samples 20 \
-            --min-selective-accuracy 0.90 \
+            --min-selective-accuracy 0.95 \
             --min-coverage 0.50 \
             --output-dir benchmark-results/fleurs-lid
       - name: Upload calibration and evaluation evidence
