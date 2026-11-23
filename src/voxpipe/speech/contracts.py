@@ -38,8 +38,11 @@ class TranscriptionError(Exception):
     ) -> None:
         if not isinstance(provider, str) or not provider.strip() or len(provider) > 128:
             raise ValueError("provider identifier is required and must be bounded")
-        if retry_after_seconds is not None and retry_after_seconds < 0:
-            raise ValueError("retry_after_seconds cannot be negative")
+        if retry_after_seconds is not None and (
+            not isinstance(retry_after_seconds, int) or isinstance(retry_after_seconds, bool)
+            or retry_after_seconds < 0
+        ):
+            raise ValueError("retry_after_seconds must be a non-negative integer")
         self.code = code.value
         self.provider = provider
         self.retryable = retryable
@@ -57,6 +60,7 @@ class TranscriptionRequest:
     word_timestamps: bool = True
     diarization: bool = False
     duration_ms: int | None = None
+    idempotency_key: str | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -78,6 +82,10 @@ class TranscriptionRequest:
             raise ValueError("language_hint must be a BCP-47 language tag")
         if self.duration_ms is not None and (not isinstance(self.duration_ms, int) or isinstance(self.duration_ms, bool) or self.duration_ms < 1):
             raise ValueError("duration_ms must be positive when supplied")
+        if self.idempotency_key is not None and (
+            not isinstance(self.idempotency_key, str) or not re.fullmatch(r"[a-f0-9]{64}", self.idempotency_key)
+        ):
+            raise ValueError("idempotency_key must be a lowercase SHA-256 hex digest when supplied")
 
 
 @dataclass(frozen=True, slots=True)
