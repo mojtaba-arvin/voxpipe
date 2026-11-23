@@ -47,12 +47,12 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements-lid-benchmark.txt
           mkdir -p benchmark-results/fleurs-lid
           python -m pip freeze > benchmark-results/fleurs-lid/pip-freeze.txt
-      - name: Run strict 95% validation calibration and disjoint test evaluation
+      - name: Run strict 99% inventory-aware validation calibration and disjoint test evaluation
         run: |
           python scripts/run_fleurs_lid_benchmark.py \
             --calibration-samples 100 \
             --max-samples 100 \
-            --min-selective-accuracy 0.95 \
+            --min-selective-accuracy 0.99 \
             --min-coverage 0.50 \
             --output-dir benchmark-results/fleurs-lid
       - name: Upload calibration and evaluation evidence
