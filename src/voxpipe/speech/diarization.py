@@ -92,6 +92,10 @@ class DiarizationResult:
             raise ValueError("overlap_supported must be boolean")
         if any(right.start_ms < left.start_ms for left, right in zip(self.turns, self.turns[1:])):
             raise ValueError("speaker turns must be ordered by start time")
+        if not self.overlap_supported and any(
+            right.start_ms < left.end_ms for left, right in zip(self.turns, self.turns[1:])
+        ):
+            raise ValueError("overlapping speaker turns require overlap_supported=True")
 
 class SpeechBrainECAPAEmbedder:
     """Thin local-only SpeechBrain ECAPA embedding wrapper."""
