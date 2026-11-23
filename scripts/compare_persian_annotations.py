@@ -126,6 +126,65 @@ def score(tp: int, left_only: int, right_only: int) -> dict[str, int | float | N
             "precision_a_to_b": precision, "recall_b_to_a": recall, "f1": f1}
 
 
+def find_disagreements(
+    left: dict[str, dict[str, Any]], right: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return deterministic, transcript-free claim/evidence disagreements for adjudication."""
+    missing_right = sorted(set(left) - set(right))
+    missing_left = sorted(set(right) - set(left))
+    if missing_right or missing_left:
+        raise AnnotationError(
+            f"sample coverage differs (missing from annotator B={missing_right[:10]}, "
+            f"missing from annotator A={missing_left[:10]})"
+        )
+
+    rows: list[dict[str, Any]] = []
+    for sample_id in sorted(left):
+        a, b = left[sample_id], right[sample_id]
+        if a["transcript_segments"] != b["transcript_segments"]:
+            raise AnnotationError(f"sample {sample_id!r}: transcript source differs between annotators")
+        for collection in COLLECTIONS:
+            a_claims = {canonical(item["value"]): item for item in a["annotations"][collection]}
+            b_claims = {canonical(item["value"]): item for item in b["annotations"][collection]}
+            for key in sorted(set(a_claims) | set(b_claims)):
+                claim_a, claim_b = a_claims.get(key), b_claims.get(key)
+                evidence_a = sorted(claim_a["evidence"], key=canonical) if claim_a else []
+                evidence_b = sorted(claim_b["evidence"], key=canonical) if claim_b else []
+                if claim_a is None:
+                    kind = "annotator_b_only"
+                elif claim_b is None:
+                    kind = "annotator_a_only"
+                elif [canonical(x) for x in evidence_a] != [canonical(x) for x in evidence_b]:
+                    kind = "evidence_mismatch"
+                else:
+                    continue
+                value = json.loads(key)
+                rows.append({
+                    "sample_id": sample_id,
+                    "category": collection,
+                    "disagreement_type": kind,
+                    "claim_value": value,
+                    "annotator_a": {"present": claim_a is not None, "evidence": evidence_a},
+                    "annotator_b": {"present": claim_b is not None, "evidence": evidence_b},
+                })
+    return rows
+
+
+def write_disagreements(path: Path, rows: list[dict[str, Any]], *, input_paths: tuple[Path, ...] = ()) -> None:
+    """Atomically write a JSONL adjudication queue without overwriting source exports."""
+    target = path.resolve()
+    if target in {source.resolve() for source in input_paths}:
+        raise AnnotationError("disagreement output must not overwrite an annotator input")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + ".tmp")
+        payload = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
+        temporary.write_text(payload, encoding="utf-8")
+        temporary.replace(path)
+    except OSError as exc:
+        raise AnnotationError(f"{path}: cannot write disagreement queue: {exc}") from exc
+
+
 def compare(left: dict[str, dict[str, Any]], right: dict[str, dict[str, Any]]) -> dict[str, Any]:
     missing_right = sorted(set(left) - set(right))
     missing_left = sorted(set(right) - set(left))
@@ -180,9 +239,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--annotator-a", required=True, type=Path)
     parser.add_argument("--annotator-b", required=True, type=Path)
+    parser.add_argument("--disagreements-output", type=Path,
+                        help="optional JSONL adjudication queue; never overwrites input exports")
     args = parser.parse_args()
     try:
-        report = compare(read_rows(args.annotator_a), read_rows(args.annotator_b))
+        left, right = read_rows(args.annotator_a), read_rows(args.annotator_b)
+        report = compare(left, right)
+        if args.disagreements_output is not None:
+            queue = find_disagreements(left, right)
+            write_disagreements(args.disagreements_output, queue,
+                                input_paths=(args.annotator_a, args.annotator_b))
+            report["disagreements"] = {"count": len(queue), "output": str(args.disagreements_output)}
     except AnnotationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
