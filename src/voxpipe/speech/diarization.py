@@ -127,6 +127,8 @@ class ECAPADiarizationAdapter:
         if embedder is None:
             if model_dir is None: raise ValueError("provide local ECAPA model_dir or an embedder")
             embedder=SpeechBrainECAPAEmbedder(model_dir)
+        if not callable(getattr(embedder, "embed", None)):
+            raise TypeError("embedder must expose a callable embed(samples, sample_rate)")
         self.embedder,self.window_ms,self.threshold=embedder,window_ms,similarity_threshold
     @staticmethod
     def _normalize(vector):
