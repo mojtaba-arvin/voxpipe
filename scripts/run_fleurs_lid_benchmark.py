@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse, hashlib, io, itertools, json, platform, sys
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 REVISION="6989e5bd2dc37546a93ae5d857bc04325e6a3738"
@@ -55,7 +54,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     if not isinstance(max_samples,int) or isinstance(max_samples,bool) or not 1<=max_samples<=264:
         raise ValueError("max_samples must be between 1 and 264")
     if not isinstance(calibration_samples,int) or isinstance(calibration_samples,bool) or calibration_samples<1:
-        raise ValueError("calibration_samples must be between 1 and 264")
+        raise ValueError("calibration_samples must be a positive integer")
     if threshold is not None and (not isinstance(threshold,(int,float)) or isinstance(threshold,bool)
             or not 0.0<=threshold<=1.0):
         raise ValueError("threshold must be between 0 and 1")
