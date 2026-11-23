@@ -13,6 +13,7 @@ CONFIGS={
 }
 MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"
 MODEL_REVISION="0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+SUPPORTED_LANGUAGES=frozenset(item["language"] for item in CONFIGS.values())
 
 
 def hash_file(path):
@@ -74,7 +75,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     model_revision=MODEL_REVISION
     model_dir=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
     raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision,
-        supported_languages=frozenset(CONFIGS.values()))
+        supported_languages=SUPPORTED_LANGUAGES)
 
     if threshold is None:
         calibration_references,calibration_predictions,calibration_rows=load_split(
@@ -121,7 +122,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "configs":{k:{"language":v["language"],"test_parquet_sha256":v["sha256"]} for k,v in CONFIGS.items()},
         "samples_per_language":max_samples,"total_samples":len(rows)},
         "model":{"id":MODEL_ID,"revision":model_revision,"license":"Apache-2.0",
-            "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,"supported_languages":sorted(CONFIGS.values()),
+            "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,"supported_languages":sorted(SUPPORTED_LANGUAGES),
             "threshold_policy":"calibrated on disjoint pinned FLEURS validation split" if threshold is None else "operator-fixed override"},
         "calibration":calibration_report,"metrics":metrics,
         "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"runtime_lock_sha256":hash_file(Path("requirements-lid-benchmark.txt")),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch","torchaudio")}},
