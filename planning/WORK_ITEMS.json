@@ -833,7 +833,7 @@
       "title": "Implement release, canary and rollback automation",
       "phase": 6,
       "priority": 36,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Build immutable release artifacts with SBOM, dependency provenance and signed/checksummed model manifests.",
@@ -841,8 +841,10 @@
         "Support canary health gates and rollback without corrupting durable job/schema state.",
         "Verify restore and rollback procedures in a production-like environment."
       ],
-      "evidence": [],
-      "blocked_reason": "Not implemented or independently verified yet."
+      "evidence": [
+        "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted."
+      ],
+      "blocked_reason": "Release-candidate artifacts, checksums and SBOM generation are implemented in an open PR. Signed provenance/model manifests, migration compatibility gates, canary promotion, safe rollback and production-like restore rehearsal remain unverified."
     },
     {
       "id": "VP-0037",

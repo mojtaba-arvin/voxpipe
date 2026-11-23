@@ -1,0 +1,98 @@
+name: Release candidate artifacts
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Validate and build immutable release candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/voxpipe_test
+      VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg16-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: voxpipe_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d voxpipe_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version: '1.26.11'
+          cache: true
+      - name: Verify release commit is on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            git fetch --no-tags origin main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          elif [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Manual release-candidate builds are permitted only from main." >&2
+            exit 1
+          fi
+      - name: Install Python validation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          sudo apt-get update -o Acquire::Retries=2
+          sudo apt-get install --no-install-recommends -y ffmpeg
+      - name: Prepare disposable PostgreSQL test database
+        run: python scripts/prepare_test_database.py
+      - name: Run Python and PostgreSQL integration validation
+        run: make check
+      - name: Run Go and PostgreSQL integration validation
+        run: make go-check
+      - name: Collect dependency inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          go list -m -json all > dist/go-modules.json
+          python -m pip list --format=json > dist/python-packages.json
+          VERSION="${GITHUB_REF_NAME}"
+          if [[ "$GITHUB_REF_TYPE" != "tag" ]]; then VERSION="manual-${GITHUB_SHA::12}"; fi
+          python scripts/build_sbom.py --go-modules dist/go-modules.json --python-packages dist/python-packages.json --version "$VERSION" --output dist/voxpipe.cdx.json
+          printf '{"version":"%s","commit":"%s","workflow_run":"%s","go_version":"%s","python_version":"%s"}\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(go version)" "$(python --version)" > dist/release-manifest.json
+      - name: Build Linux API binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          if [[ "$GITHUB_REF_TYPE" != "tag" ]]; then VERSION="manual-${GITHUB_SHA::12}"; fi
+          for ARCH in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH="$ARCH" go build -trimpath -buildvcs=true -ldflags="-s -w -X main.version=$VERSION" -o "dist/voxpipe-api-linux-$ARCH" ./cmd/voxpipe-api
+          done
+          git archive --format=tar.gz --prefix="voxpipe-$VERSION/" "$GITHUB_SHA" > "dist/voxpipe-source-$VERSION.tar.gz"
+          (cd dist && sha256sum voxpipe-api-linux-* voxpipe-source-*.tar.gz voxpipe.cdx.json release-manifest.json go-modules.json python-packages.json > SHA256SUMS)
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: voxpipe-release-candidate
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
