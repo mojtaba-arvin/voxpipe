@@ -42,6 +42,7 @@ class WorkflowStepContext:
     attempt: int
     input_refs: dict[str, Any]
     heartbeat: Callable[[], dict[str, Any]]
+    lease_seconds: int = 60
 
 
 WorkflowHandler = Callable[[WorkflowStepContext], dict[str, Any]]
@@ -119,6 +120,7 @@ class PostgresWorkflowWorker:
             attempt=claim["attempts"],
             input_refs=claim["input_refs"],
             heartbeat=heartbeat,
+            lease_seconds=self.lease_seconds,
         )
         handler = self._registry.get(context.step_name)
         if handler is None:
