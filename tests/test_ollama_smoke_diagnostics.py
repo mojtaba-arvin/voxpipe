@@ -73,7 +73,7 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         candidates = [{"span_id": "span-0001", "quote": "مریم گفت جلسه فردا ساعت ۹ برگزار می‌شود."}]
         constraints = SMOKE.candidate_schema_constraints(candidates)
         self.assertEqual(constraints["max_entities"], 0)
-        self.assertEqual(constraints["max_events"], 32)
+        self.assertEqual(constraints["max_events"], 1)
         self.assertEqual(constraints["allowed_event_types"], ("meeting",))
         schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
         self.assertEqual(schema["properties"]["entities"]["maxItems"], 0)
@@ -85,7 +85,7 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
         event_value = schema["properties"]["events"]["items"]["properties"]["value"]
         self.assertEqual(event_value["properties"]["event_type"]["enum"], ["contract-signing"])
-        self.assertEqual(event_value["properties"]["name"]["pattern"], "^امضای .+")
+        self.assertEqual(event_value["properties"]["name"]["enum"], ["امضای قرارداد همکاری"])
 
     def test_entity_types_are_scoped_to_explicit_candidate_cues(self) -> None:
         candidates = [
