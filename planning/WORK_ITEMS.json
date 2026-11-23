@@ -553,7 +553,7 @@
         "2026-11-23: Validate run 45144625018 found an existing WebRTC config test injecting `object()` solely to bypass the optional dependency; after enforcing the detector protocol, the test now injects a valid fake `is_speech` implementation while still asserting invalid aggressiveness/frame settings. The dedicated negative test continues to verify malformed detector rejection. No production guard was removed.",
         "2026-11-23: Corrected exact-head A2 validation run 45144893187 passed Python/PostgreSQL and Go/PostgreSQL with strict Silero/WebRTC configuration, integer timestamp, VADResult ordering and evaluator overlap checks."
       ],
-      "blocked_reason": "Provider contracts, adapters and evaluator invariants are hardened and CI-verified, but current evaluation still relies on FLEURS utterance-envelope proxies. Frame-labelled Persian speech/non-speech data, consent, annotation protocol and held-out frame-level metrics are still required."
+      "blocked_reason": "Provider contracts, Silero/WebRTC input validation and evaluator invariants are implemented and CI-verified. FLEURS still supplies utterance-level references, not frame-level speech/non-speech labels; frame-labelled Persian data plus silence/music/overlap/noisy held-out tests are required for model-quality acceptance."
     },
     {
       "id": "VP-0024",
