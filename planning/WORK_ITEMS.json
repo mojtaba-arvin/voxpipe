@@ -574,7 +574,7 @@
         "2026-11-23: Additional B2 hardening validates the injected ECAPA embedder interface before use and adds request-level tests for ordered/non-overlapping VAD regions, normalized mono 16 kHz samples and deterministic local fake-embedder execution. Exact-head CI is pending.",
         "2026-11-23: Validate run 45144773493 found an existing ECAPA option-validation test injecting `object()` as a placeholder; after enforcing the embedder protocol, it now injects a valid fake `embed()` implementation while retaining all invalid window/threshold assertions. The dedicated new negative test still rejects malformed embedders. No production guard was removed."
       ],
-      "blocked_reason": "Provider-neutral ECAPA request/result contracts, overlap declaration and embedder interface are hardened. Current evaluation remains synthetic/read-speech; consented natural conversation, overlap annotations, representative speaker diversity and held-out DER/JER are still required."
+      "blocked_reason": "Provider-neutral ECAPA contracts, explicit overlap capability and injected-embedder validation are implemented and CI-verified. Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable."
     },
     {
       "id": "VP-0025",
