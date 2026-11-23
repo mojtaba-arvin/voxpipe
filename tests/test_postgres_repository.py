@@ -71,6 +71,8 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         cls.migrations_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgres"
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
+            connection.execute("DROP TABLE IF EXISTS workflow_steps CASCADE")
+            connection.execute("DROP TABLE IF EXISTS workflow_runs CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_words CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_segments CASCADE")
             connection.execute("DROP TABLE IF EXISTS transcript_speakers CASCADE")
@@ -115,6 +117,9 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                 "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
             )
             connection.execute(
+                "GRANT SELECT, INSERT, UPDATE ON workflow_runs, workflow_steps TO voxpipe_app"
+            )
+            connection.execute(
                 "GRANT SELECT, INSERT, UPDATE, DELETE ON transcript_segment_embeddings TO voxpipe_app"
             )
 
@@ -125,7 +130,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE workflow_steps, workflow_runs, transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
         import psycopg
@@ -483,7 +488,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 9))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 8, 9))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
