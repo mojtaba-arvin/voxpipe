@@ -227,8 +227,8 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
         if not isinstance(prediction.language, str) or not prediction.language.strip():
             raise ValueError("calibration predictions must contain a language label")
         if prediction.language == "und" and (
-            prediction.abstention_reason not in {"low_confidence", "out_of_inventory"}
-            or not prediction.raw_language
+            getattr(prediction, "abstention_reason", None) not in {"low_confidence", "out_of_inventory"}
+            or not getattr(prediction, "raw_language", None)
         ):
             raise ValueError("pre-abstained calibration predictions require a raw label and reason")
         if (not isinstance(prediction.confidence, (int, float)) or isinstance(prediction.confidence, bool)
