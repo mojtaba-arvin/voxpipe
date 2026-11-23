@@ -122,7 +122,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
             "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,
             "threshold_policy":"calibrated on disjoint pinned FLEURS validation split" if threshold is None else "operator-fixed override"},
         "calibration":calibration_report,"metrics":metrics,
-        "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch")}},
+        "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"runtime_lock_sha256":hash_file(Path("requirements-lid-benchmark.txt")),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch","torchaudio")}},
         "generated_at":datetime.now(timezone.utc).isoformat()}
     (output_dir/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
     return summary
