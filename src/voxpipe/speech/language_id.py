@@ -35,7 +35,11 @@ class SpeechBrainLanguageIdentifier:
     provider_name="speechbrain-voxlingua107"
     def __init__(self, *, model=None, model_dir: str|Path|None=None, threshold: float=0.65,
                  model_version="voxlingua107-ecapa"):
-        if not 0.0 <= threshold <= 1.0: raise ValueError("threshold must be in [0,1]")
+        if (not isinstance(threshold, (int, float)) or isinstance(threshold, bool)
+                or not math.isfinite(threshold) or not 0.0 <= threshold <= 1.0):
+            raise ValueError("threshold must be finite and in [0,1]")
+        if not isinstance(model_version, str) or not model_version.strip() or len(model_version) > 128:
+            raise ValueError("model_version must be a non-empty bounded string")
         if model is None:
             if model_dir is None or not Path(model_dir).is_dir():
                 raise FileNotFoundError("provide a pre-provisioned local SpeechBrain model directory")
@@ -61,7 +65,7 @@ class SpeechBrainLanguageIdentifier:
             raise ValueError("SpeechBrain label inventory does not match model output dimensions") from None
 
     def identify(self, samples, *, sample_rate: int, start_ms: int=0) -> LanguagePrediction:
-        if sample_rate!=16000: raise ValueError("language identification requires mono 16 kHz audio")
+        if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate != 16000:\n            raise ValueError("language identification requires integer mono 16 kHz audio")
         raw_values = list(samples)
         if any(isinstance(x, bool) for x in raw_values):
             raise ValueError("audio samples must be numeric normalized values")
@@ -77,7 +81,16 @@ class SpeechBrainLanguageIdentifier:
             raise ValueError("start_ms must be a non-negative integer")
         if hasattr(self.model,"classify"):
             probabilities, labels=self.model.classify(values,sample_rate)
-            probabilities=[float(x) for x in probabilities]
+            try:
+                raw_probabilities = list(probabilities)
+                if any(isinstance(value, bool) for value in raw_probabilities):
+                    raise ValueError("boolean probability")
+                probabilities = [float(value) for value in raw_probabilities]
+                if isinstance(labels, (str, bytes)):
+                    raise ValueError("labels must be a sequence of language labels")
+                labels = list(labels)
+            except (TypeError, ValueError, OverflowError):
+                raise ValueError("language model returned malformed probability or label arrays") from None
         else:
             import torch
             with torch.inference_mode():
@@ -102,7 +115,14 @@ class SpeechBrainLanguageIdentifier:
         return LanguagePrediction(label if confidence>=self.threshold else "und",confidence,start_ms,
                                    start_ms+round(len(values)*1000/sample_rate))
     def identify_windows(self,samples,*,sample_rate=16000,window_ms=4000,hop_ms=2000):
-        if window_ms<1000 or hop_ms<1: raise ValueError("invalid language window configuration")
+        if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate != 16000:
+            raise ValueError("language windows require integer mono 16 kHz audio")
+        if (not isinstance(window_ms, int) or isinstance(window_ms, bool) or window_ms < 1000
+                or not isinstance(hop_ms, int) or isinstance(hop_ms, bool)
+                or not 1 <= hop_ms <= window_ms):
+            raise ValueError("window_ms must be >=1000 and hop_ms must be an integer in [1, window_ms]")
+        if not hasattr(samples, "__len__") or not hasattr(samples, "__getitem__") or len(samples) == 0:
+            raise ValueError("language windows require a non-empty sliceable audio sequence")
         width=sample_rate*window_ms//1000; hop=sample_rate*hop_ms//1000
         if len(samples) < width:
             return (self.identify(samples, sample_rate=sample_rate),) if len(samples) >= sample_rate else ()
