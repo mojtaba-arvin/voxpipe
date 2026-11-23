@@ -1,6 +1,9 @@
 import unittest
 
-from voxpipe.speech.diarization import (\n    DiarizationRequest, DiarizationResult, ECAPADiarizationAdapter, SpeakerTurn,\n)\nfrom voxpipe.speech.vad import SpeechRegion
+from voxpipe.speech.diarization import (
+    DiarizationRequest, DiarizationResult, ECAPADiarizationAdapter, SpeakerTurn,
+)
+from voxpipe.speech.vad import SpeechRegion
 
 
 DIGEST = "a" * 64
