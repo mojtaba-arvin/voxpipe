@@ -3,4 +3,4 @@ fsspec>=2026.6.0,<2027
 numpy>=1.26,<3
 soundfile>=0.12,<1
 silero-vad>=6.2,<7
-webrtcvad-wheels>=2.0.14,<3
+webrtcvad-wheels>=2.0.14.post1,<3
