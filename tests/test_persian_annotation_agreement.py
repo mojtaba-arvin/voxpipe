@@ -105,6 +105,27 @@ class AnnotationAgreementTests(unittest.TestCase):
             with self.assertRaisesRegex(AnnotationError, "exact Unicode offsets"):
                 read_rows(path)
 
+    def test_rejects_claim_values_outside_category_contract(self):
+        bad = row(entities=[claim({"name": "علی"}, "علی")])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "annotations.jsonl"
+            path.write_text(json.dumps(bad, ensure_ascii=False) + "\\n", encoding="utf-8")
+            with self.assertRaisesRegex(AnnotationError, "value fields"):
+                read_rows(path)
+
+    def test_rejects_unhashable_or_unknown_evidence_segment_ids(self):
+        bad = row(entities=[{
+            "value": {"name": "علی", "entity_type": "person"},
+            "evidence": [{
+                "segment_id": ["segment-1"], "start_char": 0, "end_char": 3, "quote": "علی"
+            }],
+        }])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "annotations.jsonl"
+            path.write_text(json.dumps(bad, ensure_ascii=False) + "\\n", encoding="utf-8")
+            with self.assertRaisesRegex(AnnotationError, "unknown segment_id"):
+                read_rows(path)
+
     def test_rejects_duplicate_sample_ids(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "annotations.jsonl"
