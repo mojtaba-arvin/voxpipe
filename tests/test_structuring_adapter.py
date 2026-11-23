@@ -53,7 +53,7 @@ class AdapterTests(unittest.TestCase):
         value = result.action_items[0].value
         self.assertEqual(value["description"], "ارسال گزارش فروش")
         self.assertEqual(value["due_date"], "تا جمعه")
-        self.assertEqual(result.provenance.prompt_version, "structured-fa-v16")
+        self.assertEqual(result.provenance.prompt_version, "structured-fa-v17")
 
     def test_action_item_deadline_normalization_does_not_remove_unverified_or_internal_dates(self):
         from voxpipe.structuring.llm import _normalize_action_item_value
