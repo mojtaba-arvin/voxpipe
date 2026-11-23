@@ -543,7 +543,8 @@
         "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark.",
         "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth.",
         "2026-11-23: PR #41 adds SpeechRegion boundary/confidence validation and tests/test_vad_contract_validation.py. Runs 45105802820 and 45106285423 passed Python/PostgreSQL and Go/PostgreSQL. This is contract hardening, not frame-labelled Persian VAD acceptance.",
-        "2026-11-23 current PR #41 head: direct Silero/WebRTC input validation, VADResult invariants and evaluator bounds passed run 45139438594 (Python/PostgreSQL and Go/PostgreSQL)."
+        "2026-11-23 current PR #41 head: direct Silero/WebRTC input validation, VADResult invariants and evaluator bounds passed run 45139438594 (Python/PostgreSQL and Go/PostgreSQL).",
+        "2026-11-23 latest exact-head PR #41 validation: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL after VAD direct-input/result invariants and evaluator-bound tests."
       ],
       "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
     },
@@ -567,7 +568,8 @@
         "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
         "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
         "2026-11-23: PR #42 explicitly rejects overlapping turns unless overlap_supported=true and adds tests/test_diarization_overlap_contract.py. Runs 45105818906 and 45106290233 passed Python/PostgreSQL and Go/PostgreSQL. Natural-conversation DER/JER and consented overlap labels remain open.",
-        "2026-11-23 current PR #42 head: direct ECAPA request validation, normalized dimension-consistent embeddings and evaluator bounds passed run 45139532081 (Python/PostgreSQL and Go/PostgreSQL)."
+        "2026-11-23 current PR #42 head: direct ECAPA request validation, normalized dimension-consistent embeddings and evaluator bounds passed run 45139532081 (Python/PostgreSQL and Go/PostgreSQL).",
+        "2026-11-23 latest exact-head PR #42 validation: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL after direct ECAPA request/embedding validation and evaluator-bound tests."
       ],
       "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
     },
@@ -590,7 +592,8 @@
         "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
         "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
         "2026-11-23: PR #38 adds validation for prediction confidence/timing/provider metadata, normalized finite audio, probability vectors and language labels, with tests/test_language_id_contract_validation.py. Runs 45105854358 and 45106291463 passed Python/PostgreSQL and Go/PostgreSQL. Code-switch/noisy corpus calibration remains open.",
-        "2026-11-23: C2 adds strict classifier array, threshold, sample-rate and window validation. A dedicated pinned local CPU FLEURS calibration workflow now calibrates on the actual `validation` split and evaluates on disjoint `test`. The first attempt failed on the incorrect `dev` split name; corrected runs 45140505877/45140553574 are pending. No threshold or held-out metrics are claimed."
+        "2026-11-23: C2 adds strict classifier array, threshold, sample-rate and window validation. A dedicated pinned local CPU FLEURS calibration workflow now calibrates on the actual `validation` split and evaluates on disjoint `test`. The first attempt failed on the incorrect `dev` split name; corrected runs 45140505877/45140553574 are pending. No threshold or held-out metrics are claimed.",
+        "2026-11-23: 300+300 pinned FLEURS run 45142127746 passed at the 0.95 floor but test selective accuracy was 94.77%; German clips were mislabelled ro/ru/yi. The adapter now supports an explicit supported_languages inventory and records raw label/abstention reason; calibration excludes inventory-abstained predictions. Latest 0.99 inventory-aware exact-head benchmark run 45143511545 is pending; no new metrics are claimed yet."
       ],
       "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
     },
@@ -613,7 +616,8 @@
         "FLEURS ASR benchmark generated a manifest for 100 fa_ir test items with pinned revision and per-item hashes; the successful CI artifact is attached to run 44848225647.",
         "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
         "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence.",
-        "2026-11-23: PR #50 adds independent annotation agreement diagnostics with per-category/micro exact claim agreement and evidence-span agreement, strict value/evidence validation, and explicit non-Cohen's-kappa interpretation. Earlier exact-head CI run 45138314541 passed; stricter negative-path regression tests are being revalidated after a JSONL newline fixture correction."
+        "2026-11-23: PR #50 adds independent annotation agreement diagnostics with per-category/micro exact claim agreement and evidence-span agreement, strict value/evidence validation, and explicit non-Cohen's-kappa interpretation. Earlier exact-head CI run 45138314541 passed; stricter negative-path regression tests are being revalidated after a JSONL newline fixture correction.",
+        "2026-11-23 latest exact-head PR #50 validation: run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation value/evidence validation and corrected JSONL fixtures. Agreement tooling remains diagnostic, not human gold."
       ],
       "blocked_reason": "The 20-item Public Dataset Proxy is a minimal reproducibility/governance fallback only. Public licensing does not establish individual speaker consent; natural conversational data with explicit consent and deletion/redistribution evidence remains required for full corpus-governance acceptance."
     },
@@ -667,7 +671,8 @@
         "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality.",
         "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress.",
         "2026-11-23: PR #29 exact-head Validate run 45067109080 passed Python/PostgreSQL and Go/PostgreSQL. Local Qwen smoke run 45106096383 completed successfully, including the enforced synthetic smoke script and artifact upload (artifact 14786684785). Earlier detailed v13 report: 4/4 fixtures and 8/8 claims evidence-valid; exact Event F1=1.0 and Action Item F1=1.0; synthetic micro F1=0.7273; Topic/Relation F1=0. These are synthetic diagnostic fixtures, not human-reviewed gold.",
-        "2026-11-23: v13 exact-head Qwen baseline remains 4/4 synthetic fixtures and 8/8 evidence claims valid, exact Event/Action Item F1=1.0, Entity F1=0.8889, synthetic micro F1=0.7273, Topic/Relation F1=0. v14 adds positive source-grounded Topic/Relation guidance and corrected synthetic fixture semantics; exact-head smoke run 45140255856 is still running. Synthetic data is not human-reviewed gold."
+        "2026-11-23: v13 exact-head Qwen baseline remains 4/4 synthetic fixtures and 8/8 evidence claims valid, exact Event/Action Item F1=1.0, Entity F1=0.8889, synthetic micro F1=0.7273, Topic/Relation F1=0. v14 adds positive source-grounded Topic/Relation guidance and corrected synthetic fixture semantics; exact-head smoke run 45140255856 is still running. Synthetic data is not human-reviewed gold.",
+        "2026-11-23: v14 Qwen exact-head smoke 45140255856 passed 4/4 synthetic fixtures and 11/11 evidence claims; Event/Relation/Action F1=1.0, Entity F1=0.8889, Topic F1=0.6667, micro F1=0.9167. v15 regressed (run 45141457901: Topic F1=0, micro F1=0.7692). v16 adds strict Topic name-only/participant exclusions and synthetic gates (Topic>=0.5, Relation=1, micro>=0.9); exact-head smoke run 45143051319 is pending. All are synthetic diagnostics, not human-reviewed gold."
       ],
       "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
     },
@@ -733,7 +738,8 @@
       ],
       "evidence": [
         "2026-11-23: Implementation in open PR #39 adds tenant-scoped pgvector storage/search, HNSW cosine index, model/version/source-hash binding, forced RLS, fail-closed unsupported entity filters, lexical/vector reciprocal-rank fusion and retrieval metrics. Validate run 45067270134 passed Python/PostgreSQL and Go/PostgreSQL on the implementation head before a ledger-only update. Human relevance set and selected production embedding model remain open.",
-        "2026-11-23: PR #39 adds a local-only SentenceTransformer query/document embedding adapter for pre-provisioned model directories, with model/version attribution, model-specific prefixes, normalized finite vector and dimension checks, and no runtime downloads. Exact-head Validate run 45139664618 passed both Python/PostgreSQL and Go/PostgreSQL. Production model choice and human relevance evaluation remain open."
+        "2026-11-23: PR #39 adds a local-only SentenceTransformer query/document embedding adapter for pre-provisioned model directories, with model/version attribution, model-specific prefixes, normalized finite vector and dimension checks, and no runtime downloads. Exact-head Validate run 45139664618 passed both Python/PostgreSQL and Go/PostgreSQL. Production model choice and human relevance evaluation remain open.",
+        "2026-11-23: PR #39 adds local-only SentenceTransformer query/document embeddings with no runtime downloads, model/version attribution, prefix and vector validation. Exact-head pgvector integration run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL; no production model or human relevance score is claimed."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
@@ -757,7 +763,8 @@
         "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
         "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6.",
         "2026-11-23: Capability registry and deterministic filters for language/features/locality/cost/audio limits are implemented in open PR #40; run 45064598143 passed Python/PostgreSQL and Go/PostgreSQL. Registry deliberately does not invent provider capabilities; verified deployment metrics/entries remain required.",
-        "2026-11-23: PR #40 now rejects malformed capability sets and discovery filters; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL."
+        "2026-11-23: PR #40 now rejects malformed capability sets and discovery filters; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL.",
+        "2026-11-23: PR #40 strict capability declaration/discovery validation passed exact-head run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
       ],
       "blocked_reason": null
     },
@@ -776,7 +783,8 @@
       ],
       "evidence": [
         "2026-11-23: Policy-based routing implementation is present in open PR #40, including allowlisting, quality/budget/privacy/data-egress constraints, bounded fallback and content-free decision metadata. Run 45064598143 passed Python/PostgreSQL and Go/PostgreSQL. Measured production-like quality/latency and provider-outage/rollback integration remain open.",
-        "2026-11-23: PR #40 now validates policy/registry types, decision clock and open-circuit provider identifiers; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL."
+        "2026-11-23: PR #40 now validates policy/registry types, decision clock and open-circuit provider identifiers; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL.",
+        "2026-11-23: PR #40 includes strict router input validation and fenced process-local ProviderCircuitBreaker/CircuitPermit; breaker-to-router integration and stale-permit tests passed exact-head run 45142991047 (Python/PostgreSQL and Go/PostgreSQL). Multi-process shared state remains a production gap."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
@@ -795,7 +803,8 @@
       ],
       "evidence": [
         "2026-11-23: PostgreSQL-native durable workflow journal is implemented in open PR #44 with idempotency, bounded retries, leases/reclaim, stale-worker fencing, cancellation, human approval, tenant RLS and payload restrictions. Run 45066322532 passed Python/PostgreSQL and Go/PostgreSQL. Supervised handler runtime, crash/concurrency benchmark, backup/restore rehearsal and engine comparison remain open.",
-        "2026-11-23: PR #44 adds explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; exact-head validation run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL, including worker and lease integration tests."
+        "2026-11-23: PR #44 adds explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; exact-head validation run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL, including worker and lease integration tests.",
+        "2026-11-23: PR #44 includes explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; latest exact-head run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
