@@ -176,7 +176,7 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("A deadline is not an event start time", SYSTEM_PROMPT)
         self.assertIn("A person appearing only as the grammatical speaker", SYSTEM_PROMPT)
         self.assertIn("Entity types are exactly person, organization, location, or document", SYSTEM_PROMPT)
-        self.assertIn("«بودجه» is a substantive topic", SYSTEM_PROMPT)
+        self.assertIn("A meeting title may contain a substantive subject", SYSTEM_PROMPT)
         self.assertIn('predicate: «باید ارسال کند»', SYSTEM_PROMPT)
         self.assertIn('predicate: «امضا کرد»', SYSTEM_PROMPT)
         self.assertIn("The document object is not automatically a topic", SYSTEM_PROMPT)
