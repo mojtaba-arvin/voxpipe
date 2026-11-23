@@ -544,7 +544,8 @@
         "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth.",
         "2026-11-23: PR #41 adds SpeechRegion boundary/confidence validation and tests/test_vad_contract_validation.py. Runs 45105802820 and 45106285423 passed Python/PostgreSQL and Go/PostgreSQL. This is contract hardening, not frame-labelled Persian VAD acceptance.",
         "2026-11-23 current PR #41 head: direct Silero/WebRTC input validation, VADResult invariants and evaluator bounds passed run 45139438594 (Python/PostgreSQL and Go/PostgreSQL).",
-        "2026-11-23 latest exact-head PR #41 validation: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL after VAD direct-input/result invariants and evaluator-bound tests."
+        "2026-11-23 latest exact-head PR #41 validation: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL after VAD direct-input/result invariants and evaluator-bound tests.",
+        "2026-11-23 latest PR #41 exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL."
       ],
       "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
     },
@@ -569,7 +570,8 @@
         "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
         "2026-11-23: PR #42 explicitly rejects overlapping turns unless overlap_supported=true and adds tests/test_diarization_overlap_contract.py. Runs 45105818906 and 45106290233 passed Python/PostgreSQL and Go/PostgreSQL. Natural-conversation DER/JER and consented overlap labels remain open.",
         "2026-11-23 current PR #42 head: direct ECAPA request validation, normalized dimension-consistent embeddings and evaluator bounds passed run 45139532081 (Python/PostgreSQL and Go/PostgreSQL).",
-        "2026-11-23 latest exact-head PR #42 validation: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL after direct ECAPA request/embedding validation and evaluator-bound tests."
+        "2026-11-23 latest exact-head PR #42 validation: run 45139760116 passed Python/PostgreSQL and Go/PostgreSQL after direct ECAPA request/embedding validation and evaluator-bound tests.",
+        "2026-11-23 latest PR #42 exact-head CI run 45142258461 passed Python/PostgreSQL and Go/PostgreSQL."
       ],
       "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
     },
@@ -617,7 +619,8 @@
         "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
         "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence.",
         "2026-11-23: PR #50 adds independent annotation agreement diagnostics with per-category/micro exact claim agreement and evidence-span agreement, strict value/evidence validation, and explicit non-Cohen's-kappa interpretation. Earlier exact-head CI run 45138314541 passed; stricter negative-path regression tests are being revalidated after a JSONL newline fixture correction.",
-        "2026-11-23 latest exact-head PR #50 validation: run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation value/evidence validation and corrected JSONL fixtures. Agreement tooling remains diagnostic, not human gold."
+        "2026-11-23 latest exact-head PR #50 validation: run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation value/evidence validation and corrected JSONL fixtures. Agreement tooling remains diagnostic, not human gold.",
+        "2026-11-23 latest PR #50 exact-head CI run 45142280280 passed Python/PostgreSQL and Go/PostgreSQL with strict annotation export validation."
       ],
       "blocked_reason": "The 20-item Public Dataset Proxy is a minimal reproducibility/governance fallback only. Public licensing does not establish individual speaker consent; natural conversational data with explicit consent and deletion/redistribution evidence remains required for full corpus-governance acceptance."
     },
@@ -739,7 +742,8 @@
       "evidence": [
         "2026-11-23: Implementation in open PR #39 adds tenant-scoped pgvector storage/search, HNSW cosine index, model/version/source-hash binding, forced RLS, fail-closed unsupported entity filters, lexical/vector reciprocal-rank fusion and retrieval metrics. Validate run 45067270134 passed Python/PostgreSQL and Go/PostgreSQL on the implementation head before a ledger-only update. Human relevance set and selected production embedding model remain open.",
         "2026-11-23: PR #39 adds a local-only SentenceTransformer query/document embedding adapter for pre-provisioned model directories, with model/version attribution, model-specific prefixes, normalized finite vector and dimension checks, and no runtime downloads. Exact-head Validate run 45139664618 passed both Python/PostgreSQL and Go/PostgreSQL. Production model choice and human relevance evaluation remain open.",
-        "2026-11-23: PR #39 adds local-only SentenceTransformer query/document embeddings with no runtime downloads, model/version attribution, prefix and vector validation. Exact-head pgvector integration run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL; no production model or human relevance score is claimed."
+        "2026-11-23: PR #39 adds local-only SentenceTransformer query/document embeddings with no runtime downloads, model/version attribution, prefix and vector validation. Exact-head pgvector integration run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL; no production model or human relevance score is claimed.",
+        "2026-11-23 latest PR #39 exact-head CI run 45142196038 passed Python/PostgreSQL and Go/PostgreSQL with local embedding-to-pgvector round-trip coverage."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
@@ -784,7 +788,8 @@
       "evidence": [
         "2026-11-23: Policy-based routing implementation is present in open PR #40, including allowlisting, quality/budget/privacy/data-egress constraints, bounded fallback and content-free decision metadata. Run 45064598143 passed Python/PostgreSQL and Go/PostgreSQL. Measured production-like quality/latency and provider-outage/rollback integration remain open.",
         "2026-11-23: PR #40 now validates policy/registry types, decision clock and open-circuit provider identifiers; exact-head validation run 45139969495 passed Python/PostgreSQL and Go/PostgreSQL.",
-        "2026-11-23: PR #40 includes strict router input validation and fenced process-local ProviderCircuitBreaker/CircuitPermit; breaker-to-router integration and stale-permit tests passed exact-head run 45142991047 (Python/PostgreSQL and Go/PostgreSQL). Multi-process shared state remains a production gap."
+        "2026-11-23: PR #40 includes strict router input validation and fenced process-local ProviderCircuitBreaker/CircuitPermit; breaker-to-router integration and stale-permit tests passed exact-head run 45142991047 (Python/PostgreSQL and Go/PostgreSQL). Multi-process shared state remains a production gap.",
+        "2026-11-23 latest PR #40 exact-head CI run 45143571050 passed Python/PostgreSQL and Go/PostgreSQL with strict routing inputs, fenced circuit permits and breaker-to-router integration."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
@@ -804,7 +809,8 @@
       "evidence": [
         "2026-11-23: PostgreSQL-native durable workflow journal is implemented in open PR #44 with idempotency, bounded retries, leases/reclaim, stale-worker fencing, cancellation, human approval, tenant RLS and payload restrictions. Run 45066322532 passed Python/PostgreSQL and Go/PostgreSQL. Supervised handler runtime, crash/concurrency benchmark, backup/restore rehearsal and engine comparison remain open.",
         "2026-11-23: PR #44 adds explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; exact-head validation run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL, including worker and lease integration tests.",
-        "2026-11-23: PR #44 includes explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; latest exact-head run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL."
+        "2026-11-23: PR #44 includes explicit handler registry/worker loop, cooperative fenced lease heartbeat and stale-worker propagation; latest exact-head run 45139767784 passed Python/PostgreSQL and Go/PostgreSQL.",
+        "2026-11-23 latest PR #44 exact-head CI run 45142265756 passed Python/PostgreSQL and Go/PostgreSQL with worker heartbeat/fencing tests."
       ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
