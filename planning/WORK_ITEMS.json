@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-21",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -541,7 +541,8 @@
         "tests/test_speech_intelligence.py — offline tests cover region conversion, frame metrics and best-overlap boundary matching.",
         "scripts/run_fleurs_vad_benchmark.py and benchmarks/results/fleurs-vad-2026-11-21/summary.json — 60 pinned FLEURS utterances compared on CPU; WebRTC envelope-proxy F1 0.888 and Silero 0.837, with boundary/runtime/false-activation/missed-speech/RSS measurements.",
         "GitHub Actions run 44848923641 — successful two-model FLEURS VAD envelope-proxy benchmark.",
-        "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth."
+        "Action-pinned rerun 44911001571 succeeded on commit 36aa4e977de32f0417dcbb11bf4325762a6bedc6. On 60 FLEURS utterances, WebRTC reported precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s and missed speech 153.3 s; Silero F1 was 0.837. These are utterance-envelope proxy metrics, not frame-level ground truth.",
+        "2026-11-23: PR #41 adds SpeechRegion boundary/confidence validation and tests/test_vad_contract_validation.py. Runs 45105802820 and 45106285423 passed Python/PostgreSQL and Go/PostgreSQL. This is contract hardening, not frame-labelled Persian VAD acceptance."
       ],
       "blocked_reason": "FLEURS has utterance-level references, not frame-level speech/non-speech annotations. Current precision/recall are explicitly envelope-proxy scores; true Persian frame-labelled VAD acceptance is still required. Silence/music/overlap/noisy failure modes need dedicated labelled tests."
     },
@@ -563,7 +564,8 @@
         "scripts/run_neyshekar_diarization_benchmark.py — threshold selected on Neyshekar validation speakers and evaluated on disjoint test speakers.",
         "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
         "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
-        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation."
+        "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
+        "2026-11-23: PR #42 explicitly rejects overlapping turns unless overlap_supported=true and adds tests/test_diarization_overlap_contract.py. Runs 45105818906 and 45106290233 passed Python/PostgreSQL and Go/PostgreSQL. Natural-conversation DER/JER and consented overlap labels remain open."
       ],
       "blocked_reason": "Current evaluation is a synthetic concatenation of read-speech clips, not naturally recorded multi-speaker conversation; the source does not provide explicit per-speaker consent records or overlap annotations. Natural conversation, overlap and explicit consent remain acceptance gates."
     },
@@ -584,7 +586,8 @@
         "src/voxpipe/speech/language_id.py — local SpeechBrain VoxLingua107 adapter, threshold-based und outcome, sliding-window support and confidence-calibration evaluator.",
         "scripts/run_fleurs_lid_benchmark.py and benchmarks/results/fleurs-lid-2026-11-21/summary.json — pinned FLEURS fa_ir/en_us/de_de benchmark (20 samples per language); accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445; Persian and English 20/20, German 17/20.",
         "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
-        "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian."
+        "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
+        "2026-11-23: PR #38 adds validation for prediction confidence/timing/provider metadata, normalized finite audio, probability vectors and language labels, with tests/test_language_id_contract_validation.py. Runs 45105854358 and 45106291463 passed Python/PostgreSQL and Go/PostgreSQL. Code-switch/noisy corpus calibration remains open."
       ],
       "blocked_reason": "No code-switched samples were available in the selected FLEURS test subsets; only 20 samples per language were evaluated and the threshold was 0.0 (no abstention). Larger code-switch, noisy and out-of-inventory evaluation plus threshold calibration remain."
     },
@@ -658,7 +661,8 @@
         "Runs 44849670885 and 44849816303 reached the local Ollama endpoint but timed out on all four model calls; no validated claims or meaningful synthetic F1 were produced.",
         "Run 44850101698 retries with a 120-second timeout and 512-token output bound; run 44850378182 uses Ollama native JSON mode with thinking disabled. Both were still running at the latest ledger update.",
         "Local Ollama smoke run 44911020617 succeeded on commit 6bab6c9fc02c2af39a8ce968fcc8319759211bfd: the pinned Ollama runtime and qwen3:4b endpoint started, and the prompt-injection smoke completed. However, the report contained zero validated extractions and a 0.0 evidence-validation rate; this proves only the local endpoint/safe-empty behavior, not working extraction quality.",
-        "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress."
+        "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress.",
+        "2026-11-23: PR #29 exact-head Validate run 45067109080 passed Python/PostgreSQL and Go/PostgreSQL. Local Qwen smoke run 45106096383 completed successfully, including the enforced synthetic smoke script and artifact upload (artifact 14786684785). Earlier detailed v13 report: 4/4 fixtures and 8/8 claims evidence-valid; exact Event F1=1.0 and Action Item F1=1.0; synthetic micro F1=0.7273; Topic/Relation F1=0. These are synthetic diagnostic fixtures, not human-reviewed gold."
       ],
       "blocked_reason": "A human-reviewed, versioned Persian extraction gold set is not available, so no production precision/recall/F1 claim is made. The local Qwen3 4B CPU smoke now reaches the model and completes the prompt-injection scenario, but it emits zero validated extractions; the output/evidence prompt contract must be fixed before claiming functional extraction. No paid or hosted inference is authorized."
     },
@@ -714,7 +718,7 @@
       "title": "Implement hybrid and semantic retrieval",
       "phase": 4,
       "priority": 31,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Compare PostgreSQL full-text and pgvector hybrid retrieval against a versioned relevance set.",
@@ -722,7 +726,9 @@
         "Report Recall@k, MRR/nDCG, latency and index/storage cost.",
         "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: Implementation in open PR #39 adds tenant-scoped pgvector storage/search, HNSW cosine index, model/version/source-hash binding, forced RLS, fail-closed unsupported entity filters, lexical/vector reciprocal-rank fusion and retrieval metrics. Validate run 45067270134 passed Python/PostgreSQL and Go/PostgreSQL on the implementation head before a ledger-only update. Human relevance set and selected production embedding model remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
     {
@@ -743,7 +749,8 @@
         "tests/test_provider_capabilities.py — covers duplicate registration, capability filtering, unknown-cost and unknown-audio-limit fail-closed behavior and invalid metadata.",
         "The registry is intentionally not populated with guessed provider claims; deployment configuration must supply verified capabilities. Adaptive routing remains a separate VP-0033 item.",
         "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
-        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6."
+        "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6.",
+        "2026-11-23: Capability registry and deterministic filters for language/features/locality/cost/audio limits are implemented in open PR #40; run 45064598143 passed Python/PostgreSQL and Go/PostgreSQL. Registry deliberately does not invent provider capabilities; verified deployment metrics/entries remain required."
       ],
       "blocked_reason": null
     },
@@ -752,7 +759,7 @@
       "title": "Implement policy-based adaptive model routing",
       "phase": 5,
       "priority": 33,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Route only among explicitly enabled models using measured quality, latency, availability and cost evidence.",
@@ -760,7 +767,9 @@
         "Record routing decision metadata without logging audio/transcript content.",
         "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: Policy-based routing implementation is present in open PR #40, including allowlisting, quality/budget/privacy/data-egress constraints, bounded fallback and content-free decision metadata. Run 45064598143 passed Python/PostgreSQL and Go/PostgreSQL. Measured production-like quality/latency and provider-outage/rollback integration remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
     {
@@ -768,7 +777,7 @@
       "title": "Implement durable workflow orchestration",
       "phase": 6,
       "priority": 34,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Run ingestion, transcription, enrichment and indexing as versioned durable workflows.",
@@ -776,7 +785,9 @@
         "Prove restart recovery and duplicate-delivery safety with failure injection.",
         "Select orchestration engine through an ADR and measured operational PoC."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: PostgreSQL-native durable workflow journal is implemented in open PR #44 with idempotency, bounded retries, leases/reclaim, stale-worker fencing, cancellation, human approval, tenant RLS and payload restrictions. Run 45066322532 passed Python/PostgreSQL and Go/PostgreSQL. Supervised handler runtime, crash/concurrency benchmark, backup/restore rehearsal and engine comparison remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
     {
@@ -784,7 +795,7 @@
       "title": "Add production alerting and SLOs",
       "phase": 6,
       "priority": 35,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Define SLOs for upload acceptance, queue age, processing success, transcription latency and deletion completion.",
@@ -792,7 +803,9 @@
         "Add actionable alerts, runbooks and synthetic checks for critical paths.",
         "Test alert rules and verify dashboards against staging workload."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: Tenant-safe aggregate worker metrics, processing-duration aggregates, provisional SLOs, alert thresholds and queue-backlog runbook are implemented in open PR #43. Run 45064775076 passed Python/PostgreSQL and Go/PostgreSQL. Exporter/tracing backend, alert manager, dashboards and staging validation remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
     {
@@ -800,7 +813,7 @@
       "title": "Implement release, canary and rollback automation",
       "phase": 6,
       "priority": 36,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Build immutable release artifacts with SBOM, dependency provenance and signed/checksummed model manifests.",
@@ -808,7 +821,9 @@
         "Support canary health gates and rollback without corrupting durable job/schema state.",
         "Verify restore and rollback procedures in a production-like environment."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: Checksummed build-only release artifacts, Linux amd64/arm64 binaries, source archive, CycloneDX SBOM, manifest and disposable PostgreSQL/pgvector validation are implemented in open PR #45. Latest PR validation run 45106194175 passed Python/PostgreSQL and Go/PostgreSQL. Signing/attestation, production target, migration rehearsal, canary/rollback and restore remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     },
     {
@@ -816,7 +831,7 @@
       "title": "Add bounded autonomous maintenance workflows",
       "phase": 6,
       "priority": 37,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
         "Automate only allowlisted dependency, security and regression remediation tasks.",
@@ -824,7 +839,9 @@
         "Enforce spending, permissions, branch-protection and blast-radius limits.",
         "Audit every action and test safe stop/rollback behavior."
       ],
-      "evidence": [],
+      "evidence": [
+        "2026-11-23: Bounded dependency/security automation is implemented in open PR #46: grouped Dependabot, pinned pip-audit/govulncheck workflows, dependency remediation and PR-only/no-auto-merge policy. Validate run 45067775307 and security audit run 45067775295 passed. General autonomous issue triage/patch generation, approval orchestration and canary rollback remain open."
+      ],
       "blocked_reason": "Not implemented or independently verified yet."
     }
   ]
