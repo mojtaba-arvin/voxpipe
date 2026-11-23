@@ -14,5 +14,5 @@ class SpeechToTextPort(Protocol):
     def provider_name(self) -> str: ...
 
     def transcribe(self, request: TranscriptionRequest) -> Transcript:
-        """Transcribe an extracted audio stream into the canonical transcript."""
+        """Transcribe audio into the canonical transcript.\n\n        idempotency_key is stable across retries; adapters forward it only when\n        the selected provider documents idempotent submission semantics.\n        """
         ...
