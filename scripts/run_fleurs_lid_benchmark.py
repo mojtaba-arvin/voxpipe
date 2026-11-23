@@ -70,8 +70,7 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     from voxpipe.speech.language_id import (SpeechBrainLanguageIdentifier,evaluate_language_id,
         calibrate_abstention_threshold)
 
-    info=model_info(MODEL_ID)
-    model_revision=info.sha
+    model_revision=MODEL_REVISION
     model_dir=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
     raw_model=SpeechBrainLanguageIdentifier(model_dir=model_dir,threshold=0.0,model_version=model_revision)
 
