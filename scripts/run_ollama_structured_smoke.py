@@ -71,6 +71,7 @@ def candidate_schema_constraints(candidates):
     event_types = []
     event_names = []
     entity_types = set()
+    entity_candidates = []
     topic_names = []
     relation_triples = []
     max_action_items = 0
@@ -124,24 +125,48 @@ def candidate_schema_constraints(candidates):
                     if subject not in topic_names:
                         topic_names.append(subject)
                 relation = re.search(
-                    r"(?P<subject>[\u0600-\u06FF\s]+?)\s+با\s+[\u0600-\u06FF\s]+?\s+(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\s+.+?)\s+امضا\s+کرد(?:ه|ند)?",
+                    r"(?P<subject>[\u0600-\u06FF\s]+?)\s+با\s+(?P<counterparty>[\u0600-\u06FF\s]+?)\s+(?P<object>(?:قرارداد|تفاهم‌نامه|توافق‌نامه)\s+.+?)\s+امضا\s+کرد(?:ه|ند)?",
                     quote,
                 )
                 if relation:
                     relation_triples.append({
                         "subject": relation.group("subject").strip(),
                         "predicate": "امضا کرد",
-                        "object": relation.group("object").strip(),
+                        "object": relation.group("object").strip() + " با " + relation.group("counterparty").strip(),
                     })
 
-        if re.search(r"شرکت|سازمان|مؤسسه|موسسه", quote):
-            entity_types.add("organization")
-        if re.search(r"(?:^|\s)در\s+(?:دفتر|مرکز|ساختمان|اتاق|محل|شهر|کشور)", quote):
-            entity_types.add("location")
-        if re.search(r"گزارش|نامه|فاکتور|سند|مدرک", quote):
-            entity_types.add("document")
-        if re.search(r"[\u0600-\u06FF]+\s+(?:باید|موظف\s+است|مسئول\s+است)", quote):
-            entity_types.add("person")
+        for organization in re.findall(r"شرکت\s+[\u0600-\u06FF]+", quote):
+            candidate = {"name": organization.strip(), "entity_type": "organization"}
+            if candidate not in entity_candidates:
+                entity_candidates.append(candidate)
+                entity_types.add("organization")
+        location = re.search(
+            r"در\s+(?P<name>(?:دفتر|مرکز|ساختمان|اتاق|محل)\s+[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)?)",
+            quote,
+        )
+        if location:
+            candidate = {"name": location.group("name").strip(), "entity_type": "location"}
+            if candidate not in entity_candidates:
+                entity_candidates.append(candidate)
+                entity_types.add("location")
+        document = re.search(
+            r"(?P<name>(?:گزارش|نامه|فاکتور|سند|مدرک)\s+[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)?)(?=\s+را|\s+تا|\s+(?:ارسال|ارائه|تهیه|تکمیل|بررسی|پرداخت|ثبت|تحویل))",
+            quote,
+        )
+        if document:
+            candidate = {"name": document.group("name").strip(), "entity_type": "document"}
+            if candidate not in entity_candidates:
+                entity_candidates.append(candidate)
+                entity_types.add("document")
+        person = re.search(
+            r"(?P<name>[\u0600-\u06FF]+)\s+(?:باید|موظف\s+است|مسئول\s+است)",
+            quote,
+        )
+        if person:
+            candidate = {"name": person.group("name").strip(), "entity_type": "person"}
+            if candidate not in entity_candidates:
+                entity_candidates.append(candidate)
+                entity_types.add("person")
 
         if action_cue.search(quote):
             max_action_items = 32
@@ -171,7 +196,9 @@ def candidate_schema_constraints(candidates):
         if kind in entity_types
     )
     return {
-        "max_entities": 32 if ordered_entity_types else 0,
+        "max_entities": len(entity_candidates),
+        "required_entities": len(entity_candidates),
+        "allowed_entities": tuple(entity_candidates),
         "allowed_entity_types": ordered_entity_types or ("person", "organization", "location", "document"),
         "max_events": len(event_names),
         "allowed_event_types": tuple(event_types),
@@ -196,6 +223,8 @@ def ollama_output_schema(
     required_event_fields=(),
     *,
     max_entities=32,
+    required_entities=0,
+    allowed_entities=(),
     max_events=32,
     allowed_event_types=("meeting", "contract-signing"),
     allowed_entity_types=("person", "organization", "location", "document"),
@@ -232,10 +261,25 @@ def ollama_output_schema(
                 relation[field] for relation in allowed_relation_triples
             ))
 
+    entity_value_schema = {
+        "type":"object","additionalProperties":False,"required":["name","entity_type"],
+        "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":list(allowed_entity_types)},
+            "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}},
+    }
+    if allowed_entities:
+        entity_value_schema = {"oneOf":[
+            {
+                "type":"object","additionalProperties":False,"required":["name","entity_type"],
+                "properties":{
+                    "name":{"const": entity["name"]},
+                    "entity_type":{"const": entity["entity_type"]},
+                    "aliases":{"type":"array","items":{"type":"string"}},
+                    "description":{"type":"string"},
+                },
+            } for entity in allowed_entities
+        ]}
     value_schemas={
-        "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
-            "properties":{"name":{"type":"string","minLength":1},"entity_type":{"type":"string","enum":list(allowed_entity_types)},
-                "aliases":{"type":"array","items":{"type":"string"}},"description":{"type":"string"}}},
+        "entities":entity_value_schema,
         "events":{"type":"object","additionalProperties":False,"required":["name","event_type",*required_event_fields],
             "properties":{"name":event_name_schema,"event_type":{"type":"string","enum":list(allowed_event_types) or ["meeting","contract-signing"]},
                 "start_time":{"type":"string","minLength":1},"end_time":{"type":"string"},"location":{"type":"string","minLength":1},
@@ -264,6 +308,7 @@ def ollama_output_schema(
     limits = {"entities": max_entities, "events": max_events, "topics": max_topics,
               "relations": max_relations, "action_items": max_action_items}
     properties = {name:{"type":"array","maxItems":limits.get(name,32),"items":claim(value_schemas[name])} for name in names}
+    properties["entities"]["minItems"] = required_entities
     properties["topics"]["minItems"] = required_topics
     properties["relations"]["minItems"] = required_relations
     return {"type":"object","additionalProperties":False,"required":list(names),"properties":properties}
