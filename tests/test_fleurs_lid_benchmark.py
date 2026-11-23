@@ -77,7 +77,7 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
         )
         self.assertEqual(len(calls), 3)
         self.assertTrue(all(call[2] == "validation" and call[3] is True for call in calls))
-        self.assertTrue(all("/validation-00000-of-00001.parquet" in call[1]["dev"] for call in calls))
+        self.assertTrue(all("/validation-00000-of-00001.parquet" in call[1]["validation"] for call in calls))
         self.assertEqual(len(references), 3)
         self.assertEqual(len(predictions), 3)
         self.assertTrue(all(row["dataset_split"] == "validation" for row in rows))
