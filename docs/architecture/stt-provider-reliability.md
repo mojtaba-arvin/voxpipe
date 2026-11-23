@@ -100,7 +100,7 @@ Not yet production-accepted:
 - A vendor-specific hosted adapter (requires operator-selected vendor, region,
   DPA/retention review, explicit data-egress approval and pinned API contract).
 - Shared/distributed circuit state and durable retry/idempotency reconciliation.
-- OpenTelemetry exporter, dashboards, alerts and staging SLO verification.
+- Production exporter/resource/sampling configuration, dashboards, alerts and staging SLO verification.
 - Production workload, load, timeout and failover testing.
 
 No hosted provider is enabled by default. No customer audio is transferred.
