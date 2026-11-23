@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "items": [
     {
       "id": "VP-0001",
@@ -811,7 +811,7 @@
       "evidence": [
         "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted."
       ],
-      "blocked_reason": "Build/validation/SBOM artifact automation is implemented. A deployment environment, signed provenance identity, migration compatibility rehearsal against production-like data, canary health gates, and rollback/restore verification are not configured; production release automation remains blocked."
+      "blocked_reason": "Release-candidate artifacts, checksums and SBOM generation are implemented in an open PR. Signed provenance/model manifests, migration compatibility gates, canary promotion, safe rollback and production-like restore rehearsal remain unverified."
     },
     {
       "id": "VP-0037",
