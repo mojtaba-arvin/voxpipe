@@ -4,13 +4,14 @@ from voxpipe.workflows.runner import (
     PostgresWorkflowWorker, WorkflowApprovalRequired, WorkflowHandlerError,
     WorkflowHandlerRegistry, WorkflowStepContext,
 )
+from voxpipe.workflows.speech import SpeechTranscriptionWorkflowHandler
 from voxpipe.workflows.postgres import (
     PostgresWorkflowRepository, WorkflowConflict, WorkflowError,
     WorkflowLeaseLost, WorkflowStepSpec,
 )
 
 __all__ = [
-    "PostgresWorkflowWorker", "WorkflowApprovalRequired", "WorkflowHandlerError",
+    "SpeechTranscriptionWorkflowHandler", "PostgresWorkflowWorker", "WorkflowApprovalRequired", "WorkflowHandlerError",
     "WorkflowHandlerRegistry", "WorkflowStepContext", "PostgresWorkflowRepository", "WorkflowConflict", "WorkflowError",
     "WorkflowLeaseLost", "WorkflowStepSpec",
 ]
