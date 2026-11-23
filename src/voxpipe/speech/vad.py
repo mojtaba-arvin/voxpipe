@@ -95,9 +95,14 @@ class SileroVADAdapter:
     provider_name = "silero-vad"
     def __init__(self, *, model=None, timestamp_fn=None, threshold=0.5,
                  min_speech_duration_ms=100, min_silence_duration_ms=100):
-        if not 0.0 < threshold < 1.0: raise ValueError("threshold must be between 0 and 1")
-        if min_speech_duration_ms < 1 or min_silence_duration_ms < 0:
-            raise ValueError("invalid VAD duration options")
+        if (not isinstance(threshold, (int, float)) or isinstance(threshold, bool)
+                or not math.isfinite(threshold) or not 0.0 < threshold < 1.0):
+            raise ValueError("threshold must be finite and between 0 and 1")
+        if (not isinstance(min_speech_duration_ms, int) or isinstance(min_speech_duration_ms, bool)
+                or min_speech_duration_ms < 1
+                or not isinstance(min_silence_duration_ms, int) or isinstance(min_silence_duration_ms, bool)
+                or min_silence_duration_ms < 0):
+            raise ValueError("VAD duration options must be integer milliseconds in range")
         injected_timestamp_fn = timestamp_fn is not None
         if model is None and timestamp_fn is None:
             try:
@@ -137,9 +142,13 @@ class SileroVADAdapter:
         )
         regions = []
         for item in raw:
-            start, end = int(item["start"]), int(item["end"])
-            if start < 0 or end <= start or end > len(values):
-                raise ValueError("VAD model returned invalid sample boundaries")
+            if not isinstance(item, dict):
+                raise ValueError("VAD model timestamps must be mappings")
+            start, end = item.get("start"), item.get("end")
+            if (not isinstance(start, int) or isinstance(start, bool)
+                    or not isinstance(end, int) or isinstance(end, bool)
+                    or start < 0 or end <= start or end > len(values)):
+                raise ValueError("VAD model returned invalid integer sample boundaries")
             regions.append(SpeechRegion(round(start * 1000 / sample_rate), round(end * 1000 / sample_rate)))
         regions.sort(key=lambda x: (x.start_ms, x.end_ms))
         merged = []
@@ -177,8 +186,10 @@ class WebRTCVADAdapter:
         if (not isinstance(sample_rate, int) or isinstance(sample_rate, bool)
                 or sample_rate not in (8000,16000,32000,48000)):
             raise ValueError("unsupported WebRTC sample rate")
-        if not isinstance(pcm16,bytes) or not pcm16 or len(pcm16)%2: raise ValueError("audio must be non-empty mono PCM16")
-        if not _SHA256.fullmatch(audio_sha256): raise ValueError("audio_sha256 must be lowercase SHA-256")
+        if not isinstance(pcm16, bytes) or not pcm16 or len(pcm16) % 2:
+            raise ValueError("audio must be non-empty mono PCM16")
+        if not isinstance(audio_sha256, str) or not _SHA256.fullmatch(audio_sha256):
+            raise ValueError("audio_sha256 must be lowercase SHA-256")
         frame_samples = sample_rate*self.frame_duration_ms//1000
         frame_bytes = frame_samples*2
         total_samples = len(pcm16)//2
@@ -204,10 +215,15 @@ def evaluate_vad(reference, hypothesis, *, duration_ms: int, frame_ms: int=10) -
             or not isinstance(frame_ms, int) or isinstance(frame_ms, bool) or frame_ms < 1):
         raise ValueError("duration_ms and frame_ms must be positive integers")
     for name, regions in (("reference", reference), ("hypothesis", hypothesis)):
-        if not isinstance(regions, (tuple, list)) or any(
-            not isinstance(region, SpeechRegion) or region.end_ms > duration_ms for region in regions
-        ):
-            raise ValueError(f"{name} regions must be SpeechRegion values within duration_ms")
+        if not isinstance(regions, (tuple, list)):
+            raise ValueError(f"{name} regions must be a sequence of SpeechRegion values")
+        prior_end = 0
+        for region in regions:
+            if not isinstance(region, SpeechRegion) or region.end_ms > duration_ms:
+                raise ValueError(f"{name} regions must be SpeechRegion values within duration_ms")
+            if region.start_ms < prior_end:
+                raise ValueError(f"{name} regions must be ordered and non-overlapping")
+            prior_end = region.end_ms
     def active(regions, t):
         return any(r.start_ms <= t and r.end_ms > t for r in regions)
     tp=fp=fn=0
