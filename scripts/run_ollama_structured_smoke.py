@@ -184,6 +184,12 @@ def ollama_output_schema(
     required_action_item_fields=(),
     action_item_description_pattern=None,
     allow_action_item_status=False,
+    allowed_event_names=(),
+    max_topics=32,
+    required_topics=0,
+    allowed_topic_names=(),
+    max_relations=32,
+    required_relations=0,
 ):
     allowed = list(span_ids) or ["__no_evidence__"]
     evidence={"type":"object","additionalProperties":False,
@@ -191,7 +197,9 @@ def ollama_output_schema(
         "properties":{"span_id":{"type":"string","enum":allowed}}}
     names=("entities","events","topics","relations","action_items")
     event_name_schema = {"type": "string", "minLength": 1}
-    if tuple(allowed_event_types) == ("contract-signing",):
+    if allowed_event_names:
+        event_name_schema["enum"] = list(allowed_event_names)
+    elif tuple(allowed_event_types) == ("contract-signing",):
         event_name_schema["pattern"] = "^امضای .+"
     value_schemas={
         "entities":{"type":"object","additionalProperties":False,"required":["name","entity_type"],
@@ -202,7 +210,7 @@ def ollama_output_schema(
                 "start_time":{"type":"string","minLength":1},"end_time":{"type":"string"},"location":{"type":"string","minLength":1},
                 "participants":{"type":"array","items":{"type":"string"}}}},
         "topics":{"type":"object","additionalProperties":False,"required":["name"],
-            "properties":{"name":{"type":"string","minLength":1},"description":{"type":"string"},
+            "properties":{"name":{"type":"string","minLength":1, **({"enum":list(allowed_topic_names)} if allowed_topic_names else {})},"description":{"type":"string"},
                 "keywords":{"type":"array","items":{"type":"string"}}}},
         "relations":{"type":"object","additionalProperties":False,"required":["subject","predicate","object"],
             "properties":{"subject":{"type":"string","minLength":1},"predicate":{"type":"string","minLength":1},
@@ -222,9 +230,12 @@ def ollama_output_schema(
             "properties":{"value":value_schema,
                 "evidence":{"type":"array","minItems":1,"items":evidence},
                 "confidence":{"type":"number","minimum":0,"maximum":1}}}
-    limits = {"entities": max_entities, "events": max_events, "action_items": max_action_items}
-    return {"type":"object","additionalProperties":False,"required":list(names),
-        "properties":{name:{"type":"array","maxItems":limits.get(name,32),"items":claim(value_schemas[name])} for name in names}}
+    limits = {"entities": max_entities, "events": max_events, "topics": max_topics,
+              "relations": max_relations, "action_items": max_action_items}
+    properties = {name:{"type":"array","maxItems":limits.get(name,32),"items":claim(value_schemas[name])} for name in names}
+    properties["topics"]["minItems"] = required_topics
+    properties["relations"]["minItems"] = required_relations
+    return {"type":"object","additionalProperties":False,"required":list(names),"properties":properties}
 
 
 def evaluate_prompt_injection_result(result):
