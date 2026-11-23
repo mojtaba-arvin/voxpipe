@@ -175,6 +175,8 @@ class WebRTCVADAdapter:
                 vad = webrtcvad.Vad(aggressiveness)
             except ImportError as exc:
                 raise RuntimeError("install webrtcvad-wheels to use WebRTC VAD") from exc
+        if not callable(getattr(vad, "is_speech", None)):
+            raise TypeError("vad must expose a callable is_speech(frame, sample_rate)")
         self.vad, self.frame_duration_ms = vad, frame_duration_ms
     def detect_request(self, request: VADRequest) -> VADResult:
         if not isinstance(request, VADRequest):
