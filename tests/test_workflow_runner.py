@@ -28,6 +28,10 @@ class FakeRepository:
         claim, self.claim = self.claim, None
         return claim
 
+    def heartbeat_step(self, tenant_id, workflow_id, step_id, worker_id, **kwargs):
+        self.calls.append(("heartbeat", tenant_id, workflow_id, step_id, worker_id, kwargs))
+        return {"lease_owner": worker_id}
+
     def complete_step(self, tenant_id, workflow_id, step_id, worker_id, result_refs):
         self.calls.append(("complete", tenant_id, workflow_id, step_id, worker_id, result_refs))
         if result_refs.get("invalid"):
@@ -58,6 +62,18 @@ class WorkflowRunnerTests(unittest.TestCase):
         self.assertEqual(seen[0].tenant_id, TENANT)
         self.assertEqual(seen[0].attempt, 1)
         self.assertEqual(repository.calls[-1][0], "complete")
+
+    def test_handler_can_extend_its_active_lease_cooperatively(self):
+        repository = FakeRepository()
+        def handler(context):
+            lease = context.heartbeat()
+            self.assertEqual(lease["lease_owner"], WORKER)
+            return {"result_ref": "ref-2"}
+        outcome = self.worker(repository, handler).run_once(TENANT)
+        self.assertEqual(outcome["outcome"], "completed")
+        heartbeat = next(call for call in repository.calls if call[0] == "heartbeat")
+        self.assertEqual(heartbeat[1:5], (TENANT, WORKFLOW, STEP, WORKER))
+        self.assertEqual(heartbeat[5]["lease_seconds"], 60)
 
     def test_unknown_handler_fails_without_dynamic_import(self):
         repository = FakeRepository()
