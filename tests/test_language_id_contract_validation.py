@@ -44,6 +44,37 @@ class LanguageIdContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid probability"):
             identifier.identify([0.0] * 16000, sample_rate=16000)
 
+    def test_identifier_rejects_boolean_probabilities_and_non_sequence_labels(self):
+        for scores, labels in (([True, 0.2], ("fa", "en")), ([0.8, 0.2], "fa")):
+            identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier(scores, labels))
+            with self.subTest(scores=scores, labels=labels):
+                with self.assertRaisesRegex(ValueError, "malformed probability or label arrays"):
+                    identifier.identify([0.0] * 16000, sample_rate=16000)
+
+    def test_identifier_rejects_fractional_and_boolean_sample_rates(self):
+        identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, 0.2]))
+        for sample_rate in (16000.0, True):
+            with self.subTest(sample_rate=sample_rate):
+                with self.assertRaises(ValueError):
+                    identifier.identify([0.0] * 16000, sample_rate=sample_rate)
+
+    def test_identifier_rejects_boolean_threshold_and_invalid_model_version(self):
+        for kwargs in ({"threshold": True}, {"threshold": float("nan")}, {"model_version": ""}):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, 0.2]), **kwargs)
+
+    def test_window_configuration_requires_integer_non_overrunning_hops(self):
+        identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, 0.2]))
+        for kwargs in (
+            {"window_ms": 1000.5}, {"window_ms": True},
+            {"hop_ms": 0.5}, {"hop_ms": True}, {"window_ms": 1000, "hop_ms": 1001},
+            {"sample_rate": 16000.0},
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    identifier.identify_windows([0.0] * 32000, **kwargs)
+
     def test_identifier_rejects_empty_predicted_language_label(self):
         identifier = SpeechBrainLanguageIdentifier(model=FakeClassifier([0.8, 0.2], ("", "en")))
         with self.assertRaisesRegex(ValueError, "empty language label"):
