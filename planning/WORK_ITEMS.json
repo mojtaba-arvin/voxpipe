@@ -547,7 +547,8 @@
         "2026-11-23: Hardened VAD adapter inputs and result invariants. Silero's direct API now reuses VADRequest validation; WebRTC rejects boolean/fractional frame configuration and non-integer sample rates; VADResult enforces SHA/sample-rate/duration/provenance and ordered non-overlapping regions within duration; evaluate_vad rejects invalid duration/frame inputs and out-of-range regions. Added tests/test_vad_adapter_input_validation.py. This is deterministic contract hardening, not frame-labelled accuracy evidence.",
         "2026-11-23: Exact current PR head including strict direct-adapter and VADResult validation passed repository CI run 45139134580 (Python/PostgreSQL and Go/PostgreSQL).",
         "2026-11-23: Current PR head after Work Ledger synchronization passed validation run 45139438594; Python/PostgreSQL and Go/PostgreSQL both succeeded.",
-        "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL."
+        "2026-11-23: Latest exact-head CI after final ledger synchronization: run 45139756232 passed Python/PostgreSQL and Go/PostgreSQL.",
+        "2026-11-23 latest exact-head CI run 45142254060 passed Python/PostgreSQL and Go/PostgreSQL after VAD contract and ledger updates."
       ],
       "blocked_reason": "The provider-neutral adapters and strict input/result contracts are implemented, but frame-level Persian speech/non-speech labels are still absent. Current FLEURS utterance-envelope proxy metrics cannot satisfy frame-level precision/recall, boundary-error or false-activation acceptance. Silence/music/noisy/overlap conditions need a frozen labelled test split."
     },
