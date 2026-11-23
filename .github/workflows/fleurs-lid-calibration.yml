@@ -47,8 +47,8 @@ jobs:
       - name: Run strict 95% validation calibration and disjoint test evaluation
         run: |
           python scripts/run_fleurs_lid_benchmark.py \
-            --calibration-samples 20 \
-            --max-samples 20 \
+            --calibration-samples 100 \
+            --max-samples 100 \
             --min-selective-accuracy 0.95 \
             --min-coverage 0.50 \
             --output-dir benchmark-results/fleurs-lid
