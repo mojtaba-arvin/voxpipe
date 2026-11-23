@@ -28,3 +28,8 @@ Prompt instructions and exact-evidence validation reduce injection and hallucina
 ## Smoke v13 action-item field normalization
 
 The adapter now separates a source-evidenced trailing deadline from the action-only description when the exact deadline string is duplicated at the end of the description. It removes only an exact suffix present in the selected evidence and preserves the complete original deadline phrase in `due_date` (including Persian «تا»). It does not alter unverified or internal date mentions. The synthetic action-item fixture now expects `تا جمعه`, matching the complete spoken deadline. This is a deterministic field-boundary correction, not a claim of general extraction quality. Topic and relation recovery and a human-reviewed Persian gold set remain outstanding.
+
+
+## Evidence-derived extraction constraints
+
+The local synthetic smoke harness derives allowed event names, topic names, collection limits and required relation/topic counts from each immutable evidence candidate. A candidate without a topic or relation has those collections constrained to zero; event titles retain the full source phrase. Static cross-fixture facts were removed from the system prompt to reduce prompt contamination. These are deterministic smoke controls, not a replacement for human-reviewed Persian gold or semantic adjudication.
