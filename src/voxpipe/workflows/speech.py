@@ -8,7 +8,9 @@ heartbeats make retries/recovery explicit.
 from __future__ import annotations
 
 import hashlib
+import re
 import threading
+import tempfile
 from dataclasses import replace
 from typing import Any, Protocol
 from uuid import UUID
@@ -73,8 +75,6 @@ class _LeaseHeartbeat:
         self._stop.set()
         if self._thread.is_alive():
             self._thread.join(timeout=max(1.0, self._interval * 2))
-        if self._thread.is_alive():
-            self._lost.set()
         self.ensure_owned()
 
 
@@ -106,10 +106,9 @@ class SpeechTranscriptionWorkflowHandler:
         max_audio_bytes: int = 512 * 1024 * 1024,
         heartbeat_interval_seconds: float = 15.0,
     ) -> None:
-        if not isinstance(max_audio_bytes, int) or isinstance(max_audio_bytes, bool) or max_audio_bytes < 1:
-            raise ValueError("max_audio_bytes must be a positive integer")
-        if (not isinstance(heartbeat_interval_seconds, (int, float)) or isinstance(heartbeat_interval_seconds, bool)
-                or not 0.05 <= heartbeat_interval_seconds <= 30):
+        if max_audio_bytes < 1:
+            raise ValueError("max_audio_bytes must be positive")
+        if not isinstance(heartbeat_interval_seconds, (int, float)) or not 0.05 <= heartbeat_interval_seconds <= 30:
             raise ValueError("heartbeat_interval_seconds must be between 0.05 and 30")
         self._repository = repository
         self._object_store = object_store
@@ -119,6 +118,20 @@ class SpeechTranscriptionWorkflowHandler:
         self._heartbeat_interval = float(heartbeat_interval_seconds)
 
     @staticmethod
+    def _retry_failure(context: WorkflowStepContext, code: str, *, retryable: bool, retry_after_seconds: int | None = None) -> WorkflowHandlerError:
+        if not retryable:
+            return WorkflowHandlerError(code, retryable=False)
+        if retry_after_seconds is not None:
+            if retry_after_seconds > 3600:
+                # Do not retry earlier than a provider's long Retry-After.
+                return WorkflowHandlerError(code, retryable=False)
+            delay = retry_after_seconds
+        else:
+            attempt = max(1, int(getattr(context, "attempt", 1)))
+            delay = min(300, 2 ** min(attempt - 1, 8))
+        return WorkflowHandlerError(code, retryable=True, retry_delay_seconds=delay)
+
+    @staticmethod
     def _uuid(value: Any, field: str) -> str:
         try:
             return str(UUID(str(value)))
@@ -126,7 +139,6 @@ class SpeechTranscriptionWorkflowHandler:
             raise WorkflowHandlerError("STT_INPUT_INVALID", retryable=False) from None
 
     def __call__(self, context: WorkflowStepContext) -> dict[str, Any]:
-        tenant_id = self._uuid(context.tenant_id, "tenant_id")
         refs = context.input_refs
         if not isinstance(refs, dict) or set(refs) - self._ALLOWED_INPUTS:
             raise WorkflowHandlerError("STT_INPUT_INVALID", retryable=False)
@@ -142,10 +154,10 @@ class SpeechTranscriptionWorkflowHandler:
             raise WorkflowHandlerError("STT_INPUT_INVALID", retryable=False)
 
         try:
-            asset = self._repository.get_asset(tenant_id, asset_id)
+            asset = self._repository.get_asset(context.tenant_id, asset_id)
         except Exception:
-            raise WorkflowHandlerError("STT_ASSET_LOOKUP_FAILED", retryable=True) from None
-        if not isinstance(asset, dict) or asset.get("asset_id") != asset_id or asset.get("tenant_id") != tenant_id:
+            raise self._retry_failure(context, "STT_ASSET_LOOKUP_FAILED", retryable=True) from None
+        if not isinstance(asset, dict) or asset.get("asset_id") != asset_id or asset.get("tenant_id") != context.tenant_id:
             raise WorkflowHandlerError("STT_ASSET_NOT_FOUND", retryable=False)
 
         media = asset.get("media")
@@ -160,7 +172,8 @@ class SpeechTranscriptionWorkflowHandler:
         if (
             not isinstance(content_type, str) or not content_type.startswith("audio/")
             or not isinstance(duration_ms, int) or isinstance(duration_ms, bool) or duration_ms < 1
-            or not isinstance(audio_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", audio_sha256)
+            or not isinstance(media.get("size_bytes"), int) or isinstance(media.get("size_bytes"), bool) or media.get("size_bytes") < 1
+            or not isinstance(audio_sha256, str) or len(audio_sha256) != 64
             or not isinstance(object_key, str) or not object_key
         ):
             raise WorkflowHandlerError("STT_ASSET_METADATA_INVALID", retryable=False)
@@ -170,10 +183,10 @@ class SpeechTranscriptionWorkflowHandler:
         except ObjectNotFoundError:
             raise WorkflowHandlerError("STT_AUDIO_OBJECT_NOT_FOUND", retryable=False) from None
         except StorageIOError:
-            raise WorkflowHandlerError("STT_STORAGE_UNAVAILABLE", retryable=True) from None
+            raise self._retry_failure(context, "STT_STORAGE_UNAVAILABLE", retryable=True) from None
         except StorageError:
             raise WorkflowHandlerError("STT_STORAGE_FAILURE", retryable=False) from None
-        if info.key != object_key or info.sha256 != audio_sha256 or info.size_bytes < 1:
+        if info.sha256 != audio_sha256 or info.size_bytes < 1:
             raise WorkflowHandlerError("STT_AUDIO_INTEGRITY_MISMATCH", retryable=False)
         if info.size_bytes > self._max_audio_bytes:
             raise WorkflowHandlerError("STT_AUDIO_TOO_LARGE", retryable=False)
@@ -181,38 +194,51 @@ class SpeechTranscriptionWorkflowHandler:
         idempotency_key = hashlib.sha256(
             f"voxpipe-stt:{context.tenant_id}:{context.workflow_id}:{context.step_id}:{transcript_id}:{revision}".encode()
         ).hexdigest()
-        lease_seconds = getattr(context, "lease_seconds", 60)
-        if not isinstance(lease_seconds, int) or isinstance(lease_seconds, bool) or lease_seconds < 3:
-            raise WorkflowHandlerError("STT_LEASE_CONFIGURATION_INVALID", retryable=False)
-        heartbeat_interval = min(self._heartbeat_interval, lease_seconds / 3)
-        heartbeat = _LeaseHeartbeat(context.heartbeat, heartbeat_interval)
+        heartbeat = _LeaseHeartbeat(context.heartbeat, self._heartbeat_interval)
         heartbeat.start()
         try:
             try:
-                with self._object_store.open(object_key) as audio_stream:
-                    request = TranscriptionRequest(
-                        asset_id=asset_id,
-                        audio_stream=audio_stream,
-                        content_type=content_type,
-                        audio_sha256=audio_sha256,
-                        language_hint=language_hint,
-                        word_timestamps=word_timestamps,
-                        diarization=diarization,
-                        duration_ms=duration_ms,
-                        idempotency_key=idempotency_key,
-                    )
-                    transcript = self._service.transcribe(request)
+                with self._object_store.open(object_key) as source_stream:
+                    with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as audio_stream:
+                        digest = hashlib.sha256()
+                        actual_size = 0
+                        while True:
+                            chunk = source_stream.read(1024 * 1024)
+                            if not isinstance(chunk, bytes):
+                                raise WorkflowHandlerError("STT_AUDIO_STREAM_INVALID", retryable=False)
+                            if not chunk:
+                                break
+                            actual_size += len(chunk)
+                            if actual_size > self._max_audio_bytes:
+                                raise WorkflowHandlerError("STT_AUDIO_TOO_LARGE", retryable=False)
+                            digest.update(chunk)
+                            audio_stream.write(chunk)
+                        if actual_size != info.size_bytes or digest.hexdigest() != audio_sha256:
+                            raise WorkflowHandlerError("STT_AUDIO_INTEGRITY_MISMATCH", retryable=False)
+                        audio_stream.seek(0)
+                        request = TranscriptionRequest(
+                            asset_id=asset_id,
+                            audio_stream=audio_stream,
+                            content_type=content_type,
+                            audio_sha256=audio_sha256,
+                            language_hint=language_hint,
+                            word_timestamps=word_timestamps,
+                            diarization=diarization,
+                            duration_ms=duration_ms,
+                            idempotency_key=idempotency_key,
+                        )
+                        transcript = self._service.transcribe(request)
             except TranscriptionError as exc:
-                raise WorkflowHandlerError(
-                    exc.code, retryable=exc.retryable,
-                    retry_delay_seconds=exc.retry_after_seconds or 0,
+                raise self._retry_failure(
+                    context, exc.code, retryable=exc.retryable,
+                    retry_after_seconds=exc.retry_after_seconds,
                 ) from None
             except TranscriptValidationError:
                 raise WorkflowHandlerError("STT_RESPONSE_INVALID", retryable=False) from None
             except ObjectNotFoundError:
                 raise WorkflowHandlerError("STT_AUDIO_OBJECT_NOT_FOUND", retryable=False) from None
             except StorageIOError:
-                raise WorkflowHandlerError("STT_STORAGE_UNAVAILABLE", retryable=True) from None
+                raise self._retry_failure(context, "STT_STORAGE_UNAVAILABLE", retryable=True) from None
             except StorageError:
                 raise WorkflowHandlerError("STT_STORAGE_FAILURE", retryable=False) from None
             except ValueError:
@@ -239,7 +265,7 @@ class SpeechTranscriptionWorkflowHandler:
                     raise WorkflowHandlerError("STT_REVISION_CONFLICT", retryable=False) from None
                 if isinstance(exc, ValueError):
                     raise WorkflowHandlerError("STT_PERSISTENCE_INVALID", retryable=False) from None
-                raise WorkflowHandlerError("STT_PERSISTENCE_UNAVAILABLE", retryable=True) from None
+                raise self._retry_failure(context, "STT_PERSISTENCE_UNAVAILABLE", retryable=True) from None
             heartbeat.ensure_owned()
             return {
                 "asset_id": asset_id,
