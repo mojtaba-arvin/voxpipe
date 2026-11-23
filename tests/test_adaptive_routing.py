@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from voxpipe.speech.capabilities import ProviderCapability, ProviderCapabilityRegistry
+from voxpipe.speech.circuit_breaker import ProviderCircuitBreaker
 from voxpipe.speech.routing import (AdaptiveModelRouter, ModelQualityEvidence, NoEligibleModel, RoutingPolicy)
 
 NOW = datetime(2026, 11, 22, 12, tzinfo=timezone.utc)
@@ -64,6 +65,31 @@ class AdaptiveRoutingTests(unittest.TestCase):
         with self.assertRaises(NoEligibleModel):
             AdaptiveModelRouter(registry, ev).route(remote_policy, language="fa-IR", now=NOW,
                 open_circuit_providers={"remote"})
+
+    def test_circuit_breaker_exclusion_and_half_open_probe_feed_policy_router(self):
+        class Clock:
+            value = 0.0
+            def __call__(self):
+                return self.value
+
+        clock = Clock()
+        breaker = ProviderCircuitBreaker(failure_threshold=1, cooldown_seconds=5, clock=clock)
+        permit = breaker.try_acquire("local")
+        self.assertFalse(permit.is_probe)
+        breaker.record_failure(permit)
+        router = AdaptiveModelRouter(self.registry, self.evidence)
+        with self.assertRaises(NoEligibleModel):
+            router.route(self.policy, language="fa-IR", now=NOW,
+                open_circuit_providers=breaker.open_providers())
+
+        clock.value = 5
+        probe = breaker.try_acquire("local")
+        self.assertTrue(probe.is_probe)
+        decision = router.route(self.policy, language="fa-IR", now=NOW,
+            open_circuit_providers=breaker.open_providers() - {probe.provider})
+        self.assertEqual(decision.selected.capability.provider, "local")
+        self.assertTrue(breaker.record_success(probe))
+        self.assertEqual(breaker.open_providers(), frozenset())
 
     def test_safe_metadata_contains_no_audio_transcript_or_tenant_fields(self):
         decision = AdaptiveModelRouter(self.registry, self.evidence).route(self.policy,
