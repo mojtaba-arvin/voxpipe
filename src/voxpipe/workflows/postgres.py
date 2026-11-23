@@ -308,6 +308,30 @@ class PostgresWorkflowRepository:
             )
         return self._serialize_row(claimed)
 
+    def heartbeat_step(
+        self, tenant_id: str, workflow_id: str, step_id: str, worker_id: str,
+        *, lease_seconds: int = 60,
+    ) -> dict[str, Any]:
+        """Extend a still-valid worker lease; expired/reassigned leases cannot be revived."""
+        tenant, workflow = _uuid(tenant_id, "tenant_id"), _uuid(workflow_id, "workflow_id")
+        step, worker = _uuid(step_id, "step_id"), _uuid(worker_id, "worker_id")
+        if not isinstance(lease_seconds, int) or isinstance(lease_seconds, bool) or not 3 <= lease_seconds <= 3600:
+            raise ValueError("lease_seconds must be between 3 and 3600")
+        with self._tenant_connection(tenant) as connection:
+            row = connection.execute(
+                """
+                UPDATE workflow_steps
+                SET lease_expires_at=now()+make_interval(secs=>%s), updated_at=now()
+                WHERE tenant_id=%s AND workflow_id=%s AND step_id=%s
+                  AND state='running' AND lease_owner=%s AND lease_expires_at>now()
+                RETURNING *
+                """,
+                (lease_seconds, tenant, workflow, step, worker),
+            ).fetchone()
+            if row is None:
+                raise WorkflowLeaseLost("workflow step lease is absent, expired or owned by another worker")
+        return self._serialize_row(row)
+
     def complete_step(
         self, tenant_id: str, workflow_id: str, step_id: str, worker_id: str,
         result_refs: dict[str, Any] | None = None,
