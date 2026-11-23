@@ -39,6 +39,7 @@ class WorkflowStepContext:
     step_name: str
     attempt: int
     input_refs: dict[str, Any]
+    heartbeat: Callable[[], dict[str, Any]]
 
 
 WorkflowHandler = Callable[[WorkflowStepContext], dict[str, Any]]
@@ -101,13 +102,21 @@ class PostgresWorkflowWorker:
         if claim is None:
             return None
 
+        workflow_id = str(claim["workflow_id"])
+        step_id = str(claim["step_id"])
+        def heartbeat() -> dict[str, Any]:
+            return self._repository.heartbeat_step(
+                tenant_id, workflow_id, step_id, self.worker_id,
+                lease_seconds=self.lease_seconds,
+            )
         context = WorkflowStepContext(
             tenant_id=tenant_id,
-            workflow_id=str(claim["workflow_id"]),
-            step_id=str(claim["step_id"]),
+            workflow_id=workflow_id,
+            step_id=step_id,
             step_name=claim["step_name"],
             attempt=claim["attempts"],
             input_refs=claim["input_refs"],
+            heartbeat=heartbeat,
         )
         handler = self._registry.get(context.step_name)
         if handler is None:
