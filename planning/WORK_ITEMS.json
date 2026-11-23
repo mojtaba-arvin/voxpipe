@@ -611,7 +611,8 @@
         "2026-11-23: Exact PR #50 validation run 45138314541 passed Python/PostgreSQL and Go/PostgreSQL, including tests/test_persian_annotation_agreement.py. The tool remains a pairwise agreement diagnostic only; no human-reviewed corpus is present.",
         "2026-11-23: Hardened the independent-draft reader to validate required/allowed value fields per claim category, restrict entity_type to the canonical set, and reject malformed/unhashable evidence segment IDs with deterministic AnnotationError diagnostics. Added regression tests for invalid value contracts and malformed segment IDs.",
         "2026-11-23: Corrected exact-head validation run 45140681496 passed Python/PostgreSQL and Go/PostgreSQL, including the strict independent annotation export and negative-path tests. The preceding run 45140330195 failed only because two test fixtures wrote a literal backslash-n instead of a JSONL newline; corrected fixtures now pass.",
-        "2026-11-23: Latest exact-head validation run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL after strict export-schema checks and the corrected JSONL fixtures."
+        "2026-11-23: Latest exact-head validation run 45140870901 passed Python/PostgreSQL and Go/PostgreSQL after strict export-schema checks and the corrected JSONL fixtures.",
+        "2026-11-23 latest exact-head CI run 45142280280 passed Python/PostgreSQL and Go/PostgreSQL after strict annotation export validation and ledger updates."
       ],
       "blocked_reason": "Annotation workflow now includes protocol, record validation, scoring, and independent annotator-agreement diagnostics. Real consented Persian transcripts, two qualified independent annotators, and a third adjudicator are still required before the dataset can be marked human_reviewed or scored as gold."
     },
