@@ -10,7 +10,7 @@ The MCP server is a thin authenticated adapter over the Go HTTP API. Tenant iden
 | get_ingestion_status | ingestion:read | GET /v1/ingestions/{session_id} | Retry transient transport and server errors with bounded backoff. |
 | get_asset | ingestion:read | GET /v1/assets/{asset_id} | Retry transient transport and server errors with bounded backoff. |
 | search_assets | ingestion:read | GET /v1/assets/search | Retry transient transport and server errors with bounded backoff. |
-| search_transcripts | transcript:read | GET /v1/transcripts/search | Read-only full-text search; bounded pagination and tenant-scoped filters. |
+| search_transcripts | transcript:read | GET /v1/transcripts/search | Retry transient transport and server errors with bounded backoff; search is read-only. |
 
 ## Tool contracts
 
@@ -338,41 +338,169 @@ Stable errors:
 - FORBIDDEN; retryable: false
 - INTERNAL_ERROR; retryable: true
 
-
 ### search_transcripts
 
-Search tenant-scoped transcript segments with PostgreSQL full-text ranking. The authenticated principal must carry the separate `transcript:read` capability; `ingestion:read` alone does not grant transcript access. Tenant identity is derived exclusively from the verified bearer token.
+Search tenant-scoped transcript segments using PostgreSQL full-text search and optional transcript, asset, revision, language, speaker and time filters.
+
+Required scope: transcript:read.
 
 Input schema:
 
-```json
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["query"],
+  "required": [
+    "query"
+  ],
   "properties": {
-    "query": {"type": "string", "minLength": 1, "maxLength": 256},
-    "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
-    "offset": {"type": "integer", "minimum": 0, "maximum": 10000, "default": 0},
-    "transcript_id": {"type": "string", "format": "uuid"},
-    "asset_id": {"type": "string", "format": "uuid"},
-    "revision": {"type": "integer", "minimum": 1},
-    "language": {"type": "string", "minLength": 2, "maxLength": 35},
-    "speaker_id": {"type": "string", "format": "uuid"},
-    "start_ms": {"type": "integer", "minimum": 0},
-    "end_ms": {"type": "integer", "minimum": 1}
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 20
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "default": 0
+    },
+    "transcript_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "asset_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "language": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 35,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,34}$"
+    },
+    "speaker_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "start_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "end_ms": {
+      "type": "integer",
+      "minimum": 1
+    }
   }
 }
-```
 
-Output items contain transcript/revision/asset identifiers, language, provider/model provenance, segment ID, time range, segment text, optional speaker ID and lexical rank. Tenant IDs, audio hashes and storage references are not returned.
+Output schema:
+
+{
+  "type": "object",
+  "required": [
+    "items",
+    "limit",
+    "offset"
+  ],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "transcript_id",
+          "revision",
+          "asset_id",
+          "language",
+          "provider",
+          "model",
+          "segment_id",
+          "start_ms",
+          "end_ms",
+          "text",
+          "rank"
+        ],
+        "properties": {
+          "transcript_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "asset_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "segment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_ms": {
+            "type": "integer"
+          },
+          "end_ms": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          },
+          "speaker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rank": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "limit": {
+      "type": "integer"
+    },
+    "offset": {
+      "type": "integer"
+    }
+  }
+}
 
 Stable errors:
-- INVALID_SEARCH_QUERY / INVALID_SEARCH_FILTER; retryable: false
-- INVALID_SEARCH_LIMIT / INVALID_SEARCH_OFFSET; retryable: false
-- INVALID_TRANSCRIPT_ID / INVALID_ASSET_ID / INVALID_SPEAKER_ID; retryable: false
-- INVALID_REVISION / INVALID_LANGUAGE / INVALID_START_MS / INVALID_END_MS / INVALID_TIME_RANGE; retryable: false
-- UNAUTHENTICATED / FORBIDDEN; retryable: false
+- INVALID_SEARCH_QUERY; retryable: false
+- INVALID_SEARCH_FILTER; retryable: false
+- INVALID_SEARCH_LIMIT; retryable: false
+- INVALID_SEARCH_OFFSET; retryable: false
+- INVALID_TRANSCRIPT_ID; retryable: false
+- INVALID_ASSET_ID; retryable: false
+- INVALID_SPEAKER_ID; retryable: false
+- INVALID_REVISION; retryable: false
+- INVALID_LANGUAGE; retryable: false
+- INVALID_START_MS; retryable: false
+- INVALID_END_MS; retryable: false
+- INVALID_TIME_RANGE; retryable: false
+- UNAUTHENTICATED; retryable: false
+- FORBIDDEN; retryable: false
 - INTERNAL_ERROR; retryable: true
 
 ## Security and search boundaries
