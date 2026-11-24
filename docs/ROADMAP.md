@@ -31,7 +31,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Add PostgreSQL metadata repository, versioned migrations, and forced tenant RLS.
 - [x] Complete authenticated batch upload API and PostgreSQL-backed durable job queue (VP-0015 accepted; Python and Go/PostgreSQL CI passed on the implementation head).
 - [x] Implement queue cancellation, bounded retries, dead-letter handling, and tenant-scoped job status.
-- [x] Expose authenticated ingestion and asset-metadata capabilities through MCP (VP-0016 accepted; current search is metadata-only). Transcript and semantic search remain planned for Phase 4.
+- [x] Expose authenticated ingestion and asset-metadata capabilities through MCP (VP-0016 accepted; current search is metadata-only). Tenant-scoped lexical transcript search is delivered in Phase 4; hybrid/vector semantic search remains planned.
 - [x] Reconcile staged-source expiry and enforce retention/deletion/audit propagation (VP-0018; upload leases, tenant audit events, terminal staging cleanup, configurable asset expiry; CI run 44469883406).
 - [x] Add production identity, per-tenant quotas, rate limits, and upload deadlines (VP-0019).
 - [x] Harden worker supervision, lease-loss handling, and queue observability (VP-0020).
@@ -65,7 +65,8 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 4 — Knowledge and Retrieval
 
 - [x] Implement tenant-isolated transcript persistence and lifecycle (VP-0029; schema, forced RLS, append-only grants, source-asset deletion cascade, atomic revision create/read APIs, identical-retry idempotency, conflicting-content rejection, concurrent-writer and cross-tenant write/read tests; GitHub Actions run 44805144386 passed).
-- [ ] Implement lexical transcript search (VP-0030; PostgreSQL FTS query API now supports tenant scope, transcript/language/speaker/time filters, bounded pagination and source/model/revision provenance; ranking edge cases and broader update/deletion behavior still need coverage).
+- [x] Expose tenant-scoped lexical transcript search through Go HTTP API and MCP with a separate `transcript:read` scope, Persian query normalization, bounded pagination, transcript/asset/revision/language/speaker/time filters, PostgreSQL RLS and safe provenance (PR #111).
+- [ ] Complete lexical search quality gates (VP-0030; ranking edge cases and broader update/deletion behavior still need coverage).
 - [ ] Implement hybrid/semantic retrieval with measured relevance and tenant isolation (VP-0031).
 - Evaluate PostgreSQL/pgvector and dedicated vector engines on representative workloads.
 
@@ -85,8 +86,8 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 The first PostgreSQL-native workflow journal is a bounded sequential proof of concept that complements the ingestion queue; it is not yet the final orchestration-engine selection. See [durable workflow architecture](architecture/durable-workflows.md) and [ADR-0034](decisions/ADR-0034-postgres-native-workflows.md).
 
-- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. Exact-head integration CI passed for the merged changes; sustained load, process supervision, backup/restore rehearsal and DBOS/Temporal comparison remain).
-- Add bounded self-healing for known transient failures.
+- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. PR #101 adds the tenant-scoped systemd runtime/entrypoint and PR #108 adds bounded in-process backoff for transient repository/lease failures. Host-level restart/shutdown drill, sustained load, backup/restore rehearsal and DBOS/Temporal comparison remain).
+- [x] Add bounded self-healing for known transient repository/lease failures (PR #108; credential-safe logs and capped exponential backoff).
 - Detect regressions and open evidence-rich remediation tasks.
 - [ ] Add production alerting and SLOs (VP-0035; tenant-safe worker aggregates, content-free STT lifecycle events and an injected OpenTelemetry bridge are implemented; exporter/resource configuration, dashboards, actionable alerts, synthetic checks and staging SLO verification remain).
 - [ ] Implement release, canary and rollback automation (VP-0036).
