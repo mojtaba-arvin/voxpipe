@@ -166,22 +166,30 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
                 self.tenant, self.workflow, self.step1.step_id, self.worker, lease_seconds=3
             )
 
-    def test_expired_lease_is_reclaimed_and_old_worker_is_fenced(self):
+    def test_expired_lease_is_reclaimed_by_fresh_repository_and_old_worker_is_fenced(self):
         self.create((self.step1,))
-        old = self.repository.claim_next_step(self.tenant, self.workflow, self.worker, lease_seconds=3)
+        self.repository.claim_next_step(self.tenant, self.workflow, self.worker, lease_seconds=3)
         with self.repository._tenant_connection(self.tenant) as connection:
             connection.execute(
                 "UPDATE workflow_steps SET lease_expires_at=now()-interval '1 second' WHERE tenant_id=%s AND workflow_id=%s AND step_id=%s",
                 (self.tenant, self.workflow, self.step1.step_id),
             )
+
+        # A replacement worker constructs a fresh repository after the prior
+        # process disappears; durable lease state, not in-memory state, drives recovery.
+        restarted_repository = PostgresWorkflowRepository(APP_DSN)
         new_worker = str(uuid4())
-        reclaimed = self.repository.claim_next_step(self.tenant, self.workflow, new_worker, lease_seconds=3)
+        reclaimed = restarted_repository.claim_next_step(
+            self.tenant, self.workflow, new_worker, lease_seconds=3,
+        )
         self.assertEqual(reclaimed["attempts"], 2)
         with self.assertRaises(WorkflowLeaseLost):
-            self.repository.complete_step(self.tenant, self.workflow, self.step1.step_id,
-                self.worker, {"late": True})
-        self.repository.complete_step(self.tenant, self.workflow, self.step1.step_id,
-            new_worker, {"ok": True})
+            self.repository.complete_step(
+                self.tenant, self.workflow, self.step1.step_id, self.worker, {"late": True},
+            )
+        restarted_repository.complete_step(
+            self.tenant, self.workflow, self.step1.step_id, new_worker, {"ok": True},
+        )
 
 
 if __name__ == "__main__":

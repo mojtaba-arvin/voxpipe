@@ -828,7 +828,8 @@
         "2026-11-24: merged STT workflow handler as PR #73 (commit 78c79833be981ad5da7213f54f8ec4ab4c862b8f); exact-head Python/PostgreSQL and Go/PostgreSQL integration checks passed.",
         "2026-11-24: merged PR #75 (commit 1989da4a0ed5f47951df58f9910851d0830d2cef) to reuse an already-persisted transcript revision after lease-loss replay, preventing duplicate billable inference and generated_at-only revision conflicts. Exact-head Python/PostgreSQL and Go/PostgreSQL checks passed.",
         "2026-11-24: main validation run 45374599182 on PR #89 merge commit passed Python/PostgreSQL, Go/PostgreSQL and OpenTelemetry runtime smoke.",
-        "2026-11-24: migration 0008, PostgreSQL test database grants and workflow table cleanup are in main. Sustained concurrency/load, supervisor-driven restart/shutdown drills, backup/restore rehearsal and external provider reconciliation remain unverified."
+        "2026-11-24: migration 0008, PostgreSQL test database grants and workflow table cleanup are in main. Sustained concurrency/load, supervisor-driven restart/shutdown drills, backup/restore rehearsal and external provider reconciliation remain unverified.",
+        "2026-11-24: hardened lease-expiry integration coverage to reclaim a step through a newly constructed PostgreSQL repository instance after the original worker's lease expires; the original repository/worker is fenced from completing the reclaimed step. This proves cross-instance durable recovery, not an OS-level supervisor drill."
       ],
       "blocked_reason": "The PostgreSQL-native journal, worker and provider-neutral STT workflow are merged, including replay-safe immutable transcript reuse. Sustained concurrency/load, process supervision, worker shutdown/restart drills, backup/restore rehearsal, production provider reconciliation and measured DBOS/Temporal comparison remain."
     },
