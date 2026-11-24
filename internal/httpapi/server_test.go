@@ -215,6 +215,20 @@ func TestAssetMetadataEndpointsAreTenantAuthenticated(t *testing.T) {
 }
 
 
+
+func TestNormalizePersianTranscriptSearchQuery(t *testing.T) {
+	got := normalizePersianSearchQuery("كِتاب يَك ۱۲۳ ١٢٣")
+	if got != "کتاب یک 123 123" {
+		t.Fatalf("unexpected Persian normalization: %q", got)
+	}
+	if got := normalizePersianSearchQuery("\"جلسه فروش\" -لغو"); got != "\"جلسه فروش\" -لغو" {
+		t.Fatalf("search syntax should be preserved: %q", got)
+	}
+	if got := normalizePersianSearchQuery("می‌روم   API"); got != "می روم api" {
+		t.Fatalf("ZWNJ and whitespace normalization failed: %q", got)
+	}
+}
+
 func TestTranscriptSearchEndpointUsesDedicatedScopeAndReturnsSafeProvenance(t *testing.T) {
 	server, store, tenant, token := testServer(t)
 	store.transcriptResults = []map[string]any{{
