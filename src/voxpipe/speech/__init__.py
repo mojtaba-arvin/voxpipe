@@ -15,6 +15,7 @@ from voxpipe.speech.contracts import (
     validate_transcript,
 )
 from voxpipe.speech.faster_whisper import FasterWhisperAdapter
+from voxpipe.speech.deepgram import DeepgramNova3Adapter
 from voxpipe.speech.observability import (
     NoopSpeechObserver,
     OpenTelemetrySpeechObserver,
@@ -32,6 +33,7 @@ __all__ = [
     "CircuitBreakerPort",
     "CircuitPermit",
     "FasterWhisperAdapter",
+    "DeepgramNova3Adapter",
     "NoopSpeechObserver",
     "OpenTelemetrySpeechObserver",
     "ProviderCapability",
