@@ -456,34 +456,38 @@ func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filters := TranscriptSearchFilters{}
-	if value := queryValues.Get("transcript_id"); value != "" {
+	if values, exists := queryValues["transcript_id"]; exists {
+		value := values[0]
 		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_TRANSCRIPT_ID", "transcript_id must be a UUID"); return }
 		filters.TranscriptID = &value
 	}
-	if value := queryValues.Get("asset_id"); value != "" {
+	if values, exists := queryValues["asset_id"]; exists {
+		value := values[0]
 		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_ASSET_ID", "asset_id must be a UUID"); return }
 		filters.AssetID = &value
 	}
-	if value := queryValues.Get("speaker_id"); value != "" {
+	if values, exists := queryValues["speaker_id"]; exists {
+		value := values[0]
 		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_SPEAKER_ID", "speaker_id must be a UUID"); return }
 		filters.SpeakerID = &value
 	}
-	if value := queryValues.Get("revision"); value != "" {
-		parsed, parseErr := strconv.Atoi(value)
+	if values, exists := queryValues["revision"]; exists {
+		parsed, parseErr := strconv.Atoi(values[0])
 		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_REVISION", "revision must be a positive integer"); return }
 		filters.Revision = &parsed
 	}
-	if value := queryValues.Get("language"); value != "" {
+	if values, exists := queryValues["language"]; exists {
+		value := values[0]
 		if !languagePattern.MatchString(value) { writeError(w, http.StatusBadRequest, "INVALID_LANGUAGE", "language filter is invalid"); return }
 		filters.Language = &value
 	}
-	if value := queryValues.Get("start_ms"); value != "" {
-		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+	if values, exists := queryValues["start_ms"]; exists {
+		parsed, parseErr := strconv.ParseInt(values[0], 10, 64)
 		if parseErr != nil || parsed < 0 { writeError(w, http.StatusBadRequest, "INVALID_START_MS", "start_ms must be a non-negative integer"); return }
 		filters.StartMS = &parsed
 	}
-	if value := queryValues.Get("end_ms"); value != "" {
-		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+	if values, exists := queryValues["end_ms"]; exists {
+		parsed, parseErr := strconv.ParseInt(values[0], 10, 64)
 		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_END_MS", "end_ms must be a positive integer"); return }
 		filters.EndMS = &parsed
 	}
@@ -499,8 +503,9 @@ func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseBoundedQueryInt(values map[string][]string, key string, fallback, minimum, maximum int) (int, error) {
-	rawValues := values[key]
-	if len(rawValues) == 0 || rawValues[0] == "" { return fallback, nil }
+	rawValues, exists := values[key]
+	if !exists { return fallback, nil }
+	if len(rawValues) != 1 || rawValues[0] == "" { return 0, fmt.Errorf("query parameter is empty or repeated") }
 	value, err := strconv.Atoi(rawValues[0])
 	if err != nil || value < minimum || value > maximum { return 0, fmt.Errorf("query parameter is outside its allowed bounds") }
 	return value, nil
