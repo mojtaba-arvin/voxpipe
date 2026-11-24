@@ -39,15 +39,15 @@ jobs:
           python-version-file: ".python-version"
       - name: Install public benchmark dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-benchmark.txt
-      - name: Run 100-sample Persian CPU benchmark
-        run: python scripts/run_fleurs_stt_benchmark.py --max-samples 100 --output-dir benchmark-results/fleurs-fa-ir
+      - name: Run 100-sample Persian CPU benchmark (Faster-Whisper Medium comparison)
+        run: python scripts/run_fleurs_stt_benchmark.py --model medium --max-samples 100 --output-dir benchmark-results/fleurs-fa-ir
       - name: Validate generated corpus manifest
         run: python scripts/validate_corpus_manifest.py benchmark-results/fleurs-fa-ir/corpus-manifest.json
       - name: Validate result count and pinned revisions
         shell: bash
         run: |
           set -euo pipefail
-          jq -e '.dataset.id == "google/fleurs" and .dataset.config == "fa_ir" and .dataset.split == "test" and .dataset.samples == 100 and .metrics.files == 100 and (.dataset.file_sha256 | test("^[0-9a-f]{64}$")) and (.model.revision | test("^[0-9a-f]{40}$")) and (.dataset.revision | test("^[0-9a-f]{40}$"))' benchmark-results/fleurs-fa-ir/summary.json >/dev/null
+          jq -e '.dataset.id == "google/fleurs" and .dataset.config == "fa_ir" and .dataset.split == "test" and .dataset.samples == 100 and .model.id == "Systran/faster-whisper-medium" and .metrics.files == 100 and (.dataset.file_sha256 | test("^[0-9a-f]{64}$")) and (.model.revision | test("^[0-9a-f]{40}$")) and (.dataset.revision | test("^[0-9a-f]{40}$"))' benchmark-results/fleurs-fa-ir/summary.json >/dev/null
           jq -s -e 'length == 100 and all(.[]; (.sample_id | type == "string") and (.audio_sha256 | test("^[0-9a-f]{64}$")) and (.hypothesis | type == "string"))' benchmark-results/fleurs-fa-ir/results.jsonl >/dev/null
       - name: Attach immutable run provenance to summary
         shell: bash
