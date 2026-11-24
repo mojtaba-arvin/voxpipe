@@ -41,10 +41,13 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 ## Phase 2 — Speech Intelligence
 
 - [x] Define transcript, segment, speaker, timing, confidence, and provenance contracts (VP-0021; schema, provider-neutral port, validator, and offline contract tests completed).
-- [x] Establish the provider-neutral STT port and local Faster-Whisper adapter (VP-0021/0022; pinned 100-item FLEURS Persian run: normalized WER 52.24%, CER 16.43%, RTF 0.1652; reproducible but below production quality).\n- [ ] Add vendor-specific hosted STT adapters only behind explicit provider/model/region allowlisting, data-egress approval, bounded deadlines/concurrency, idempotency-aware retries and privacy-safe telemetry. Local and hosted paths share the canonical transcript contract.\n- [ ] Complete shared circuit state, durable retry/reconciliation, OpenTelemetry exporters, dashboards, alerts and staging SLO verification (ADR-0023).
+- [x] Establish the provider-neutral STT port and local Faster-Whisper adapter (VP-0021/0022; pinned 100-item FLEURS Persian run: normalized WER 52.24%, CER 16.43%, RTF 0.1652; reproducible but below production quality).
+- [x] Connect speech transcription to durable workflows (PR #73; local and hosted adapters use the same handler, immutable transcript persistence, verified audio integrity, stable workflow idempotency keys and lease heartbeats).
+- [ ] Add vendor-specific hosted STT adapters only behind explicit provider/model/region allowlisting, data-egress approval, bounded deadlines/concurrency, provider-supported idempotency and privacy-safe telemetry.
+- [ ] Complete shared circuit state, durable provider retry/reconciliation, production OpenTelemetry exporter/resource configuration, dashboards, alerts and staging SLO verification (ADR-0023).
 - [ ] Evaluate and implement VAD independently (VP-0023; WebRTC/Silero compared on 60 FLEURS utterances, but labels are utterance-envelope proxies rather than frame-level ground truth).
 - [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024; controlled six-clip synthetic Neyshekar split is reproducible, but natural overlapping conversation and explicit consent evidence remain missing).
-- [ ] Implement language identification with calibrated abstention (VP-0025; 60-sample Persian/English/German FLEURS run completed at 95% accuracy, but no code-switch set and no calibrated abstention threshold).
+- [x] Implement inventory-aware language identification with calibrated abstention (VP-0025; PR #74; pinned FLEURS validation/test split of 300+300 samples: selective accuracy 1.0, test coverage 0.92, abstention 0.08, ECE≈0.0226. Code-switching and noisy production speech remain untested).
 - [ ] Establish consent/provenance-managed corpus governance (VP-0026; manifest validation and independent annotation agreement/disagreement diagnostics are implemented; qualified annotators, consented natural recordings and third-party adjudication remain).
 - [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
 - [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
@@ -81,10 +84,10 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 The first PostgreSQL-native workflow journal is a bounded sequential proof of concept that complements the ingestion queue; it is not yet the final orchestration-engine selection. See [durable workflow architecture](architecture/durable-workflows.md) and [ADR-0034](decisions/ADR-0034-postgres-native-workflows.md).
 
-- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS run/step journal, idempotent creation, bounded retries, lease fencing, cancellation, approval pause/resume and explicit handler worker are in a rebased implementation PR; exact-head CI, sustained load, supervision, restore rehearsal and DBOS/Temporal comparison remain).
+- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. Exact-head integration CI passed for the merged changes; sustained load, process supervision, backup/restore rehearsal and DBOS/Temporal comparison remain).
 - Add bounded self-healing for known transient failures.
 - Detect regressions and open evidence-rich remediation tasks.
-- [ ] Add production alerting and SLOs (VP-0035).
+- [ ] Add production alerting and SLOs (VP-0035; tenant-safe worker aggregates, content-free STT lifecycle events and an injected OpenTelemetry bridge are implemented; exporter/resource configuration, dashboards, actionable alerts, synthetic checks and staging SLO verification remain).
 - [ ] Implement release, canary and rollback automation (VP-0036).
 - [ ] Add bounded autonomous maintenance workflows (VP-0037).
 - Automate dependency/security updates and compatibility checks.
