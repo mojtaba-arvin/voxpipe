@@ -157,5 +157,53 @@ class WorkflowRunnerTests(unittest.TestCase):
             worker.run_forever(TENANT, Event(), poll_interval_seconds=float("nan"))
 
 
+    def test_graceful_shutdown_finishes_claimed_step_before_exiting(self):
+        repository = FakeRepository()
+        stop_event = Event()
+        def handler(context):
+            stop_event.set()
+            return {"transcript_ref": "durable-result"}
+        worker = self.worker(repository, handler)
+
+        worker.run_forever(TENANT, stop_event, poll_interval_seconds=0.001)
+
+        claims = [call for call in repository.calls if call[0] == "claim"]
+        completions = [call for call in repository.calls if call[0] == "complete"]
+        self.assertEqual(len(claims), 1)
+        self.assertEqual(len(completions), 1)
+        self.assertEqual(completions[0][-1], {"transcript_ref": "durable-result"})
+
+    def test_pre_stopped_worker_does_not_claim_new_work(self):
+        repository = FakeRepository()
+        stop_event = Event()
+        stop_event.set()
+
+        self.worker(repository, lambda context: {}).run_forever(TENANT, stop_event)
+
+        self.assertFalse(any(call[0] == "claim" for call in repository.calls))
+
+    def test_idle_worker_observes_shutdown_after_poll_wait(self):
+        repository = FakeRepository()
+        class StopAfterWait:
+            def __init__(self):
+                self.stopped = False
+                self.waits = 0
+            def is_set(self):
+                return self.stopped
+            def wait(self, timeout):
+                self.waits += 1
+                self.stopped = True
+                return True
+        stop_event = StopAfterWait()
+        repository.claim = None
+
+        self.worker(repository, lambda context: {}).run_forever(
+            TENANT, stop_event, poll_interval_seconds=0.001,
+        )
+
+        self.assertEqual(stop_event.waits, 1)
+        self.assertEqual(sum(call[0] == "claim" for call in repository.calls), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
