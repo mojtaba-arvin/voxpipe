@@ -86,9 +86,22 @@ class SpeechContractTests(unittest.TestCase):
             word_timestamps=True,
             diarization=True,
             duration_ms=2000,
+            idempotency_key="b" * 64,
         )
         self.assertTrue(request.audio_stream.readable())
         self.assertTrue(request.diarization)
+
+    def test_request_validates_provider_idempotency_key(self) -> None:
+        request = TranscriptionRequest(
+            ASSET_ID, BytesIO(b"audio"), "audio/wav", "a" * 64,
+            idempotency_key="b" * 64,
+        )
+        self.assertEqual(request.idempotency_key, "b" * 64)
+        with self.assertRaises(ValueError):
+            TranscriptionRequest(
+                ASSET_ID, BytesIO(b"audio"), "audio/wav", "a" * 64,
+                idempotency_key="not-a-digest",
+            )
 
     def test_request_rejects_path_like_or_non_audio_inputs(self) -> None:
         with self.assertRaises(ValueError):
