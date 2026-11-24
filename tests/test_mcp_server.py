@@ -20,7 +20,7 @@ class MCPExternalClientTests(unittest.TestCase):
                               {"jsonrpc":"2.0","id":2,"method":"tools/list"}])
         self.assertEqual(result[0]["result"]["serverInfo"]["name"],"voxpipe")
         self.assertEqual({x["name"] for x in result[1]["result"]["tools"]},
-                         {"create_ingestion","get_ingestion_status","get_asset","search_assets"})
+                         {"create_ingestion","get_ingestion_status","get_asset","search_assets","search_transcripts"})
     def test_external_agent_ingestion_lifecycle(self):
         session="11111111-1111-4111-8111-111111111111"
         result=self.exchange([
@@ -44,6 +44,51 @@ class MCPExternalClientTests(unittest.TestCase):
         self.assertTrue(result["result"]["isError"])
         self.assertEqual(json.loads(result["result"]["content"][0]["text"])["code"],"INVALID_TOOL_ARGUMENTS")
         self.assertEqual(self.api.calls,[])
+
+    def test_transcript_search_maps_filters_to_authenticated_api(self):
+        transcript="11111111-1111-4111-8111-111111111111"
+        asset="22222222-2222-4222-8222-222222222222"
+        speaker="33333333-3333-4333-8333-333333333333"
+        result=self.exchange([{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{
+            "name":"search_transcripts","arguments":{
+                "query":"جلسه فروش","limit":10,"offset":5,"transcript_id":transcript,
+                "asset_id":asset,"revision":2,"language":"fa","speaker_id":speaker,
+                "start_ms":1000,"end_ms":3000}}}])[0]
+        self.assertFalse(result["result"]["isError"])
+        method,path,payload,key=self.api.calls[0]
+        self.assertEqual(method,"GET")
+        self.assertTrue(path.startswith("/v1/transcripts/search?"))
+        params=dict(item.split("=",1) for item in path.split("?",1)[1].split("&"))
+        self.assertEqual(params["q"],"%D8%AC%D9%84%D8%B3%D9%87+%D9%81%D8%B1%D9%88%D8%B4")
+        self.assertEqual(params["limit"],"10")
+        self.assertEqual(params["offset"],"5")
+        self.assertEqual(params["transcript_id"],transcript)
+        self.assertEqual(params["asset_id"],asset)
+        self.assertEqual(params["speaker_id"],speaker)
+        self.assertEqual(params["revision"],"2")
+        self.assertEqual(params["language"],"fa")
+        self.assertEqual(params["start_ms"],"1000")
+        self.assertEqual(params["end_ms"],"3000")
+        self.assertIsNone(payload)
+        self.assertIsNone(key)
+
+    def test_transcript_search_rejects_invalid_filters_before_api_call(self):
+        invalid=[
+            {"query":""},
+            {"query":"meeting","limit":101},
+            {"query":"meeting","offset":10001},
+            {"query":"meeting","transcript_id":"bad"},
+            {"query":"meeting","revision":0},
+            {"query":"meeting","language":"x"},
+            {"query":"meeting","start_ms":2000,"end_ms":1000},
+            {"query":"meeting","tenant_id":"attacker"},
+        ]
+        for arguments in invalid:
+            result=self.exchange([{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{
+                "name":"search_transcripts","arguments":arguments}}])[0]
+            self.assertTrue(result["result"]["isError"],arguments)
+        self.assertEqual(self.api.calls,[])
+
     def test_external_http_api_requires_tls(self):
         with self.assertRaises(ValueError):
             HTTPAPIClient("http://api.example.com", "secret")
