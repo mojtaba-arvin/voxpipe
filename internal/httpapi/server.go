@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -437,6 +438,42 @@ func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 
+
+func normalizePersianSearchQuery(query string) string {
+	var normalized strings.Builder
+	for _, value := range query {
+		switch {
+		case value == '\u200c':
+			normalized.WriteByte(' ')
+		case value == '\u0640':
+			continue
+		case value >= '\u064b' && value <= '\u065f':
+			continue
+		case value == '\u0670':
+			continue
+		case value >= '\u06d6' && value <= '\u06ed':
+			continue
+		case value == '\u064a' || value == '\u0649':
+			normalized.WriteRune('\u06cc')
+		case value == '\u0643':
+			normalized.WriteRune('\u06a9')
+		case value == '\u06c0' || value == '\u0629':
+			normalized.WriteRune('\u0647')
+		case value == '\u0624':
+			normalized.WriteRune('\u0648')
+		case value == '\u0623' || value == '\u0625' || value == '\u0671':
+			normalized.WriteRune('\u0627')
+		case value >= '\u0660' && value <= '\u0669':
+			normalized.WriteByte(byte('0' + value - '\u0660'))
+		case value >= '\u06f0' && value <= '\u06f9':
+			normalized.WriteByte(byte('0' + value - '\u06f0'))
+		default:
+			normalized.WriteRune(unicode.ToLower(value))
+		}
+	}
+	return strings.Join(strings.Fields(normalized.String()), " ")
+}
+
 func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
 	principal, ok := s.principal(w, r, scopeTranscriptRead)
 	if !ok { return }
@@ -452,8 +489,8 @@ func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	query := strings.TrimSpace(queryValues.Get("q"))
-	if len(query) < 1 || len(query) > 256 {
+	query := normalizePersianSearchQuery(strings.TrimSpace(queryValues.Get("q")))
+	if len([]rune(query)) < 1 || len([]rune(query)) > 256 {
 		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_QUERY", "q must contain between 1 and 256 characters")
 		return
 	}
