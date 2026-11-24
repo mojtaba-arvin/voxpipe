@@ -5,8 +5,10 @@ source references and must make external side effects idempotent.
 """
 from __future__ import annotations
 
+import logging
 import math
 import re
+from uuid import UUID
 from dataclasses import dataclass
 from threading import Event
 from typing import Any, Callable, Mapping
@@ -176,14 +178,51 @@ class PostgresWorkflowWorker:
             return {"outcome": "failed", "workflow": state}
         return {"outcome": "completed", "workflow": state}
 
-    def run_forever(self, tenant_id: str, stop_event: Event, *, poll_interval_seconds: float = 1.0) -> None:
-        """Run under an external process supervisor; stop_event provides graceful shutdown."""
+    def run_forever(
+        self,
+        tenant_id: str,
+        stop_event: Event,
+        *,
+        poll_interval_seconds: float = 1.0,
+        max_backoff_seconds: float = 30.0,
+    ) -> None:
+        """Run under a process supervisor and recover from transient repository outages.
+
+        Database/lease failures are logged without exception text (which may
+        contain DSNs or credentials) and retried with bounded exponential
+        backoff. Configuration errors are rejected before entering the loop.
+        """
         if not hasattr(stop_event, "is_set") or not hasattr(stop_event, "wait"):
             raise TypeError("stop_event must provide is_set() and wait()")
         if (not isinstance(poll_interval_seconds, (int, float)) or isinstance(poll_interval_seconds, bool)
                 or not math.isfinite(poll_interval_seconds) or poll_interval_seconds <= 0 or poll_interval_seconds > 60):
             raise ValueError("poll_interval_seconds must be between 0 and 60")
+        if (not isinstance(max_backoff_seconds, (int, float)) or isinstance(max_backoff_seconds, bool)
+                or not math.isfinite(max_backoff_seconds) or max_backoff_seconds <= 0 or max_backoff_seconds > 3600):
+            raise ValueError("max_backoff_seconds must be between 0 and 3600")
+        try:
+            tenant_id = str(UUID(tenant_id))
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError("tenant_id must be a UUID from trusted runtime configuration") from None
+
+        logger = logging.getLogger("voxpipe.workflows.worker")
+        failure_streak = 0
         while not stop_event.is_set():
-            outcome = self.run_once(tenant_id)
+            try:
+                outcome = self.run_once(tenant_id)
+                failure_streak = 0
+            except Exception:
+                failure_streak += 1
+                delay = min(
+                    float(max_backoff_seconds),
+                    float(poll_interval_seconds) * (2 ** min(failure_streak - 1, 10)),
+                )
+                logger.warning(
+                    "workflow worker repository operation failed; retrying after bounded backoff "
+                    "failure_streak=%d delay_seconds=%.3f",
+                    failure_streak, delay,
+                )
+                stop_event.wait(delay)
+                continue
             if outcome is None:
                 stop_event.wait(poll_interval_seconds)
