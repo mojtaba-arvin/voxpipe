@@ -14,7 +14,7 @@ Required environment file: `/etc/voxpipe/workflow-worker.env`
 VOXPIPE_WORKFLOW_DATABASE_DSN=postgresql://voxpipe_worker:REPLACE_ME@db.internal:5432/voxpipe
 ```
 
-Protect the file with root ownership and mode 0640 (or stricter); use a dedicated database role without BYPASSRLS. Do not put audio, transcripts, API keys or tenant secrets in command-line arguments. The systemd unit sets bounded worker, polling, storage and local model defaults. Override only after measuring resource limits.
+Protect the file with root ownership and mode 0640 (or stricter); use a dedicated database role without BYPASSRLS. Do not put audio, transcripts, API keys or tenant secrets in command-line arguments. The worker uses a process-local speech circuit breaker by default. To coordinate breaker state across worker processes, explicitly add `VOXPIPE_CIRCUIT_BREAKER_BACKEND=postgres` and `VOXPIPE_DATABASE_DSN=...` to this file after applying migration 0010 and its least-privilege grants; missing or unavailable PostgreSQL coordination fails closed and never falls back to local state. The systemd unit sets bounded worker, polling, storage and local model defaults. Override only after measuring resource limits.
 
 The service expects:
 - Repository checkout at `/opt/voxpipe`.

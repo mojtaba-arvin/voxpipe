@@ -3,8 +3,10 @@
 The Python speech runtime exposes an explicit composition helper:
 voxpipe.speech.runtime.build_speech_resilience_runtime(adapter). It returns
 the guarded speech_port, the selected breaker and the selected backend name.
-The application/worker composition root owns this object for the process
-lifetime and injects speech_port into SpeechTranscriptionWorkflowHandler.
+`build_local_speech_worker` now invokes this factory and injects the guarded
+port into `SpeechTranscriptionWorkflowHandler`; the breaker therefore protects
+the actual worker transcription path rather than remaining an unused helper.
+The worker owns the guarded port for its process lifetime.
 
 ## Configuration
 
@@ -15,9 +17,10 @@ lifetime and injects speech_port into SpeechTranscriptionWorkflowHandler.
 | VOXPIPE_CIRCUIT_BREAKER_FAILURE_THRESHOLD | 3 | Consecutive availability failures, 1–100 |
 | VOXPIPE_CIRCUIT_BREAKER_COOLDOWN_SECONDS | 30 | Cooldown, 1–3600 seconds |
 
-The process-local backend is retained as the compatibility default. To share
-provider availability across workers, explicitly set the backend to postgres
-and provide the application-role database DSN. The PostgreSQL adapter uses the
+The process-local backend is retained as the compatibility default. It is now
+used by the supervised worker unless explicitly overridden. To share provider
+availability across workers, set `VOXPIPE_CIRCUIT_BREAKER_BACKEND=postgres` and
+provide `VOXPIPE_DATABASE_DSN` with the dedicated application-role database DSN. The PostgreSQL adapter uses the
 existing migration 0010 table and requires its documented grants before traffic
 is admitted.
 

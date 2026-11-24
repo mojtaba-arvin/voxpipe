@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 from voxpipe.ingestion.postgres import PostgresIngestionRepository
 from voxpipe.speech.faster_whisper import FasterWhisperAdapter
+from voxpipe.speech.runtime import build_speech_resilience_runtime
 from voxpipe.storage.local import LocalFilesystemObjectStore
 from voxpipe.workflows.postgres import PostgresWorkflowRepository
 from voxpipe.workflows.runner import PostgresWorkflowWorker, WorkflowHandlerRegistry
@@ -93,10 +94,11 @@ def build_local_speech_worker(env: Mapping[str, str] | None = None) -> WorkflowW
         local_files_only=True,
         max_audio_bytes=max_audio_bytes,
     )
+    resilience = build_speech_resilience_runtime(adapter, environ=settings)
     handler = SpeechTranscriptionWorkflowHandler(
         repository=asset_repository,
         object_store=object_store,
-        adapter=adapter,
+        adapter=resilience.speech_port,
         max_audio_bytes=max_audio_bytes,
     )
     registry = WorkflowHandlerRegistry({"speech.transcribe": handler})

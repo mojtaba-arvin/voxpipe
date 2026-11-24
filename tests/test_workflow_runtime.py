@@ -1,5 +1,6 @@
 """Worker runtime composition tests; no PostgreSQL or model is started."""
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from voxpipe.workflows.runtime import build_local_speech_worker
@@ -14,6 +15,7 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
             "VOXPIPE_WORKFLOW_WORKER_ID": "22222222-2222-4222-8222-222222222222",
         }
 
+    @patch("voxpipe.workflows.runtime.build_speech_resilience_runtime")
     @patch("voxpipe.workflows.runtime.PostgresWorkflowWorker")
     @patch("voxpipe.workflows.runtime.WorkflowHandlerRegistry")
     @patch("voxpipe.workflows.runtime.SpeechTranscriptionWorkflowHandler")
@@ -22,14 +24,24 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
     @patch("voxpipe.workflows.runtime.PostgresIngestionRepository")
     @patch("voxpipe.workflows.runtime.PostgresWorkflowRepository")
     def test_composes_only_local_allowlisted_speech_handler(
-        self, workflow_repo, asset_repo, object_store, adapter, handler, registry, worker,
+        self, workflow_repo, asset_repo, object_store, adapter, handler, registry, worker, resilience_factory,
     ):
-        runtime = build_local_speech_worker(self.env())
+        env = self.env()
+        env.update({
+            "VOXPIPE_CIRCUIT_BREAKER_BACKEND": "postgres",
+            "VOXPIPE_DATABASE_DSN": "postgresql://breaker-role@db/voxpipe",
+        })
+        guarded_port = object()
+        resilience_factory.return_value = SimpleNamespace(speech_port=guarded_port, backend="postgres")
+        runtime = build_local_speech_worker(env)
         workflow_repo.assert_called_once_with("postgresql://unit-test")
         asset_repo.assert_called_once_with("postgresql://unit-test")
         adapter.assert_called_once()
         self.assertTrue(adapter.call_args.kwargs["local_files_only"])
         self.assertEqual(adapter.call_args.kwargs["max_audio_bytes"], 512 * 1024 * 1024)
+        resilience_factory.assert_called_once_with(adapter.return_value, environ=env)
+        handler.assert_called_once()
+        self.assertIs(handler.call_args.kwargs["adapter"], guarded_port)
         registry.assert_called_once()
         self.assertEqual(set(registry.call_args.args[0]), {"speech.transcribe"})
         worker.assert_called_once()
