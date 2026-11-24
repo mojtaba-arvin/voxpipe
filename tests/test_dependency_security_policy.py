@@ -8,7 +8,7 @@ class DependencySecurityPolicyTests(unittest.TestCase):
     def test_go_toolchain_and_direct_dependencies_meet_vulnerability_fixes(self):
         go_mod = (ROOT / "go.mod").read_text(encoding="utf-8")
         self.assertIn("toolchain go1.26.11", go_mod)
-        self.assertIn("github.com/jackc/pgx/v5 v5.9.2", go_mod)
+        self.assertIn("github.com/jackc/pgx/v5 v5.13.0", go_mod)
         self.assertIn("golang.org/x/text v0.41.0", go_mod)
         self.assertNotIn("github.com/jackc/pgx/v5 v5.7.2", go_mod)
         self.assertNotIn("golang.org/x/text v0.21.0", go_mod)
