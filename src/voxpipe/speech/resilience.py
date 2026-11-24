@@ -8,7 +8,7 @@ transcription admission and routing observe one process-local state.
 """
 from __future__ import annotations
 
-from voxpipe.speech.circuit_breaker import ProviderCircuitBreaker
+from voxpipe.speech.circuit_breaker import CircuitBreakerPort
 from voxpipe.speech.contracts import (
     Transcript,
     TranscriptionError,
@@ -25,10 +25,10 @@ class CircuitBreakingSpeechToTextPort:
         self,
         adapter: SpeechToTextPort,
         *,
-        breaker: ProviderCircuitBreaker,
+        breaker: CircuitBreakerPort,
     ) -> None:
-        if not isinstance(breaker, ProviderCircuitBreaker):
-            raise TypeError("breaker must be a ProviderCircuitBreaker")
+        if not isinstance(breaker, CircuitBreakerPort):
+            raise TypeError("breaker must implement CircuitBreakerPort")
         self._adapter = adapter
         self._breaker = breaker
 

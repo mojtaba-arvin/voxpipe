@@ -1,7 +1,7 @@
 """Provider-neutral speech intelligence contracts and runtime primitives."""
 
 from voxpipe.speech.capabilities import ProviderCapability, ProviderCapabilityRegistry
-from voxpipe.speech.circuit_breaker import CircuitPermit, ProviderCircuitBreaker
+from voxpipe.speech.circuit_breaker import CircuitBreakerPort, CircuitPermit, ProviderCircuitBreaker
 from voxpipe.speech.contracts import (
     Transcript,
     TranscriptProvenance,
@@ -28,6 +28,7 @@ from voxpipe.speech.service import SpeechToTextService
 
 __all__ = [
     "CircuitBreakingSpeechToTextPort",
+    "CircuitBreakerPort",
     "CircuitPermit",
     "FasterWhisperAdapter",
     "NoopSpeechObserver",

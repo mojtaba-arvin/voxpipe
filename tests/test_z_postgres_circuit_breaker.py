@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 from voxpipe.speech.postgres_circuit_breaker import PostgresProviderCircuitBreaker
+from voxpipe.speech.resilience import CircuitBreakingSpeechToTextPort
 
 ADMIN_DSN = os.environ.get("VOXPIPE_TEST_POSTGRES_ADMIN_DSN")
 APP_DSN = os.environ.get(
@@ -18,6 +19,19 @@ APP_DSN = os.environ.get(
 
 @unittest.skipUnless(ADMIN_DSN, "PostgreSQL integration DSN is not configured")
 class PostgresProviderCircuitBreakerTests(unittest.TestCase):
+    def test_postgres_breaker_satisfies_speech_resilience_port(self) -> None:
+        class Adapter:
+            provider_name = "speech-provider-d"
+
+            def transcribe(self, request):
+                raise AssertionError("construction test must not dispatch inference")
+
+        breaker = PostgresProviderCircuitBreaker(APP_DSN)
+        guarded = CircuitBreakingSpeechToTextPort(Adapter(), breaker=breaker)
+        self.assertEqual(guarded.provider_name, "speech-provider-d")
+        with self.assertRaises(TypeError):
+            CircuitBreakingSpeechToTextPort(Adapter(), breaker=object())
+
     def setUp(self) -> None:
         import psycopg
         with psycopg.connect(ADMIN_DSN) as connection:
