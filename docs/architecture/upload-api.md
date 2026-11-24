@@ -13,7 +13,8 @@ The API does not apply database migrations at startup. Apply migrations with the
 
 Every route requires a bearer token and an explicit capability:
 - ingestion:write: create, upload, finalize, cancel.
-- ingestion:read: read status.
+- ingestion:read: read ingestion status and public asset metadata.
+- transcript:read: search transcript segment text and provenance.
 
 The initial authenticator accepts SHA-256 token digests mapped to tenant UUIDs and scopes. Configure VOXPIPE_API_TOKEN_HASHES as semicolon-separated entries:
 
@@ -35,7 +36,7 @@ Only the digest belongs in this mapping. The raw bearer token is supplied by the
 
 The API returns after durable job submission. It never holds the upload HTTP request open while FFmpeg or model processing runs. Interrupted transfers remove their temporary file; the client retries the complete upload from byte zero. Byte-range/resumable chunk uploads are deliberately deferred.
 
-## MCP agent interface\n\nThe MCP stdio adapter is a thin client of the authenticated Go API. Configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`; the token's tenant and scopes are authoritative. The adapter exposes session creation, status, asset metadata lookup, and metadata search. It does not transfer audio bytes or access PostgreSQL directly. Asset responses omit tenant IDs and private storage references. Search currently covers asset ID, source kind, MIME type, container format, and codec only; transcript and semantic search are not implemented. See [MCP capability contract](mcp-capabilities.md).\n\n## First deployment topology
+## MCP agent interface\n\nThe MCP stdio adapter is a thin client of the authenticated Go API. Configure `VOXPIPE_MCP_API_URL` and `VOXPIPE_MCP_API_TOKEN`; the token's tenant and scopes are authoritative. The adapter exposes session creation, status, asset metadata lookup, asset metadata search and transcript-segment lexical search. It does not transfer audio bytes or access PostgreSQL directly. Asset and transcript search responses omit tenant IDs and private storage references. Semantic/vector hybrid search is not yet exposed through this API. See [MCP capability contract](mcp-capabilities.md).\n\n## First deployment topology
 
 The first staging adapter is a local filesystem. The Go API and Python worker must run on the same host and use the exact same VOXPIPE_STAGING_ROOT. This is a single-node topology; do not run API and workers on separate hosts or claim horizontal scalability until a shared object-storage staging adapter is implemented.
 
