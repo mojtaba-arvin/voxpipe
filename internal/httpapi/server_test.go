@@ -273,6 +273,8 @@ func TestTranscriptSearchRejectsInvalidFiltersAndRequiresDedicatedScope(t *testi
 		"/v1/transcripts/search?q=meeting&start_ms=2000&end_ms=1000",
 		"/v1/transcripts/search?q=meeting&limit=101",
 		"/v1/transcripts/search?q=meeting&unknown=value",
+		"/v1/transcripts/search?q=meeting&language=",
+		"/v1/transcripts/search?q=meeting&limit=",
 		"/v1/transcripts/search?q=one&q=two",
 	} {
 		response := request(handler, http.MethodGet, path, token, nil)
