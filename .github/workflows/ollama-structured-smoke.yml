@@ -2,8 +2,16 @@
 name: Local Ollama structured extraction smoke test
 
 on:
-  push:
+  pull_request:
     branches: [main]
+    paths:
+      - "scripts/run_ollama_structured_smoke.py"
+      - "tests/test_structured_smoke_gates.py"
+      - "src/voxpipe/structuring/**"
+      - "contracts/schemas/structured-intelligence.v1.schema.json"
+      - ".github/workflows/ollama-structured-smoke.yml"
+  push:
+    branches: [feat/phase2-6-execution-foundation]
     paths:
       - "scripts/run_ollama_structured_smoke.py"
       - "src/voxpipe/structuring/**"
@@ -12,8 +20,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Each benchmark owns its concurrency group; unrelated workstreams never cancel one another.
-  group: voxpipe-structured-smoke-${{ github.ref }}
+  group: ollama-structured-smoke-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -23,7 +30,7 @@ jobs:
   local-llm:
     name: Qwen3 local-only structured extraction
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 20
     env:
       OLLAMA_HOST: "127.0.0.1:11434"
       CUDA_VISIBLE_DEVICES: ""
@@ -59,7 +66,29 @@ jobs:
       - name: Verify OpenAI-compatible local endpoint
         run: curl -fsS http://127.0.0.1:11434/v1/models
       - name: Run local-only structured extraction smoke test
-        run: python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=15s 60m python scripts/run_ollama_structured_smoke.py --model qwen3:4b --output-dir benchmark-results/ollama-structured
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Per-sample structured extraction diagnostics (synthetic fixtures only)"
+            if [ -f benchmark-results/ollama-structured/results.jsonl ]; then
+              cat benchmark-results/ollama-structured/results.jsonl
+            else
+              echo "No per-sample results file was produced."
+            fi
+            for partial in benchmark-results/ollama-structured/*.raw.partial.txt; do
+              if [ -f "$partial" ]; then
+                echo "::group::Partial raw model output: $(basename "$partial")"
+                cat "$partial"
+                echo "::endgroup::"
+              fi
+            done
+            echo "::endgroup::"
+          fi
+          exit "$status"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         if: always()
         with:
