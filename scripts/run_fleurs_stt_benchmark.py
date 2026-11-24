@@ -10,7 +10,20 @@ DATASET_SPLIT="test"
 DATASET_REVISION="6989e5bd2dc37546a93ae5d857bc04325e6a3738"
 DATASET_FILE_SHA256="e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"
 DATASET_FILE_URL="https://huggingface.co/datasets/google/fleurs/resolve/6989e5bd2dc37546a93ae5d857bc04325e6a3738/fa_ir/test-00000-of-00001.parquet"
-MODEL_ID="Systran/faster-whisper-small"
+MODEL_REPOSITORIES = {
+    "small": "Systran/faster-whisper-small",
+    "medium": "Systran/faster-whisper-medium",
+    "large-v3": "Systran/faster-whisper-large-v3",
+}
+DEFAULT_MODEL = "small"
+
+
+def resolve_model_id(model_name: str) -> str:
+    """Resolve only reviewed public Faster-Whisper model repositories."""
+    try:
+        return MODEL_REPOSITORIES[model_name]
+    except (KeyError, TypeError):
+        raise ValueError("model must be one of: small, medium, large-v3") from None
 
 def sha256_file(path: Path) -> str:
     digest=hashlib.sha256()
@@ -18,8 +31,14 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda:stream.read(1024*1024),b""): digest.update(chunk)
     return digest.hexdigest()
 
-def run(max_samples: int, output_dir: Path) -> dict:
+def run(max_samples: int, output_dir: Path, *, model_name: str = DEFAULT_MODEL, beam_size: int = 5, vad_filter: bool = True) -> dict:
     if not 1<=max_samples<=264: raise ValueError("max_samples must be between 1 and 264")
+    model_id = resolve_model_id(model_name)
+    if not isinstance(beam_size, int) or isinstance(beam_size, bool) or not 1 <= beam_size <= 10:
+        raise ValueError("beam_size must be between 1 and 10")
+    if not isinstance(vad_filter, bool):
+        raise ValueError("vad_filter must be boolean")
+
     import numpy as np
     import soundfile as sf
     from datasets import Audio, load_dataset
@@ -27,9 +46,9 @@ def run(max_samples: int, output_dir: Path) -> dict:
     from faster_whisper import WhisperModel
     from benchmark_stt import score
 
-    info=model_info(MODEL_ID)
+    info=model_info(model_id)
     model_revision=info.sha
-    model_path=Path(snapshot_download(repo_id=MODEL_ID,revision=model_revision))
+    model_path=Path(snapshot_download(repo_id=model_id,revision=model_revision))
     model_hash=sha256_file(model_path/"model.bin")
     model=WhisperModel(str(model_path),device="cpu",compute_type="int8",local_files_only=True)
 
@@ -52,8 +71,8 @@ def run(max_samples: int, output_dir: Path) -> dict:
         if not isinstance(reference,str) or not reference.strip():
             raise RuntimeError("FLEURS row has no reference transcription")
         started=time.perf_counter()
-        segments,_=model.transcribe(waveform,language="fa",beam_size=5,
-                                    word_timestamps=True,vad_filter=True)
+        segments,_=model.transcribe(waveform,language="fa",beam_size=beam_size,
+                                    word_timestamps=True,vad_filter=vad_filter)
         hypothesis=" ".join(segment.text.strip() for segment in segments).strip()
         elapsed=time.perf_counter()-started
         duration=len(waveform)/sample_rate
@@ -62,7 +81,7 @@ def run(max_samples: int, output_dir: Path) -> dict:
         rows.append({"sample_id":sample_id,"reference":reference,"hypothesis":hypothesis,
                      "audio_duration_seconds":duration,"inference_seconds":elapsed,
                      "audio_sha256":audio_hash,"dataset_revision":DATASET_REVISION,
-                     "model_id":MODEL_ID,"model_revision":model_revision})
+                     "model_id":model_id,"model_revision":model_revision})
         manifest_items.append({"sample_id":sample_id,"audio_sha256":audio_hash,
             "reference_sha256":hashlib.sha256(reference.encode("utf-8")).hexdigest(),
             "language":"fa-IR","duration_ms":round(duration*1000),
@@ -88,8 +107,8 @@ def run(max_samples: int, output_dir: Path) -> dict:
     summary={"dataset":{"id":DATASET_ID,"config":DATASET_CONFIG,"split":DATASET_SPLIT,
                 "revision":DATASET_REVISION,"file_sha256":DATASET_FILE_SHA256,
                 "license":"CC BY 4.0","samples":len(rows)},
-        "model":{"id":MODEL_ID,"revision":model_revision,"model_bin_sha256":model_hash,
-                 "license":"MIT","device":"cpu","compute_type":"int8"},
+        "model":{"name":model_name,"id":model_id,"revision":model_revision,"model_bin_sha256":model_hash,
+                 "license":"MIT","device":"cpu","compute_type":"int8","beam_size":beam_size,"vad_filter":vad_filter},
         "metrics":metrics,"environment":{"python":sys.version,"platform":platform.platform(),
                  "processor":platform.processor()},
         "result_files":["results.jsonl","corpus-manifest.json"]}
@@ -99,9 +118,12 @@ def run(max_samples: int, output_dir: Path) -> dict:
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-samples",type=int,default=100)
+    parser.add_argument("--model",choices=tuple(MODEL_REPOSITORIES),default=DEFAULT_MODEL)
+    parser.add_argument("--beam-size",type=int,default=5)
+    parser.add_argument("--vad-filter",action=argparse.BooleanOptionalAction,default=True)
     parser.add_argument("--output-dir",type=Path,default=Path("benchmark-results/fleurs-fa-ir"))
     args=parser.parse_args()
-    summary=run(args.max_samples,args.output_dir)
+    summary=run(args.max_samples,args.output_dir,model_name=args.model,beam_size=args.beam_size,vad_filter=args.vad_filter)
     print(json.dumps(summary,ensure_ascii=False,indent=2))
 
 if __name__=="__main__": main()
