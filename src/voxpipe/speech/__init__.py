@@ -22,6 +22,7 @@ from voxpipe.speech.observability import (
     SpeechOperationEvent,
 )
 from voxpipe.speech.ports import SpeechToTextPort
+from voxpipe.speech.postgres_circuit_breaker import PostgresProviderCircuitBreaker
 from voxpipe.speech.resilience import CircuitBreakingSpeechToTextPort
 from voxpipe.speech.service import SpeechToTextService
 
@@ -34,6 +35,7 @@ __all__ = [
     "ProviderCapability",
     "ProviderCapabilityRegistry",
     "ProviderCircuitBreaker",
+    "PostgresProviderCircuitBreaker",
     "SpeechObserver",
     "SpeechOperationEvent",
     "SpeechToTextPort",
