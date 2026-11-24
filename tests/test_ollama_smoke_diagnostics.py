@@ -40,19 +40,7 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         event_value = schema["properties"]["events"]["items"]["properties"]["value"]
         self.assertIn("start_time", event_value["required"])
         self.assertEqual(event_value["properties"]["start_time"]["minLength"], 1)
-        entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
-        self.assertEqual(
-            entity_value["oneOf"],
-            [{
-                "type": "object", "additionalProperties": False, "required": ["name", "entity_type"],
-                "properties": {
-                    "name": {"const": "دفتر مرکزی"},
-                    "entity_type": {"const": "location"},
-                    "aliases": {"type": "array", "items": {"type": "string"}},
-                    "description": {"type": "string"},
-                },
-            }],
-        )
+        self.assertEqual(schema["properties"]["entities"]["maxItems"], 0)
         self.assertEqual(schema["properties"]["events"]["maxItems"], 32)
         self.assertEqual(schema["properties"]["events"]["items"]["properties"]["value"]["properties"]["event_type"]["enum"], ["meeting", "contract-signing"])
 
@@ -106,8 +94,20 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(constraints["allowed_entity_types"], ("location",))
         schema = SMOKE.ollama_output_schema(["span-0001"], **constraints)
         entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
-        self.assertEqual(entity_value["properties"]["entity_type"]["enum"], ["location"])
-        self.assertEqual(schema["properties"]["entities"]["maxItems"], 32)
+        self.assertEqual(
+            entity_value["oneOf"],
+            [{
+                "type": "object", "additionalProperties": False, "required": ["name", "entity_type"],
+                "properties": {
+                    "name": {"const": "دفتر مرکزی"},
+                    "entity_type": {"const": "location"},
+                    "aliases": {"type": "array", "items": {"type": "string"}},
+                    "description": {"type": "string"},
+                },
+            }],
+        )
+        self.assertEqual(schema["properties"]["entities"]["minItems"], 1)
+        self.assertEqual(schema["properties"]["entities"]["maxItems"], 1)
 
     def test_action_item_fields_are_constrained_by_explicit_obligation(self) -> None:
         candidates = [
