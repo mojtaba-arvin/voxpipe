@@ -1,7 +1,10 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from voxpipe.speech.telemetry_runtime import configure_speech_otel
+from voxpipe.speech.telemetry_runtime import (
+    SpeechTelemetryRuntime,
+    configure_speech_otel,
+)
 
 
 class SpeechTelemetryRuntimeConfigTests(unittest.TestCase):
@@ -24,6 +27,20 @@ class SpeechTelemetryRuntimeConfigTests(unittest.TestCase):
                         service_name="voxpipe-worker",
                         metric_export_interval_ms=interval,
                     )
+
+    def test_shutdown_attempts_both_providers_and_is_idempotent(self):
+        meter_provider, tracer_provider = Mock(), Mock()
+        meter_provider.shutdown.side_effect = RuntimeError("metric exporter failed")
+        runtime = SpeechTelemetryRuntime(
+            observer=Mock(),
+            _meter_provider=meter_provider,
+            _tracer_provider=tracer_provider,
+        )
+        with self.assertRaisesRegex(RuntimeError, "failed to shut down"):
+            runtime.shutdown()
+        runtime.shutdown()
+        meter_provider.shutdown.assert_called_once_with()
+        tracer_provider.shutdown.assert_called_once_with()
 
 
 if __name__ == "__main__":
