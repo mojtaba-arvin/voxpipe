@@ -268,7 +268,7 @@ func TestTranscriptSearchRejectsInvalidFiltersAndRequiresDedicatedScope(t *testi
 	handler := server.Handler()
 	for _, path := range []string{
 		"/v1/transcripts/search",
-		"/v1/transcripts/search?q=x",
+		"/v1/transcripts/search?q=",
 		"/v1/transcripts/search?q=meeting&transcript_id=bad",
 		"/v1/transcripts/search?q=meeting&start_ms=2000&end_ms=1000",
 		"/v1/transcripts/search?q=meeting&limit=101",
