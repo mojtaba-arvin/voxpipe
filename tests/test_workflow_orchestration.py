@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from uuid import uuid4
 
 from voxpipe.ingestion import apply_migrations
@@ -51,6 +53,36 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(second)
         self.assertNotEqual(first["workflow_id"], second["workflow_id"])
         self.assertEqual(self.repository.list_ready_workflows(self.tenant), ())
+
+    def test_concurrent_independent_workers_claim_unique_workflows(self):
+        worker_count = 16
+        barrier = Barrier(worker_count)
+        candidates = []
+        for index in range(worker_count):
+            workflow_id = str(uuid4())
+            step = WorkflowStepSpec(str(uuid4()), f"concurrent-{index}", {"probe": index})
+            self.repository.create_workflow(
+                self.tenant, workflow_id, "concurrency-probe", "1.0",
+                f"concurrent-claim-{workflow_id}", (step,),
+            )
+            candidates.append((workflow_id, step.step_id))
+
+        def claim(worker_id):
+            repository = PostgresWorkflowRepository(APP_DSN)
+            barrier.wait(timeout=10)
+            return repository.claim_next_ready_step(self.tenant, worker_id)
+
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            claims = list(pool.map(lambda _: claim(str(uuid4())), range(worker_count)))
+
+        self.assertEqual(len(claims), worker_count)
+        self.assertTrue(all(claim is not None for claim in claims))
+        self.assertEqual(len({claim["workflow_id"] for claim in claims}), worker_count)
+        self.assertEqual(len({claim["step_id"] for claim in claims}), worker_count)
+        self.assertEqual(
+            {(claim["workflow_id"], claim["step_id"]) for claim in claims},
+            set(candidates),
+        )
 
     def test_workflow_steps_are_durable_and_complete_in_order(self):
         created = self.create()
