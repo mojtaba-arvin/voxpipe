@@ -205,5 +205,49 @@ class WorkflowRunnerTests(unittest.TestCase):
         self.assertEqual(sum(call[0] == "claim" for call in repository.calls), 1)
 
 
+    def test_worker_recovers_from_transient_repository_outage_with_bounded_backoff(self):
+        class FailOnceRepository(FakeRepository):
+            def __init__(self):
+                super().__init__()
+                self.failures = 0
+            def claim_next_ready_step(self, tenant_id, worker_id, **kwargs):
+                self.failures += 1
+                if self.failures == 1:
+                    raise RuntimeError("postgresql://secret-password")
+                self.claim = None
+                return None
+
+        class StopAfterTwoWaits:
+            def __init__(self):
+                self.waits = []
+                self.stopped = False
+            def is_set(self):
+                return self.stopped
+            def wait(self, timeout):
+                self.waits.append(timeout)
+                if len(self.waits) == 2:
+                    self.stopped = True
+                return self.stopped
+
+        repository = FailOnceRepository()
+        stop_event = StopAfterTwoWaits()
+        worker = self.worker(repository)
+        with self.assertLogs("voxpipe.workflows.worker", level="WARNING") as captured:
+            worker.run_forever(TENANT, stop_event, poll_interval_seconds=0.01, max_backoff_seconds=0.05)
+        self.assertEqual(repository.failures, 2)
+        self.assertEqual(stop_event.waits, [0.01, 0.01])
+        self.assertNotIn("secret-password", " ".join(captured.output))
+
+    def test_worker_rejects_invalid_tenant_before_polling(self):
+        class NeverWait:
+            def is_set(self): return False
+            def wait(self, timeout): self.fail("invalid tenant must fail before waiting")
+        with self.assertRaisesRegex(ValueError, "tenant_id must be a UUID"):
+            self.worker(FakeRepository()).run_forever("not-a-uuid", NeverWait())
+
+    def test_worker_bounds_max_backoff_configuration(self):
+        with self.assertRaisesRegex(ValueError, "max_backoff_seconds"):
+            self.worker(FakeRepository()).run_forever(TENANT, Event(), max_backoff_seconds=float("inf"))
+
 if __name__ == "__main__":
     unittest.main()

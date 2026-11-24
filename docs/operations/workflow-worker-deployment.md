@@ -51,7 +51,7 @@ Inspect safe lifecycle logs:
 sudo journalctl -u voxpipe-workflow-worker@TENANT_UUID.service -f
 ```
 
-The worker handles SIGTERM/SIGINT by setting its stop event. It finishes the current synchronous step before exiting; `TimeoutStopSec=90` bounds graceful shutdown. If the process is forcibly terminated, the durable lease expires and another worker can reclaim the step. Lease fencing prevents the stale process from completing a reclaimed step.
+The worker handles SIGTERM/SIGINT by setting its stop event. Transient PostgreSQL/lease failures are retried in-process with bounded exponential backoff and content-free logs; malformed runtime configuration fails before polling. It finishes the current synchronous step before exiting; `TimeoutStopSec=90` bounds graceful shutdown. If the process is forcibly terminated, the durable lease expires and another worker can reclaim the step. Lease fencing prevents the stale process from completing a reclaimed step.
 
 ## Operational constraints
 
