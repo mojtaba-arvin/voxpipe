@@ -20,7 +20,9 @@ class DependencySecurityPolicyTests(unittest.TestCase):
         for path in ("requirements-benchmark.txt", "requirements-vad.txt", "requirements-lid.txt"):
             requirements = (ROOT / path).read_text(encoding="utf-8")
             self.assertRegex(requirements, r"(?m)^datasets>=5\.0\.1,<6$")
-            self.assertRegex(requirements, r"(?m)^fsspec>=2026\.6\.0,<2027$")
+            self.assertRegex(requirements, r"(?m)^fsspec>=2026\.9\.0,<2027$")
+            if path in ("requirements-benchmark.txt", "requirements-lid.txt"):
+                self.assertRegex(requirements, r"(?m)^huggingface_hub>=2\.4\.0,<3$")
 
     def test_all_go_ci_jobs_use_the_patched_toolchain(self):
         for path in (
