@@ -45,6 +45,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r requirements-speech.txt
           python -m pip install --disable-pip-version-check -r requirements-lid-benchmark.txt
+          python -m pip check
           mkdir -p benchmark-results/fleurs-lid
           python -m pip freeze > benchmark-results/fleurs-lid/pip-freeze.txt
       - name: Run strict 99% inventory-aware validation calibration and disjoint test evaluation
