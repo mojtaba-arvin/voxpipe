@@ -124,7 +124,7 @@ class HybridRetrievalTests(unittest.TestCase):
             def search_similar(self, *args, **kwargs): return ()
         service = HybridRetrievalService(lexical=Noop(), embeddings=Noop(), semantic=Noop())
         with self.assertRaisesRegex(ValueError, "after normalization"):
-            service.search("   ", filters=RetrievalFilters("tenant"))
+            service.search("\\u0640\\u200c", filters=RetrievalFilters("tenant"))
 
 if __name__ == "__main__":
     unittest.main()
