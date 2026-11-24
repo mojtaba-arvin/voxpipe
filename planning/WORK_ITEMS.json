@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-23",
+  "updated_at": "2026-11-24",
   "items": [
     {
       "id": "VP-0001",
@@ -574,9 +574,10 @@
         "benchmarks/results/neyshekar-v6-diarization-2026-11-21/summary.json — validation-selected threshold 0.20; held-out synthetic test DER 23.81%, JER 23.60%; single-speaker baseline DER 57.14%, JER 85.71%; speaker-count error 2.",
         "GitHub Actions run 44848021967 — successful controlled Persian diarization benchmark using anonymous CC0 Neyshekar V6.0 speaker labels.",
         "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
-        "2026-11-23: rebased provider-neutral DiarizationRequest/DiarizationPort contract onto main after STT observability integration. ECAPA direct calls validate normalized mono 16 kHz audio, SHA-256, ordered/in-bounds VAD regions, finite normalized dimension-consistent embeddings, SpeakerTurn bounds and explicit overlap capability. Added direct-input, overlap and common contract tests."
+        "2026-11-23: rebased provider-neutral DiarizationRequest/DiarizationPort contract onto main after STT observability integration. ECAPA direct calls validate normalized mono 16 kHz audio, SHA-256, ordered/in-bounds VAD regions, finite normalized dimension-consistent embeddings, SpeakerTurn bounds and explicit overlap capability. Added direct-input, overlap and common contract tests.",
+        "2026-11-24: PR #68 merged as commit 7c734dee95a180a2772710ac2e45352e37319dee. The merged main SHA c809507d96ecdc35e70f991285fdc9620d0ac48f passed both Python/PostgreSQL and Go/PostgreSQL integration jobs in run 45326087762. Acceptance remains limited by the absence of consented natural overlapping speech and held-out DER/JER evaluation."
       ],
-      "blocked_reason": "Provider-neutral ECAPA contracts, explicit overlap capability and injected-embedder validation are implemented; exact-head CI on the current rebased branch is pending. Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable."
+      "blocked_reason": "The provider-neutral ECAPA contract, explicit overlap capability and injected-embedder validation are merged in PR #68. Main-branch Python/PostgreSQL and Go/PostgreSQL validation passed on 2026-11-24 (run 45326087762). Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable; this is a data/evaluation blocker, not an unmerged-code blocker."
     },
     {
       "id": "VP-0025",
@@ -859,9 +860,10 @@
         "Verify restore and rollback procedures in a production-like environment."
       ],
       "evidence": [
-        "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted."
+        "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted.",
+        "2026-11-24 audit correction: PR #45 was merged on 2026-11-23 (merge commit 9cd629f97e70cbfd5885d5f90c751bbd787f07df); the earlier wording that described it as open/unmerged was stale. Build-only release artifacts and SBOM are in main; signing, deployment, canary and rollback gates remain open."
       ],
-      "blocked_reason": "Release-candidate artifacts, checksums and SBOM generation are implemented in an open PR. Signed provenance/model manifests, migration compatibility gates, canary promotion, safe rollback and production-like restore rehearsal remain unverified."
+      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest and SHA-256 checksums are merged in PR #45. Remaining acceptance gates are artifact signing/provenance attestation, production deployment configuration, production-like migration compatibility rehearsal, canary health gates, rollback and restore verification. No production deployment is implied."
     },
     {
       "id": "VP-0037",
@@ -883,9 +885,10 @@
         "Go validation on patched Go 1.26.11 and dependency versions reached go mod tidy -diff; the only remaining failure was go.sum retaining the obsolete testify v1.8.1 content hash and lacking the v1.11.1 content hash. Updated the checksum set and added a policy regression assertion. Python/PostgreSQL integration passed and the dependency security audit passed on the preceding exact head.",
         "A second go mod tidy -diff run showed the two testify v1.11.1 checksums were correct but ordered before v1.3/v1.7; Go's module-aware ordering requires v1.11.1 after those entries. Reordered the two lines to match go mod tidy output exactly.",
         "Third go mod tidy -diff triage: the current Go toolchain requires the testify v1.11.1 module content checksum but not its go.mod-only checksum. Removed the unnecessary /go.mod line; the content checksum remains. The Python/PostgreSQL integration and both dependency vulnerability audits passed on the exact prior head.",
-        "Latest Go 1.26.11 validation run 45067656984 showed go mod tidy now requires both testify v1.11.1 content and go.mod checksums; restored the exact go.mod hash after the prior run had requested its removal. Re-running the deterministic tidy gate on the new exact head."
+        "Latest Go 1.26.11 validation run 45067656984 showed go mod tidy now requires both testify v1.11.1 content and go.mod checksums; restored the exact go.mod hash after the prior run had requested its removal. Re-running the deterministic tidy gate on the new exact head.",
+        "2026-11-24 audit correction: PR #46 was merged on 2026-11-23 (merge commit b11396f671546f3dca36f864c7f10f7612f3116b); the earlier wording that described its foundation as an open PR was stale. Dependency/security automation is in main; broader autonomous maintenance controls remain incomplete."
       ],
-      "blocked_reason": "Bounded dependency/security maintenance workflow foundations are implemented in an open PR. Human approval for high-impact changes, explicit spending/permission/blast-radius controls and audited safe-stop/rollback tests remain to be demonstrated; no branch-protection changes are authorized."
+      "blocked_reason": "Bounded dependency/security maintenance automation is merged in PR #46, including scheduled and dependency-triggered pip-audit/govulncheck, grouped Dependabot updates, PR-only remediation and no auto-merge/direct push. Remaining acceptance gates are demonstrated human-approval orchestration for high-impact changes, explicit permission/spend/blast-radius controls across future autonomous workflows, and tested safe-stop/rollback. A general autonomous coding agent is intentionally out of scope."
     }
   ]
 }
