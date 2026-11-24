@@ -842,7 +842,8 @@
         "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels.",
         "2026-11-23: added src/voxpipe/speech/observability.py with privacy-safe started/succeeded/failed lifecycle events, monotonic duration measurement, stable error codes and observer-failure isolation; tests cover sensitive-field exclusion and telemetry outage isolation.",
         "2026-11-23: added docs/architecture/stt-provider-reliability.md and ADR-0023 covering hosted STT deadlines, bounded concurrency, data egress, idempotency-aware retry/reconciliation, provider-scoped breaker, SLO dimensions and telemetry privacy.",
-        "2026-11-24: PR #73 connects the STT workflow to the privacy-safe SpeechToTextService observer; the OpenTelemetry bridge and bounded provider/outcome metric dimensions are present in main."
+        "2026-11-24: PR #73 connects the STT workflow to the privacy-safe SpeechToTextService observer; the OpenTelemetry bridge and bounded provider/outcome metric dimensions are present in main.",
+        "2026-11-24: added a barrier-synchronized 24-thread regression test proving the process-local circuit breaker admits exactly one half-open probe after cooldown; this does not claim cross-process coordination."
       ],
       "blocked_reason": "Tenant-safe worker aggregates, privacy-safe STT lifecycle events, an injected OpenTelemetry meter/tracer bridge and shared process-local circuit-breaker integration are implemented. Production exporter/resource/sampling configuration, shared distributed circuit state, dashboards, actionable alerts, synthetic checks, staging workload and SLO verification remain."
     },

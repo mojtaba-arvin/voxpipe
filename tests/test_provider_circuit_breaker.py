@@ -72,6 +72,33 @@ class ProviderCircuitBreakerTests(unittest.TestCase):
         self.assertFalse(breaker.record_success(first))
         self.assertIn("provider-a", breaker.open_providers())
 
+    def test_concurrent_half_open_acquisition_admits_exactly_one_probe(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+
+        clock = FakeClock()
+        breaker = ProviderCircuitBreaker(
+            failure_threshold=1, cooldown_seconds=5, clock=clock,
+        )
+        breaker.record_failure(breaker.try_acquire("provider-a"))
+        clock.value = 5
+
+        contenders = 24
+        barrier = Barrier(contenders)
+
+        def acquire():
+            barrier.wait()
+            return breaker.try_acquire("provider-a")
+
+        with ThreadPoolExecutor(max_workers=contenders) as pool:
+            permits = list(pool.map(lambda _: acquire(), range(contenders)))
+
+        probes = [permit for permit in permits if permit is not None and permit.is_probe]
+        self.assertEqual(len(probes), 1)
+        self.assertEqual(sum(permit is not None for permit in permits), 1)
+        self.assertIn("provider-a", breaker.open_providers())
+
+
     def test_open_provider_snapshot_contains_only_operational_metadata(self):
         clock = FakeClock()
         breaker = ProviderCircuitBreaker(failure_threshold=1, cooldown_seconds=5, clock=clock)
