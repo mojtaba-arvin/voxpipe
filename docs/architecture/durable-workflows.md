@@ -17,7 +17,7 @@ The journal supports ordered versioned steps, idempotent workflow creation, boun
 
 ## Verification
 
-The PostgreSQL 16 integration suite exercises ordered execution, idempotent create, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and expired-lease recovery.
+The PostgreSQL 16 integration suite exercises ordered execution, idempotent create, retry exhaustion, approval, cancellation, tenant isolation, sensitive payload rejection and expired-lease recovery. It also releases 16 independent repository instances simultaneously against 16 ready workflows and asserts every worker claims a unique workflow/step pair. This is a synchronized concurrency burst regression, not a sustained throughput or capacity benchmark.
 
 ## Not yet production-ready
 
