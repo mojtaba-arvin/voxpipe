@@ -95,3 +95,23 @@ jobs:
           cache: true
       - name: Validate Go API, formatting, vet, race safety, and PostgreSQL integration
         run: make go-check
+
+  observability:
+    name: OpenTelemetry runtime smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version-file: ".python-version"
+      - name: Install optional OpenTelemetry dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-observability.txt
+      - name: Validate OTLP SDK bootstrap and safe shutdown
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m unittest discover -s tests -p 'test_speech_telemetry_runtime.py'
+          python -c 'from voxpipe.speech.telemetry_runtime import configure_speech_otel; runtime = configure_speech_otel(service_name="voxpipe-ci", trace_sample_ratio=0.0); runtime.shutdown()'

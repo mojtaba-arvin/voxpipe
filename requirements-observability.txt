@@ -1,3 +1,4 @@
-# Optional OpenTelemetry API and SDK; exporter/resource/sampling configuration is operator-owned.
+# Optional OpenTelemetry API, SDK and OTLP/gRPC exporters.
 opentelemetry-api>=1.27,<2
 opentelemetry-sdk>=1.27,<2
+opentelemetry-exporter-otlp-proto-grpc>=1.27,<2
