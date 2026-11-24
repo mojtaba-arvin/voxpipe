@@ -1,6 +1,6 @@
 # MCP Capability Contract
 
-Contract version: 1.0.0. Transport: stdio.
+Contract version: 1.1.0. Transport: stdio.
 
 The MCP server is a thin authenticated adapter over the Go HTTP API. Tenant identity is derived from the bearer token; callers cannot supply tenant IDs.
 
@@ -10,6 +10,7 @@ The MCP server is a thin authenticated adapter over the Go HTTP API. Tenant iden
 | get_ingestion_status | ingestion:read | GET /v1/ingestions/{session_id} | Retry transient transport and server errors with bounded backoff. |
 | get_asset | ingestion:read | GET /v1/assets/{asset_id} | Retry transient transport and server errors with bounded backoff. |
 | search_assets | ingestion:read | GET /v1/assets/search | Retry transient transport and server errors with bounded backoff. |
+| search_transcripts | transcript:read | GET /v1/transcripts/search | Read-only full-text search; bounded pagination and tenant-scoped filters. |
 
 ## Tool contracts
 
@@ -337,9 +338,46 @@ Stable errors:
 - FORBIDDEN; retryable: false
 - INTERNAL_ERROR; retryable: true
 
+
+### search_transcripts
+
+Search tenant-scoped transcript segments with PostgreSQL full-text ranking. The authenticated principal must carry the separate `transcript:read` capability; `ingestion:read` alone does not grant transcript access. Tenant identity is derived exclusively from the verified bearer token.
+
+Input schema:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query"],
+  "properties": {
+    "query": {"type": "string", "minLength": 1, "maxLength": 256},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+    "offset": {"type": "integer", "minimum": 0, "maximum": 10000, "default": 0},
+    "transcript_id": {"type": "string", "format": "uuid"},
+    "asset_id": {"type": "string", "format": "uuid"},
+    "revision": {"type": "integer", "minimum": 1},
+    "language": {"type": "string", "minLength": 2, "maxLength": 35},
+    "speaker_id": {"type": "string", "format": "uuid"},
+    "start_ms": {"type": "integer", "minimum": 0},
+    "end_ms": {"type": "integer", "minimum": 1}
+  }
+}
+```
+
+Output items contain transcript/revision/asset identifiers, language, provider/model provenance, segment ID, time range, segment text, optional speaker ID and lexical rank. Tenant IDs, audio hashes and storage references are not returned.
+
+Stable errors:
+- INVALID_SEARCH_QUERY / INVALID_SEARCH_FILTER; retryable: false
+- INVALID_SEARCH_LIMIT / INVALID_SEARCH_OFFSET; retryable: false
+- INVALID_TRANSCRIPT_ID / INVALID_ASSET_ID / INVALID_SPEAKER_ID; retryable: false
+- INVALID_REVISION / INVALID_LANGUAGE / INVALID_START_MS / INVALID_END_MS / INVALID_TIME_RANGE; retryable: false
+- UNAUTHENTICATED / FORBIDDEN; retryable: false
+- INTERNAL_ERROR; retryable: true
+
 ## Security and search boundaries
 
 - Tenant identity comes from the authenticated principal; caller-supplied tenant IDs are forbidden.
 - Asset responses omit tenant identifiers and private storage/object references.
-- search_assets performs metadata search only. Transcript, vector, and semantic search are not implemented.
+- search_assets performs metadata search only. search_transcripts performs PostgreSQL lexical full-text search over transcript segments. Vector/hybrid semantic search is not yet exposed through the Go API or MCP.
 - MCP creates ingestion sessions; audio bytes are transferred separately through the authenticated HTTP upload API.
