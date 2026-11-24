@@ -18,7 +18,7 @@ Every route requires a bearer token and an explicit capability:
 
 The initial authenticator accepts SHA-256 token digests mapped to tenant UUIDs and scopes. Configure VOXPIPE_API_TOKEN_HASHES as semicolon-separated entries:
 
-    <sha256-token-digest>:<tenant-uuid>:ingestion:read,ingestion:write
+    <sha256-token-digest>:<tenant-uuid>:ingestion:read,ingestion:write,transcript:read
 
 Generate the digest without writing the raw token to a file:
 
