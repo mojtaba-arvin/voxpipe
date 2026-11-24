@@ -101,8 +101,14 @@ def configure_speech_otel(
         )
     except Exception:
         if meter_provider is not None:
-            meter_provider.shutdown()
-        tracer_provider.shutdown()
+            try:
+                meter_provider.shutdown()
+            except Exception:
+                pass
+        try:
+            tracer_provider.shutdown()
+        except Exception:
+            pass
         raise
 
     return SpeechTelemetryRuntime(
