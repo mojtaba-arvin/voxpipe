@@ -41,7 +41,18 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         self.assertIn("start_time", event_value["required"])
         self.assertEqual(event_value["properties"]["start_time"]["minLength"], 1)
         entity_value = schema["properties"]["entities"]["items"]["properties"]["value"]
-        self.assertEqual(entity_value["properties"]["entity_type"]["enum"], ["person", "organization", "location", "document"])
+        self.assertEqual(
+            entity_value["oneOf"],
+            [{
+                "type": "object", "additionalProperties": False, "required": ["name", "entity_type"],
+                "properties": {
+                    "name": {"const": "دفتر مرکزی"},
+                    "entity_type": {"const": "location"},
+                    "aliases": {"type": "array", "items": {"type": "string"}},
+                    "description": {"type": "string"},
+                },
+            }],
+        )
         self.assertEqual(schema["properties"]["events"]["maxItems"], 32)
         self.assertEqual(schema["properties"]["events"]["items"]["properties"]["value"]["properties"]["event_type"]["enum"], ["meeting", "contract-signing"])
 
