@@ -84,7 +84,27 @@ These are list-price snapshots, not quotes or total-cost guarantees. Confirm cur
 
 **Status:** provider comparison, adapter, error mapping, offline tests, Persian-aware scorer and a pinned 100-file Persian baseline are implemented. The measured baseline is poor; do not promote it as production quality. Further model comparisons, timestamp-error evaluation and repeated latency/RSS measurements remain open.
 
-## 7. Official sources
+
+
+## 6.1 Measured local model comparison (2026-11-24)
+
+A second controlled run used the same pinned 100-item Google FLEURS `fa_ir` Test split and `fa-norm-v1` scorer as the Small baseline. Faster-Whisper Medium ran on CPU/INT8 with beam size 5 and VAD filtering enabled. Dataset revision `6989e5bd2dc37546a93ae5d857bc04325e6a3738` and parquet SHA-256 `e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36` were unchanged. Medium model revision `08e178d48790749d25932bbc082711ddcfdfbc4f`, model.bin SHA-256 `9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae`.
+
+| Metric | Small (2026-11-21) | Medium (2026-11-24) |
+|---|---:|---:|
+| Normalized WER | 52.24% | 31.64% |
+| Normalized CER | 16.43% | 9.12% |
+| Raw WER | 58.85% | 42.37% |
+| Raw CER | 18.53% | 11.55% |
+| Real-time factor | 0.165 | 0.857 |
+| Per-file latency p50 | 2.52 s | 13.19 s |
+| Per-file latency p95 | 3.78 s | 17.60 s |
+
+On this single run, Medium reduced normalized WER by 39.4% and CER by 44.5% relative to Small, while requiring about 5.2x the inference time. Medium's aggregate RTF remained below 1.0 on the GitHub-hosted CPU runner, but its p95 per-file RTF was 1.15; do not infer that it will meet real-time requirements for every file or hardware class. The full aggregate report, including model/dataset provenance, is committed in `benchmarks/results/fleurs-fa-ir-medium-2026-11-24/summary.json`; the original CI artifact also contains per-file JSONL and a corpus manifest.
+
+**Decision:** retain Small as the worker default. Medium is an opt-in candidate for quality-sensitive, latency-tolerant jobs, not an approved production default. The comparison is one run on read speech, with no three-repeat performance distribution, no peak RSS/VRAM measurement, no human conversational Persian set, no dialect/noise stratification and no word-timestamp accuracy evaluation. Do not claim production quality from these results. Large-v3 and natural conversational evaluation remain open.
+
+## 8. Official sources
 
 - faster-whisper implementation, model loading, word timestamps and upstream benchmark: https://github.com/SYSTRAN/faster-whisper
 - OpenAI Whisper multilingual model card: https://huggingface.co/openai/whisper-large-v3

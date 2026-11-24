@@ -1,8 +1,8 @@
 # Persian STT Benchmark: corpus and execution protocol
 
-**Status:** protocol and pinned 100-item Google FLEURS Persian baseline completed for VP-0022; the measured Faster-Whisper Small CPU/INT8 result is documented in `docs/research/stt-provider-evaluation.md` and `benchmarks/results/fleurs-fa-ir-2026-11-21/`. The result is evidence, not a production-quality pass (normalized WER 52.24%, CER 16.43%).  
+**Status:** pinned 100-item Google FLEURS Persian CPU/INT8 runs completed for Faster-Whisper Small and Medium on the same Test split. Small measured normalized WER/CER 52.24%/16.43%; Medium measured 31.64%/9.12% but was about 5.2x slower. Results are comparative evidence, not a production-quality pass; see `docs/research/stt-provider-evaluation.md` and `benchmarks/results/`.  
 **Normalization:** `fa-norm-v1` in `scripts/benchmark_stt.py`.  
-**Primary implementation:** local faster-whisper adapter (VP-0022). The benchmark runner now supports an allowlisted, reproducible local comparison among Faster-Whisper Small, Medium and Large-v3; the dedicated CI branch workflow is set to run the Medium model on the same pinned 100-item FLEURS split. This is a no-hosted-inference comparison and does not by itself imply a quality improvement.
+**Primary implementation:** local faster-whisper adapter (VP-0022). The benchmark runner supports reviewed Small, Medium and Large-v3 model identifiers; Small remains the worker default pending natural conversational evaluation and target-hardware capacity measurements. The benchmark runner now supports an allowlisted, reproducible local comparison among Faster-Whisper Small, Medium and Large-v3; the dedicated CI branch workflow is set to run the Medium model on the same pinned 100-item FLEURS split. This is a no-hosted-inference comparison and does not by itself imply a quality improvement.
 
 ## 1. Corpus policy
 
