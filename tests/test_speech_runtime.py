@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from voxpipe.speech.circuit_breaker import ProviderCircuitBreaker
 from voxpipe.speech.postgres_circuit_breaker import PostgresProviderCircuitBreaker
@@ -8,7 +9,11 @@ from voxpipe.speech.runtime import build_speech_resilience_runtime
 class FakeSpeechAdapter:
     provider_name = "local-test-provider"
 
+    def __init__(self):
+        self.calls = 0
+
     def transcribe(self, request):
+        self.calls += 1
         raise AssertionError("factory tests must not dispatch inference")
 
 
@@ -45,6 +50,18 @@ class SpeechResilienceRuntimeTests(unittest.TestCase):
             build_speech_resilience_runtime(FakeSpeechAdapter(), environ={
                 "VOXPIPE_CIRCUIT_BREAKER_BACKEND": "postgres",
             })
+
+
+    def test_postgres_outage_fails_closed_before_provider_dispatch(self):
+        adapter = FakeSpeechAdapter()
+        runtime = build_speech_resilience_runtime(adapter, environ={
+            "VOXPIPE_CIRCUIT_BREAKER_BACKEND": "postgres",
+            "VOXPIPE_DATABASE_DSN": "postgresql://voxpipe_app:secret@db/voxpipe",
+        })
+        with patch("psycopg.connect", side_effect=ConnectionError("database unavailable")):
+            with self.assertRaisesRegex(ConnectionError, "database unavailable"):
+                runtime.speech_port.transcribe(object())
+        self.assertEqual(adapter.calls, 0)
 
     def test_unknown_backend_and_malformed_limits_are_rejected(self):
         invalid = (
