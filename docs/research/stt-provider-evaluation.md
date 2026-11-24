@@ -88,21 +88,27 @@ These are list-price snapshots, not quotes or total-cost guarantees. Confirm cur
 
 ## 6.1 Measured local model comparison (2026-11-24)
 
-A second controlled run used the same pinned 100-item Google FLEURS `fa_ir` Test split and `fa-norm-v1` scorer as the Small baseline. Faster-Whisper Medium ran on CPU/INT8 with beam size 5 and VAD filtering enabled. Dataset revision `6989e5bd2dc37546a93ae5d857bc04325e6a3738` and parquet SHA-256 `e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36` were unchanged. Medium model revision `08e178d48790749d25932bbc082711ddcfdfbc4f`, model.bin SHA-256 `9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae`.
+Two independent CI executions used the same pinned 100-item Google FLEURS `fa_ir` Test split and `fa-norm-v1` scorer. Faster-Whisper Medium ran on CPU/INT8 with beam size 5 and VAD filtering enabled. Dataset revision `6989e5bd2dc37546a93ae5d857bc04325e6a3738` and parquet SHA-256 `e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36` were unchanged. Medium model revision `08e178d48790749d25932bbc082711ddcfdfbc4f`, model.bin SHA-256 `9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae`.
 
-| Metric | Small (2026-11-21) | Medium (2026-11-24) |
+The post-merge `main` run is the primary result:
+
+| Metric | Small (2026-11-21) | Medium (main, 2026-11-24) |
 |---|---:|---:|
-| Normalized WER | 52.24% | 31.64% |
-| Normalized CER | 16.43% | 9.12% |
-| Raw WER | 58.85% | 42.37% |
-| Raw CER | 18.53% | 11.55% |
-| Real-time factor | 0.165 | 0.857 |
-| Per-file latency p50 | 2.52 s | 13.19 s |
-| Per-file latency p95 | 3.78 s | 17.60 s |
+| Normalized WER | 52.24% | 32.25% |
+| Normalized CER | 16.43% | 9.34% |
+| Raw WER | 58.85% | 42.90% |
+| Raw CER | 18.53% | 11.77% |
+| Real-time factor | 0.165 | 0.593 |
+| Per-file latency p50 | 2.52 s | 8.99 s |
+| Per-file latency p95 | 3.78 s | 12.93 s |
 
-On this single run, Medium reduced normalized WER by 39.4% and CER by 44.5% relative to Small, while requiring about 5.2x the inference time. Medium's aggregate RTF remained below 1.0 on the GitHub-hosted CPU runner, but its p95 per-file RTF was 1.15; do not infer that it will meet real-time requirements for every file or hardware class. The full aggregate report, including model/dataset provenance, is committed in `benchmarks/results/fleurs-fa-ir-medium-2026-11-24/summary.json`; the original CI artifact also contains per-file JSONL and a corpus manifest.
+On the post-merge main run, Medium reduced normalized WER by 38.3% and CER by 43.2% relative to Small, while requiring about 3.6x the inference time. Aggregate RTF was 0.593 and per-file p95 RTF was 0.793 on that runner.
 
-**Decision:** retain Small as the worker default. Medium is an opt-in candidate for quality-sensitive, latency-tolerant jobs, not an approved production default. The comparison is one run on read speech, with no three-repeat performance distribution, no peak RSS/VRAM measurement, no human conversational Persian set, no dialect/noise stratification and no word-timestamp accuracy evaluation. Do not claim production quality from these results. Large-v3 and natural conversational evaluation remain open.
+A separate PR-validation run on the same dataset/model revisions measured normalized WER/CER 31.64%/9.12%, RTF 0.857 and p50/p95 latency 13.19/17.60 seconds. Across these two CI runs, the observed values span WER 31.64–32.25%, CER 9.12–9.34% and RTF 0.593–0.857. These are two observations on separate hosted runners, not controlled repeated runs, confidence intervals or a hardware benchmark; the CPU model was not captured. Both runs show a material quality improvement over Small, with materially higher compute time.
+
+The committed aggregate report `benchmarks/results/fleurs-fa-ir-medium-2026-11-24/summary.json` preserves the post-merge main run and both run references. CI artifacts also contain per-file JSONL and the corpus manifest.
+
+**Decision:** retain Small as the worker default. Medium is an opt-in candidate for quality-sensitive, latency-tolerant jobs, not an approved production default. Both runs use read speech only; there is no human conversational Persian set, dialect/noise stratification, target-host capacity test, resource/RAM distribution or word-timestamp accuracy evaluation. Do not claim production quality from these results. Large-v3 and natural conversational evaluation remain open.
 
 ## 7. Official sources
 
