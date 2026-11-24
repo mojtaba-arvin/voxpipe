@@ -91,6 +91,7 @@ invalid user audio when the model/runtime is unavailable.
 Implemented:
 - Provider-neutral adapter interface and canonical transcript validation.
 - Faster-Whisper local adapter.
+- Optional Deepgram Nova-3 multilingual batch adapter behind the same port; fake-transport tests require no key, network or inference spend.
 - Content-free lifecycle observer and best-effort telemetry isolation.
 - OpenTelemetry bridge for operation counters, duration histograms and correlated traces; meter/tracer/exporter configuration remains injected by the host application. Optional packages are listed in `requirements-observability.txt`.
 - Guarded adapter reusing the same fenced process-local circuit breaker as
@@ -98,8 +99,7 @@ Implemented:
 - Tests for telemetry, observer isolation and circuit integration.
 
 Not yet production-accepted:
-- A vendor-specific hosted adapter (requires operator-selected vendor, region,
-  DPA/retention review, explicit data-egress approval and pinned API contract).
+- Live activation and vendor acceptance for the optional Deepgram Nova-3 adapter: a key, positive spend ceiling, verified DPA/retention/region terms, explicit runtime allowlist and a live smoke/quality benchmark are still required. The merged adapter itself is covered by ADR-0035 and offline fake-transport tests.
 - Shared/distributed circuit state and durable retry/idempotency reconciliation.
 - Production exporter/resource/sampling configuration, dashboards, alerts and staging SLO verification.
 - Production workload, load, timeout and failover testing.
