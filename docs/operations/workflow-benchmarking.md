@@ -53,3 +53,6 @@ a failed run, not a capacity result.
 
 The benchmark does not replace a target-host systemd restart/shutdown drill,
 production backup objectives, or a representative speech-processing load test.
+
+
+The benchmark runner is also exercised end-to-end by a PostgreSQL 16 integration test using four independent workers and 24 synthetic workflows. The test asserts a complete drain, unique claims, zero errors and populated measurements; it is skipped when the disposable PostgreSQL test DSN is not configured.
