@@ -50,12 +50,13 @@ def configure_speech_otel(
     """
     if not isinstance(service_name, str) or not service_name.strip() or len(service_name) > 255:
         raise ValueError("service_name must be a non-empty string of at most 255 characters")
-    if (
-        not isinstance(trace_sample_ratio, (int, float))
-        or isinstance(trace_sample_ratio, bool)
-        or not math.isfinite(trace_sample_ratio)
-        or not 0.0 <= trace_sample_ratio <= 1.0
-    ):
+    if not isinstance(trace_sample_ratio, (int, float)) or isinstance(trace_sample_ratio, bool):
+        raise ValueError("trace_sample_ratio must be a finite number in [0, 1]")
+    try:
+        sample_ratio = float(trace_sample_ratio)
+    except (OverflowError, ValueError) as exc:
+        raise ValueError("trace_sample_ratio must be a finite number in [0, 1]") from exc
+    if not math.isfinite(sample_ratio) or not 0.0 <= sample_ratio <= 1.0:
         raise ValueError("trace_sample_ratio must be a finite number in [0, 1]")
     if (
         not isinstance(metric_export_interval_ms, int)
@@ -85,7 +86,7 @@ def configure_speech_otel(
     })
     tracer_provider = TracerProvider(
         resource=resource,
-        sampler=TraceIdRatioBased(float(trace_sample_ratio)),
+        sampler=TraceIdRatioBased(sample_ratio),
     )
     meter_provider = None
     try:
