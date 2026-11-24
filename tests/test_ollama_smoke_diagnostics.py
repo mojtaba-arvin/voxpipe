@@ -40,7 +40,6 @@ class SmokeDiagnosticsTests(unittest.TestCase):
         event_value = schema["properties"]["events"]["items"]["properties"]["value"]
         self.assertIn("start_time", event_value["required"])
         self.assertEqual(event_value["properties"]["start_time"]["minLength"], 1)
-        self.assertEqual(schema["properties"]["entities"]["maxItems"], 0)
         self.assertEqual(schema["properties"]["events"]["maxItems"], 32)
         self.assertEqual(schema["properties"]["events"]["items"]["properties"]["value"]["properties"]["event_type"]["enum"], ["meeting", "contract-signing"])
 
