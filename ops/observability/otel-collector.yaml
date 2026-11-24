@@ -1,0 +1,39 @@
+# Minimal Collector gateway for VoxPipe speech telemetry.
+# Bind the OTLP receiver only to a private service network; expose no public port.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    send_timestamps: true
+    metric_expiration: 5m
+  otlphttp/trace_backend:
+    endpoint: ${env:VOXPIPE_TRACE_BACKEND_OTLP_HTTP_ENDPOINT}
+    tls:
+      insecure: false
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/trace_backend]
