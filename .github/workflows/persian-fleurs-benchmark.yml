@@ -61,7 +61,7 @@ jobs:
           summary=benchmark-results/fleurs-fa-ir/summary.json
           jq --arg commit "$SOURCE_COMMIT" --arg run "$SOURCE_RUN" --arg run_id "$SOURCE_RUN_ID" --arg attempt "$SOURCE_RUN_ATTEMPT" --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '. + {provenance: {source_commit: $commit, source_run: $run, source_run_id: ($run_id | tonumber), source_run_attempt: ($attempt | tonumber), generated_at: $generated_at}}' "$summary" > "$summary.tmp"
           mv "$summary.tmp" "$summary"
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: persian-fleurs-cpu-benchmark
