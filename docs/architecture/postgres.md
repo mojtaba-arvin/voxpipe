@@ -6,7 +6,7 @@
 
 - Is not a superuser.
 - Does not have `BYPASSRLS`.
-- Has only the required table privileges on `ingestion_sessions`, `audio_assets`, and `ingestion_jobs`.
+- Has only the required table privileges on ingestion tables and read access to `transcripts`, `transcript_speakers`, `transcript_segments`, and `transcript_words` for the `transcript:read` API capability.
 - Does not own those tables.
 
 The migration enables and forces row-level security. Every repository operation sets the transaction-local `voxpipe.tenant_id` setting, and every query also includes an explicit tenant predicate. Missing tenant context returns no rows under RLS. This protects against accidental query omissions; because the application credential can set the custom tenant context, it is not a defense against compromised application code. Strong isolation against a compromised service requires separate database roles/credentials or a trusted tenant-context boundary.
