@@ -22,6 +22,12 @@ type memoryStore struct {
 	sessions map[string]map[string]any
 	keys     map[string]string
 	jobs     map[string]map[string]any
+	transcriptResults []map[string]any
+	lastTranscriptQuery string
+	lastTranscriptTenant string
+	lastTranscriptFilters TranscriptSearchFilters
+	lastTranscriptLimit int
+	lastTranscriptOffset int
 }
 
 func newMemoryStore() *memoryStore {
@@ -77,6 +83,15 @@ func (m *memoryStore) GetAsset(_ context.Context, tenant, id string) (map[string
 func (m *memoryStore) SearchAssets(_ context.Context, tenant, query string, limit int) ([]map[string]any, error) {
 	return []map[string]any{}, nil
 }
+func (m *memoryStore) SearchTranscriptSegments(_ context.Context, tenant, query string, filters TranscriptSearchFilters, limit, offset int) ([]map[string]any, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lastTranscriptTenant, m.lastTranscriptQuery = tenant, query
+	m.lastTranscriptFilters, m.lastTranscriptLimit, m.lastTranscriptOffset = filters, limit, offset
+	result := make([]map[string]any, 0, len(m.transcriptResults))
+	for _, item := range m.transcriptResults { result = append(result, cloneMap(item)) }
+	return result, nil
+}
 func (m *memoryStore) BeginUpload(_ context.Context, tenant, session, owner string, leaseSeconds, maxConcurrent int) error { return nil }
 func (m *memoryStore) EndUpload(_ context.Context, tenant, session, owner, outcome, errorCode string) error { return nil }
 func (m *memoryStore) RecordAuditEvent(_ context.Context, tenant, session, asset, eventType, outcome, errorCode string, metadata map[string]any) error { return nil }
@@ -95,7 +110,7 @@ func testServer(t *testing.T) (*Server,*memoryStore,string,string) {
 	tenant:="11111111-1111-4111-8111-111111111111"
 	token:="voxpipe-test-token"
 	digest:=sha256.Sum256([]byte(token))
-	auth,err:=NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":"+tenant+":ingestion:read,ingestion:write"})
+	auth,err:=NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":"+tenant+":ingestion:read,ingestion:write,transcript:read"})
 	if err!=nil { t.Fatal(err) }
 	stager,err:=NewLocalStager(t.TempDir()); if err!=nil { t.Fatal(err) }
 	store:=newMemoryStore()
@@ -197,6 +212,84 @@ func TestAssetMetadataEndpointsAreTenantAuthenticated(t *testing.T) {
 	if _, ok := decodeResponse(t, search)["items"]; !ok { t.Fatal("search response omitted items") }
 	unauthorized := request(handler, http.MethodGet, "/v1/assets/search?q=wav", "", nil)
 	if unauthorized.Code != http.StatusUnauthorized { t.Fatalf("unauthenticated search should fail: %d", unauthorized.Code) }
+}
+
+
+
+func TestNormalizePersianTranscriptSearchQuery(t *testing.T) {
+	got := normalizePersianSearchQuery("كِتاب يَك ۱۲۳ ١٢٣")
+	if got != "کتاب یک 123 123" {
+		t.Fatalf("unexpected Persian normalization: %q", got)
+	}
+	if got := normalizePersianSearchQuery("\"جلسه فروش\" -لغو"); got != "\"جلسه فروش\" -لغو" {
+		t.Fatalf("search syntax should be preserved: %q", got)
+	}
+	if got := normalizePersianSearchQuery("می‌روم   API"); got != "می روم api" {
+		t.Fatalf("ZWNJ and whitespace normalization failed: %q", got)
+	}
+}
+
+func TestTranscriptSearchEndpointUsesDedicatedScopeAndReturnsSafeProvenance(t *testing.T) {
+	server, store, tenant, token := testServer(t)
+	store.transcriptResults = []map[string]any{{
+		"tenant_id": tenant, "transcript_id": "11111111-1111-4111-8111-111111111111",
+		"revision": 2, "asset_id": "22222222-2222-4222-8222-222222222222",
+		"language": "fa", "provider": "faster-whisper", "model": "small",
+		"model_version": "v1", "audio_sha256": strings.Repeat("a", 64),
+		"segment_id": "33333333-3333-4333-8333-333333333333",
+		"start_ms": int64(1200), "end_ms": int64(2400), "text": "جلسه فروش فردا",
+		"speaker_id": "44444444-4444-4444-8444-444444444444", "rank": 0.75,
+	}}
+	response := request(server.Handler(), http.MethodGet,
+		"/v1/transcripts/search?q=جلسه%20فروش&limit=10&offset=2&language=fa&revision=2&start_ms=1000&end_ms=3000",
+		token, nil)
+	if response.Code != http.StatusOK { t.Fatalf("search failed: %d %s", response.Code, response.Body.String()) }
+	body := decodeResponse(t, response)
+	if body["limit"] != float64(10) || body["offset"] != float64(2) { t.Fatalf("pagination missing: %#v", body) }
+	items := body["items"].([]any)
+	if len(items) != 1 { t.Fatalf("expected one result, got %#v", items) }
+	item := items[0].(map[string]any)
+	for _, private := range []string{"tenant_id", "audio_sha256", "storage", "object_key"} {
+		if _, exists := item[private]; exists { t.Fatalf("private field %q leaked", private) }
+	}
+	if item["text"] != "جلسه فروش فردا" || item["provider"] != "faster-whisper" { t.Fatalf("result provenance missing: %#v", item) }
+	if store.lastTranscriptTenant != tenant || store.lastTranscriptQuery != "جلسه فروش" { t.Fatalf("wrong tenant/query forwarded: %#v", store) }
+	if store.lastTranscriptLimit != 10 || store.lastTranscriptOffset != 2 { t.Fatalf("wrong pagination forwarded") }
+	if store.lastTranscriptFilters.Language == nil || *store.lastTranscriptFilters.Language != "fa" ||
+		store.lastTranscriptFilters.Revision == nil || *store.lastTranscriptFilters.Revision != 2 ||
+		store.lastTranscriptFilters.StartMS == nil || *store.lastTranscriptFilters.StartMS != 1000 ||
+		store.lastTranscriptFilters.EndMS == nil || *store.lastTranscriptFilters.EndMS != 3000 {
+		t.Fatalf("filters were not forwarded: %#v", store.lastTranscriptFilters)
+	}
+}
+
+func TestTranscriptSearchRejectsInvalidFiltersAndRequiresDedicatedScope(t *testing.T) {
+	server, _, _, token := testServer(t)
+	handler := server.Handler()
+	for _, path := range []string{
+		"/v1/transcripts/search",
+		"/v1/transcripts/search?q=",
+		"/v1/transcripts/search?q=meeting&transcript_id=bad",
+		"/v1/transcripts/search?q=meeting&start_ms=2000&end_ms=1000",
+		"/v1/transcripts/search?q=meeting&limit=101",
+		"/v1/transcripts/search?q=meeting&unknown=value",
+		"/v1/transcripts/search?q=meeting&language=",
+		"/v1/transcripts/search?q=meeting&limit=",
+		"/v1/transcripts/search?q=one&q=two",
+	} {
+		response := request(handler, http.MethodGet, path, token, nil)
+		if response.Code != http.StatusBadRequest { t.Errorf("%s: expected 400, got %d %s", path, response.Code, response.Body.String()) }
+	}
+	tenant := "11111111-1111-4111-8111-111111111111"
+	digest := sha256.Sum256([]byte("no-transcript-scope"))
+	auth, err := NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":"+tenant+":ingestion:read,ingestion:write"})
+	if err != nil { t.Fatal(err) }
+	stager, err := NewLocalStager(t.TempDir())
+	if err != nil { t.Fatal(err) }
+	restricted, err := NewServer(newMemoryStore(), auth, stager, 1024, time.Hour, 3)
+	if err != nil { t.Fatal(err) }
+	response := request(restricted.Handler(), http.MethodGet, "/v1/transcripts/search?q=meeting", "no-transcript-scope", nil)
+	if response.Code != http.StatusForbidden { t.Fatalf("missing transcript:read scope should be forbidden, got %d", response.Code) }
 }
 
 func TestRetentionPolicyIsServerAuthoritative(t *testing.T) {

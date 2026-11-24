@@ -12,16 +12,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
 	scopeIngestionRead  = "ingestion:read"
 	scopeIngestionWrite = "ingestion:write"
+	scopeTranscriptRead = "transcript:read"
 )
 
 var (
 	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
 	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+	languagePattern    = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9-]{1,34}$")
 )
 
 type Server struct {
@@ -104,6 +107,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/ingestions/{session_id}", s.cancelIngestion)
 	mux.HandleFunc("GET /v1/assets/{asset_id}", s.getAsset)
 	mux.HandleFunc("GET /v1/assets/search", s.searchAssets)
+	mux.HandleFunc("GET /v1/transcripts/search", s.searchTranscripts)
 	return mux
 }
 
@@ -383,6 +387,141 @@ func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
 	asset, err := s.store.GetAsset(r.Context(), principal.TenantID, assetID)
 	if err != nil { writeStoreError(w, err); return }
 	writeJSON(w, http.StatusOK, publicAsset(asset))
+}
+
+
+func normalizePersianSearchQuery(query string) string {
+	var normalized strings.Builder
+	for _, value := range query {
+		switch {
+		case value == '\u200c':
+			normalized.WriteByte(' ')
+		case value == '\u0640':
+			continue
+		case value >= '\u064b' && value <= '\u065f':
+			continue
+		case value == '\u0670':
+			continue
+		case value >= '\u06d6' && value <= '\u06ed':
+			continue
+		case value == '\u064a' || value == '\u0649':
+			normalized.WriteRune('\u06cc')
+		case value == '\u0643':
+			normalized.WriteRune('\u06a9')
+		case value == '\u06c0' || value == '\u0629':
+			normalized.WriteRune('\u0647')
+		case value == '\u0624':
+			normalized.WriteRune('\u0648')
+		case value == '\u0623' || value == '\u0625' || value == '\u0671':
+			normalized.WriteRune('\u0627')
+		case value >= '\u0660' && value <= '\u0669':
+			normalized.WriteByte(byte('0' + value - '\u0660'))
+		case value >= '\u06f0' && value <= '\u06f9':
+			normalized.WriteByte(byte('0' + value - '\u06f0'))
+		default:
+			normalized.WriteRune(unicode.ToLower(value))
+		}
+	}
+	return strings.Join(strings.Fields(normalized.String()), " ")
+}
+
+func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeTranscriptRead)
+	if !ok { return }
+	queryValues := r.URL.Query()
+	allowed := map[string]bool{
+		"q": true, "limit": true, "offset": true, "transcript_id": true,
+		"asset_id": true, "revision": true, "language": true, "speaker_id": true,
+		"start_ms": true, "end_ms": true,
+	}
+	for key, values := range queryValues {
+		if !allowed[key] || len(values) != 1 {
+			writeError(w, http.StatusBadRequest, "INVALID_SEARCH_FILTER", "Search filters are invalid")
+			return
+		}
+	}
+	query := normalizePersianSearchQuery(strings.TrimSpace(queryValues.Get("q")))
+	if len([]rune(query)) < 1 || len([]rune(query)) > 256 {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_QUERY", "q must contain between 1 and 256 characters")
+		return
+	}
+	limit, err := parseBoundedQueryInt(queryValues, "limit", 20, 1, 100)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_LIMIT", "limit must be between 1 and 100")
+		return
+	}
+	offset, err := parseBoundedQueryInt(queryValues, "offset", 0, 0, 10000)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_OFFSET", "offset must be between 0 and 10000")
+		return
+	}
+	filters := TranscriptSearchFilters{}
+	if values, exists := queryValues["transcript_id"]; exists {
+		value := values[0]
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_TRANSCRIPT_ID", "transcript_id must be a UUID"); return }
+		filters.TranscriptID = &value
+	}
+	if values, exists := queryValues["asset_id"]; exists {
+		value := values[0]
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_ASSET_ID", "asset_id must be a UUID"); return }
+		filters.AssetID = &value
+	}
+	if values, exists := queryValues["speaker_id"]; exists {
+		value := values[0]
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_SPEAKER_ID", "speaker_id must be a UUID"); return }
+		filters.SpeakerID = &value
+	}
+	if values, exists := queryValues["revision"]; exists {
+		parsed, parseErr := strconv.Atoi(values[0])
+		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_REVISION", "revision must be a positive integer"); return }
+		filters.Revision = &parsed
+	}
+	if values, exists := queryValues["language"]; exists {
+		value := values[0]
+		if !languagePattern.MatchString(value) { writeError(w, http.StatusBadRequest, "INVALID_LANGUAGE", "language filter is invalid"); return }
+		filters.Language = &value
+	}
+	if values, exists := queryValues["start_ms"]; exists {
+		parsed, parseErr := strconv.ParseInt(values[0], 10, 64)
+		if parseErr != nil || parsed < 0 { writeError(w, http.StatusBadRequest, "INVALID_START_MS", "start_ms must be a non-negative integer"); return }
+		filters.StartMS = &parsed
+	}
+	if values, exists := queryValues["end_ms"]; exists {
+		parsed, parseErr := strconv.ParseInt(values[0], 10, 64)
+		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_END_MS", "end_ms must be a positive integer"); return }
+		filters.EndMS = &parsed
+	}
+	if filters.StartMS != nil && filters.EndMS != nil && *filters.EndMS <= *filters.StartMS {
+		writeError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "end_ms must be greater than start_ms")
+		return
+	}
+	items, err := s.store.SearchTranscriptSegments(r.Context(), principal.TenantID, query, filters, limit, offset)
+	if err != nil { writeStoreError(w, err); return }
+	result := make([]map[string]any, 0, len(items))
+	for _, item := range items { result = append(result, publicTranscriptSearchResult(item)) }
+	writeJSON(w, http.StatusOK, map[string]any{"items": result, "limit": limit, "offset": offset})
+}
+
+func parseBoundedQueryInt(values map[string][]string, key string, fallback, minimum, maximum int) (int, error) {
+	rawValues, exists := values[key]
+	if !exists { return fallback, nil }
+	if len(rawValues) != 1 || rawValues[0] == "" { return 0, fmt.Errorf("query parameter is empty or repeated") }
+	value, err := strconv.Atoi(rawValues[0])
+	if err != nil || value < minimum || value > maximum { return 0, fmt.Errorf("query parameter is outside its allowed bounds") }
+	return value, nil
+}
+
+// publicTranscriptSearchResult exposes only transcript search fields; tenant IDs,
+// audio hashes and storage/object references remain private.
+func publicTranscriptSearchResult(item map[string]any) map[string]any {
+	result := map[string]any{}
+	for _, key := range []string{
+		"transcript_id", "revision", "asset_id", "language", "provider", "model",
+		"model_version", "segment_id", "start_ms", "end_ms", "text", "speaker_id", "rank",
+	} {
+		if value, exists := item[key]; exists { result[key] = value }
+	}
+	return result
 }
 
 func (s *Server) searchAssets(w http.ResponseWriter, r *http.Request) {

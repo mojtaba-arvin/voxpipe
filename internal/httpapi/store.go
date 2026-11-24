@@ -18,6 +18,16 @@ var (
 	ErrRateLimited = errors.New("tenant ingestion rate limit exceeded")
 )
 
+type TranscriptSearchFilters struct {
+	TranscriptID *string
+	AssetID      *string
+	Revision     *int
+	Language     *string
+	SpeakerID    *string
+	StartMS      *int64
+	EndMS        *int64
+}
+
 type Store interface {
 	CreateSession(context.Context, string, string, map[string]any, TenantLimits) (map[string]any, bool, error)
 	GetSession(context.Context, string, string) (map[string]any, error)
@@ -26,6 +36,7 @@ type Store interface {
 	GetStatus(context.Context, string, string) (map[string]any, map[string]any, error)
 	GetAsset(context.Context, string, string) (map[string]any, error)
 	SearchAssets(context.Context, string, string, int) ([]map[string]any, error)
+	SearchTranscriptSegments(context.Context, string, string, TranscriptSearchFilters, int, int) ([]map[string]any, error)
 	BeginUpload(context.Context, string, string, string, int, int) error
 	EndUpload(context.Context, string, string, string, string, string) error
 	RecordAuditEvent(context.Context, string, string, string, string, string, string, map[string]any) error
@@ -319,6 +330,100 @@ func (s *PostgresStore) SearchAssets(ctx context.Context, tenantID, query string
 		value, err := decodePayload(payload)
 		if err != nil { return nil, err }
 		result = append(result, value)
+	}
+	if err := rows.Err(); err != nil { return nil, err }
+	if err := tx.Commit(ctx); err != nil { return nil, err }
+	return result, nil
+}
+
+
+func (s *PostgresStore) SearchTranscriptSegments(
+	ctx context.Context,
+	tenantID, query string,
+	filters TranscriptSearchFilters,
+	limit, offset int,
+) ([]map[string]any, error) {
+	query = normalizePersianSearchQuery(query)
+	if len([]rune(query)) < 1 || len([]rune(query)) > 256 {
+		return nil, fmt.Errorf("transcript search query must contain 1..256 characters")
+	}
+	if limit < 1 || limit > 100 || offset < 0 || offset > 10000 {
+		return nil, fmt.Errorf("transcript search pagination is outside the allowed bounds")
+	}
+	for _, value := range []*string{filters.TranscriptID, filters.AssetID, filters.SpeakerID} {
+		if value != nil && !isUUID(*value) {
+			return nil, fmt.Errorf("transcript search UUID filter is invalid")
+		}
+	}
+	if filters.Revision != nil && *filters.Revision < 1 {
+		return nil, fmt.Errorf("transcript revision filter must be positive")
+	}
+	if filters.Language != nil && (len(*filters.Language) < 2 || len(*filters.Language) > 35) {
+		return nil, fmt.Errorf("transcript language filter is invalid")
+	}
+	if filters.StartMS != nil && *filters.StartMS < 0 {
+		return nil, fmt.Errorf("transcript start_ms filter is invalid")
+	}
+	if filters.EndMS != nil && *filters.EndMS < 1 {
+		return nil, fmt.Errorf("transcript end_ms filter is invalid")
+	}
+	if filters.StartMS != nil && filters.EndMS != nil && *filters.EndMS <= *filters.StartMS {
+		return nil, fmt.Errorf("transcript time range is invalid")
+	}
+
+	tx, err := s.beginTenant(ctx, tenantID)
+	if err != nil { return nil, err }
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `
+		WITH search_query AS (
+			SELECT websearch_to_tsquery('simple', $2) AS value
+		)
+		SELECT
+			t.transcript_id, t.revision, t.asset_id, t.language,
+			t.provider, t.model, t.model_version,
+			seg.segment_id, seg.start_ms, seg.end_ms, seg.text, seg.speaker_id,
+			ts_rank(seg.search_vector, q.value)::double precision AS rank
+		FROM transcript_segments AS seg
+		JOIN transcripts AS t
+		  ON t.tenant_id = seg.tenant_id
+		 AND t.transcript_id = seg.transcript_id
+		 AND t.revision = seg.revision
+		CROSS JOIN search_query AS q
+		WHERE seg.tenant_id = $1::uuid
+		  AND seg.search_vector @@ q.value
+		  AND ($3::uuid IS NULL OR t.transcript_id = $3::uuid)
+		  AND ($4::uuid IS NULL OR t.asset_id = $4::uuid)
+		  AND ($5::integer IS NULL OR t.revision = $5::integer)
+		  AND ($6::text IS NULL OR t.language = $6::text)
+		  AND ($7::uuid IS NULL OR seg.speaker_id = $7::uuid)
+		  AND ($8::bigint IS NULL OR seg.end_ms >= $8::bigint)
+		  AND ($9::bigint IS NULL OR seg.start_ms < $9::bigint)
+		ORDER BY rank DESC, seg.start_ms ASC, seg.segment_id ASC
+		LIMIT $10 OFFSET $11
+	`, tenantID, query, filters.TranscriptID, filters.AssetID, filters.Revision,
+		filters.Language, filters.SpeakerID, filters.StartMS, filters.EndMS, limit, offset)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	result := make([]map[string]any, 0, limit)
+	for rows.Next() {
+		var transcriptID, assetID, language, provider, model, segmentID, text string
+		var modelVersion, speakerID *string
+		var revision int
+		var startMS, endMS int64
+		var rank float64
+		if err := rows.Scan(&transcriptID, &revision, &assetID, &language, &provider,
+			&model, &modelVersion, &segmentID, &startMS, &endMS, &text, &speakerID, &rank); err != nil {
+			return nil, err
+		}
+		item := map[string]any{
+			"transcript_id": transcriptID, "revision": revision, "asset_id": assetID,
+			"language": language, "provider": provider, "model": model,
+			"segment_id": segmentID, "start_ms": startMS, "end_ms": endMS,
+			"text": text, "rank": rank,
+		}
+		if modelVersion != nil { item["model_version"] = *modelVersion }
+		if speakerID != nil { item["speaker_id"] = *speakerID }
+		result = append(result, item)
 	}
 	if err := rows.Err(); err != nil { return nil, err }
 	if err := tx.Commit(ctx); err != nil { return nil, err }

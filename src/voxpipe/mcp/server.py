@@ -131,6 +131,41 @@ class VoxPipeMCP:
             if type(limit) is not int or not 1<=limit<=50:
                 raise ValueError("limit must be between 1 and 50")
             return self.client.request("GET","/v1/assets/search?"+urllib.parse.urlencode({"q":query.strip(),"limit":limit}))
+        if name=="search_transcripts":
+            allowed={"query","limit","offset","transcript_id","asset_id","revision","language","speaker_id","start_ms","end_ms"}
+            if set(args)-allowed or "query" not in args:
+                raise ValueError("search_transcripts arguments do not match contract")
+            query=args["query"]
+            if not isinstance(query,str) or not 1<=len(query.strip())<=256:
+                raise ValueError("query must contain between 1 and 256 characters")
+            limit=args.get("limit",20)
+            offset=args.get("offset",0)
+            if type(limit) is not int or not 1<=limit<=100:
+                raise ValueError("limit must be between 1 and 100")
+            if type(offset) is not int or not 0<=offset<=10000:
+                raise ValueError("offset must be between 0 and 10000")
+            params={"q":query.strip(),"limit":limit,"offset":offset}
+            for key in ("transcript_id","asset_id","speaker_id"):
+                if key in args:
+                    params[key]=self._uuid(args[key])
+            if "revision" in args:
+                if type(args["revision"]) is not int or args["revision"]<1:
+                    raise ValueError("revision must be a positive integer")
+                params["revision"]=args["revision"]
+            if "language" in args:
+                language=args["language"]
+                if not isinstance(language,str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{1,34}",language):
+                    raise ValueError("language filter is invalid")
+                params["language"]=language
+            for key,minimum in (("start_ms",0),("end_ms",1)):
+                if key in args:
+                    value=args[key]
+                    if type(value) is not int or value<minimum:
+                        raise ValueError(f"{key} is outside the allowed range")
+                    params[key]=value
+            if "start_ms" in args and "end_ms" in args and args["end_ms"]<=args["start_ms"]:
+                raise ValueError("end_ms must be greater than start_ms")
+            return self.client.request("GET","/v1/transcripts/search?"+urllib.parse.urlencode(params))
         raise ValueError("unsupported tool")
 
     @staticmethod
