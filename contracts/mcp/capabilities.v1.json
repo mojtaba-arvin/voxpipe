@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "transport": "stdio",
   "authorization": {
     "tenant_source": "verified bearer-token principal",
@@ -375,6 +375,212 @@
             }
           },
           "limit": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "name": "search_transcripts",
+      "description": "Search tenant-scoped transcript segments using PostgreSQL full-text search and optional transcript, asset, revision, language, speaker and time filters.",
+      "scope": "transcript:read",
+      "method": "GET",
+      "path": "/v1/transcripts/search",
+      "retry": "Retry transient transport and server errors with bounded backoff; search is read-only.",
+      "errors": [
+        {
+          "code": "INVALID_SEARCH_QUERY",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_SEARCH_FILTER",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_SEARCH_LIMIT",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_SEARCH_OFFSET",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_TRANSCRIPT_ID",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_ASSET_ID",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_SPEAKER_ID",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_REVISION",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_LANGUAGE",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_START_MS",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_END_MS",
+          "retryable": false
+        },
+        {
+          "code": "INVALID_TIME_RANGE",
+          "retryable": false
+        },
+        {
+          "code": "UNAUTHENTICATED",
+          "retryable": false
+        },
+        {
+          "code": "FORBIDDEN",
+          "retryable": false
+        },
+        {
+          "code": "INTERNAL_ERROR",
+          "retryable": true
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "default": 0
+          },
+          "transcript_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "asset_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,34}$"
+          },
+          "speaker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "transcript_id",
+                "revision",
+                "asset_id",
+                "language",
+                "provider",
+                "model",
+                "segment_id",
+                "start_ms",
+                "end_ms",
+                "text",
+                "rank"
+              ],
+              "properties": {
+                "transcript_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "asset_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "model_version": {
+                  "type": "string"
+                },
+                "segment_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "start_ms": {
+                  "type": "integer"
+                },
+                "end_ms": {
+                  "type": "integer"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "speaker_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "rank": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
             "type": "integer"
           }
         }
