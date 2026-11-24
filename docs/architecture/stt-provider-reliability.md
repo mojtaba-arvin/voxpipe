@@ -91,7 +91,8 @@ invalid user audio when the model/runtime is unavailable.
 Implemented:
 - Provider-neutral adapter interface and canonical transcript validation.
 - Faster-Whisper local adapter.
-- Content-free lifecycle observer and best-effort telemetry isolation.\n- OpenTelemetry bridge for operation counters, duration histograms and correlated traces; meter/tracer/exporter configuration remains injected by the host application. Optional packages are listed in `requirements-observability.txt`.
+- Content-free lifecycle observer and best-effort telemetry isolation.
+- OpenTelemetry bridge for operation counters, duration histograms and correlated traces; meter/tracer/exporter configuration remains injected by the host application. Optional packages are listed in `requirements-observability.txt`.
 - Guarded adapter reusing the same fenced process-local circuit breaker as
   adaptive routing; no duplicate breaker state machine.
 - Tests for telemetry, observer isolation and circuit integration.
