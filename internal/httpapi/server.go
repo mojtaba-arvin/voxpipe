@@ -548,9 +548,9 @@ func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseBoundedQueryInt(values map[string][]string, key string, fallback, minimum, maximum int) (int, error) {
-	raw := values.Get(key)
-	if raw == "" { return fallback, nil }
-	value, err := strconv.Atoi(raw)
+	rawValues := values[key]
+	if len(rawValues) == 0 || rawValues[0] == "" { return fallback, nil }
+	value, err := strconv.Atoi(rawValues[0])
 	if err != nil || value < minimum || value > maximum { return 0, fmt.Errorf("query parameter is outside its allowed bounds") }
 	return value, nil
 }
