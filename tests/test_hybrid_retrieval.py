@@ -99,5 +99,32 @@ class HybridRetrievalTests(unittest.TestCase):
             service.search(" ", filters=RetrievalFilters("tenant"))
 
 
+    def test_service_normalizes_persian_query_for_both_retrievers(self):
+        class Lexical:
+            def search_transcript_segments(self, tenant_id, query, **kwargs):
+                self.query = query
+                return []
+        class Embeddings:
+            def embed_query(self, text):
+                self.query = text
+                return Embedding("local", "v1", 1, (1.0,))
+        class Semantic:
+            def search_similar(self, *args, **kwargs):
+                return ()
+        lexical, embeddings = Lexical(), Embeddings()
+        service = HybridRetrievalService(lexical=lexical, embeddings=embeddings, semantic=Semantic())
+        service.search("كِتاب يَك ۱۲۳", filters=RetrievalFilters("authenticated-tenant"))
+        self.assertEqual(lexical.query, "کتاب یک 123")
+        self.assertEqual(embeddings.query, "کتاب یک 123")
+
+    def test_service_rejects_queries_empty_after_normalization(self):
+        class Noop:
+            def search_transcript_segments(self, *args, **kwargs): return []
+            def embed_query(self, text): return Embedding("local", "v1", 1, (1.0,))
+            def search_similar(self, *args, **kwargs): return ()
+        service = HybridRetrievalService(lexical=Noop(), embeddings=Noop(), semantic=Noop())
+        with self.assertRaisesRegex(ValueError, "after normalization"):
+            service.search("   ", filters=RetrievalFilters("tenant"))
+
 if __name__ == "__main__":
     unittest.main()
