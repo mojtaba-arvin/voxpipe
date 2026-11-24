@@ -10,6 +10,7 @@ import secrets
 import threading
 import time
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,19 @@ class CircuitPermit:
     @property
     def is_probe(self) -> bool:
         return self.probe_token is not None
+
+
+@runtime_checkable
+class CircuitBreakerPort(Protocol):
+    """Structural contract shared by local and distributed breaker stores."""
+
+    cooldown_seconds: float
+
+    def try_acquire(self, provider: str) -> CircuitPermit | None: ...
+
+    def record_success(self, permit: CircuitPermit) -> bool: ...
+
+    def record_failure(self, permit: CircuitPermit) -> bool: ...
 
 
 @dataclass(slots=True)
