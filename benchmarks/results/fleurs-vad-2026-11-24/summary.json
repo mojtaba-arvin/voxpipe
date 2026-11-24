@@ -1,0 +1,82 @@
+{
+  "dataset": {
+    "id": "google/fleurs",
+    "revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "split": "test",
+    "license": "CC BY 4.0",
+    "samples_per_language": 20,
+    "total_samples": 60,
+    "configs": {
+      "fa_ir": {
+        "language": "fa",
+        "test_parquet_sha256": "e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"
+      },
+      "en_us": {
+        "language": "en",
+        "test_parquet_sha256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"
+      },
+      "de_de": {
+        "language": "de",
+        "test_parquet_sha256": "3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"
+      }
+    }
+  },
+  "evaluation_basis": "synthetic utterance-envelope proxy",
+  "ground_truth_warning": "FLEURS provides utterance-level audio/text, not frame-level speech/non-speech labels. The full utterance envelope is treated as speech, so internal pauses count as misses. These are not gold frame-level VAD precision/recall scores.",
+  "models": {
+    "silero": {
+      "package_version": "6.3",
+      "threshold": 0.5,
+      "min_speech_duration_ms": 100,
+      "metrics": {
+        "precision": 1,
+        "recall": 0.7161009816338403,
+        "f1": 0.8301748724434851,
+        "mean_boundary_error_ms": 4086.1666666666665,
+        "envelope_boundary_error_ms": 1559.2333333333333,
+        "false_activation_seconds": 0,
+        "missed_speech_seconds": 229.07,
+        "runtime_seconds_total": 14.418694066000029,
+        "runtime_seconds_per_sample": 0.24031156776666715,
+        "missed_utterances": 0,
+        "sample_count": 60
+      }
+    },
+    "webrtc": {
+      "package_version": "2.0.14.post1",
+      "aggressiveness": 2,
+      "frame_duration_ms": 30,
+      "metrics": {
+        "precision": 0.9905112354933396,
+        "recall": 0.8130834907335714,
+        "f1": 0.8875897868795677,
+        "mean_boundary_error_ms": 3783.8333333333335,
+        "envelope_boundary_error_ms": 480.9166666666667,
+        "false_activation_seconds": 5.77,
+        "missed_speech_seconds": 153.3,
+        "runtime_seconds_total": 0.10094746500003282,
+        "runtime_seconds_per_sample": 0.001682457750000547,
+        "missed_utterances": 0,
+        "sample_count": 60
+      }
+    }
+  },
+  "process_peak_rss_bytes": 6674411520,
+  "environment": {
+    "python": "3.12.16",
+    "device": "cpu",
+    "runtime_lock_sha256": "5b8dd7112c84bb1802078c257a78decca02268b8d7512024147650202f37d655",
+    "dependencies": {
+      "numpy": "2.5.5",
+      "soundfile": "0.14.0",
+      "datasets": "5.2.0",
+      "huggingface-hub": "2.4.0",
+      "torch": "2.15.0+cpu",
+      "torchaudio": "2.11.1+cpu"
+    }
+  },
+  "generated_at": "2026-11-24T10:11:15.395964+00:00",
+  "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/45372030302",
+  "source_artifact_id": 14909931512,
+  "source_commit": "a6d11279ace1bb590ac20f2d1b0afb8444cc3398"
+}
