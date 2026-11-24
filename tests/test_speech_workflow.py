@@ -44,6 +44,11 @@ class FakeRepository:
             "storage": {"object_key": "tenant/audio/source"},
         } if asset == "default" else asset
         self.saved = []
+    def get_transcript_revision(self, tenant_id, transcript_id, revision):
+        for item in self.saved:
+            if item["tenant_id"] == tenant_id and item["transcript_id"] == transcript_id and item["revision"] == revision:
+                return item
+        return None
     def get_asset(self, tenant_id, asset_id):
         if tenant_id == TENANT and asset_id == ASSET:
             return self.asset
@@ -200,6 +205,46 @@ class SpeechTranscriptionWorkflowTests(unittest.TestCase):
         with self.assertRaises(WorkflowHandlerError) as raised:
             handler(context())
         self.assertEqual(raised.exception.code, "STT_AUDIO_TOO_LARGE")
+        self.assertEqual(adapter.requests, [])
+
+
+    def test_replay_reuses_existing_revision_without_resubmitting_audio(self):
+        repo, storage, first_adapter = FakeRepository(), FakeStorage(), FakeAdapter()
+        handler = SpeechTranscriptionWorkflowHandler(
+            repository=repo, object_store=storage, adapter=first_adapter,
+            heartbeat_interval_seconds=1,
+        )
+        first = handler(context())
+        self.assertEqual(len(first_adapter.requests), 1)
+        self.assertEqual(len(repo.saved), 1)
+
+        second_adapter = FakeAdapter()
+        replay_handler = SpeechTranscriptionWorkflowHandler(
+            repository=repo, object_store=storage, adapter=second_adapter,
+            heartbeat_interval_seconds=1,
+        )
+        replay = replay_handler(context())
+        self.assertEqual(replay, first)
+        self.assertEqual(second_adapter.requests, [])
+        self.assertEqual(storage.opens, 1)
+        self.assertEqual(len(repo.saved), 1)
+
+    def test_existing_revision_with_different_audio_digest_fails_closed(self):
+        repo = FakeRepository()
+        repo.saved.append({
+            "tenant_id": TENANT, "transcript_id": TRANSCRIPT,
+            "asset_id": ASSET, "revision": 1, "audio_sha256": "0" * 64,
+            "provider": "fake-local-stt", "model": "fake-model",
+            "language": "en", "segments": [],
+        })
+        adapter = FakeAdapter()
+        handler = SpeechTranscriptionWorkflowHandler(
+            repository=repo, object_store=FakeStorage(), adapter=adapter,
+            heartbeat_interval_seconds=1,
+        )
+        with self.assertRaises(WorkflowHandlerError) as raised:
+            handler(context())
+        self.assertEqual(raised.exception.code, "STT_REVISION_CONFLICT")
         self.assertEqual(adapter.requests, [])
 
 
