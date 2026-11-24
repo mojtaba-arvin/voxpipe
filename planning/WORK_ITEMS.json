@@ -596,9 +596,10 @@
         "scripts/run_fleurs_lid_benchmark.py and benchmarks/results/fleurs-lid-2026-11-21/summary.json — pinned FLEURS fa_ir/en_us/de_de benchmark (20 samples per language); accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445; Persian and English 20/20, German 17/20.",
         "GitHub Actions run 44847915953 — successful CPU-only local SpeechBrain benchmark; no hosted inference.",
         "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
-        "2026-11-23: exact-head FLEURS language-ID calibration benchmark run 45170396629 passed on the rebased implementation. On 300 validation / 300 disjoint test samples, inventory-aware calibrated abstention achieved selective accuracy 1.0, test coverage 0.92, abstention rate 0.08, ECE approximately 0.0226; calibration threshold 0.0. These are FLEURS/inventory-specific results, not code-switch/noisy-production claims."
+        "2026-11-23: exact-head FLEURS language-ID calibration benchmark run 45170396629 passed on the rebased implementation. On 300 validation / 300 disjoint test samples, inventory-aware calibrated abstention achieved selective accuracy 1.0, test coverage 0.92, abstention rate 0.08, ECE approximately 0.0226; calibration threshold 0.0. These are FLEURS/inventory-specific results, not code-switch/noisy-production claims.",
+        "2026-11-24: merged as PR #74 (commit ae448f31c8b555697360e6f77124e1afa5ad1598) after exact-head Python/PostgreSQL, Go/PostgreSQL, dependency audits and 300+300 FLEURS calibration workflow passed. Results remain limited to FLEURS and the configured language inventory."
       ],
-      "blocked_reason": "Inventory-aware confidence calibration and held-out evaluation are implemented and exact-head CI/benchmark passed. FLEURS does not cover code-switching or representative noisy production speech; those datasets and production evaluation remain."
+      "blocked_reason": "Calibrated inventory-aware abstention and held-out FLEURS evaluation are merged. Code-switching, overlapping speech, noisy field recordings and representative production distribution remain untested."
     },
     {
       "id": "VP-0026",
@@ -814,9 +815,11 @@
       ],
       "evidence": [
         "2026-11-23: added PostgreSQL 16 tenant-RLS workflow run/step journal with ordered versioned steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, reference-only bounded payload validation and asset-deletion cascade. Added explicit WorkflowHandlerRegistry, cooperative fenced heartbeat and graceful worker loop; added repository and worker tests.",
-        "2026-11-23: added migration 0008, PostgreSQL test database grants and workflow table cleanup to the integration setup. Exact-head CI on the rebased branch is pending."
+        "2026-11-23: added migration 0008, PostgreSQL test database grants and workflow table cleanup to the integration setup. Exact-head CI on the rebased branch is pending.",
+        "2026-11-24: merged STT workflow handler as PR #73 (commit 78c79833be981ad5da7213f54f8ec4ab4c862b8f); exact-head Python/PostgreSQL and Go/PostgreSQL integration checks passed.",
+        "2026-11-24: merged PR #75 (commit 1989da4a0ed5f47951df58f9910851d0830d2cef) to reuse an already-persisted transcript revision after lease-loss replay, preventing duplicate billable inference and generated_at-only revision conflicts. Exact-head Python/PostgreSQL and Go/PostgreSQL checks passed."
       ],
-      "blocked_reason": "The PostgreSQL-native journal and sequential worker PoC are implemented; exact-head integration CI, sustained concurrency/load tests, process supervision, automatic heartbeat strategy, backup/restore rehearsal and measured comparison against DBOS/Temporal remain required before production selection."
+      "blocked_reason": "The PostgreSQL-native journal, worker and provider-neutral STT workflow are merged, including replay-safe immutable transcript reuse. Sustained concurrency/load, process supervision, worker shutdown/restart drills, backup/restore rehearsal, production provider reconciliation and measured DBOS/Temporal comparison remain."
     },
     {
       "id": "VP-0035",
@@ -834,9 +837,10 @@
       "evidence": [
         "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels.",
         "2026-11-23: added src/voxpipe/speech/observability.py with privacy-safe started/succeeded/failed lifecycle events, monotonic duration measurement, stable error codes and observer-failure isolation; tests cover sensitive-field exclusion and telemetry outage isolation.",
-        "2026-11-23: added docs/architecture/stt-provider-reliability.md and ADR-0023 covering hosted STT deadlines, bounded concurrency, data egress, idempotency-aware retry/reconciliation, provider-scoped breaker, SLO dimensions and telemetry privacy."
+        "2026-11-23: added docs/architecture/stt-provider-reliability.md and ADR-0023 covering hosted STT deadlines, bounded concurrency, data egress, idempotency-aware retry/reconciliation, provider-scoped breaker, SLO dimensions and telemetry privacy.",
+        "2026-11-24: PR #73 connects the STT workflow to the privacy-safe SpeechToTextService observer; the OpenTelemetry bridge and bounded provider/outcome metric dimensions are present in main."
       ],
-      "blocked_reason": "Tenant-safe worker aggregates/SLO contracts and content-free speech lifecycle events are implemented. OpenTelemetry exporters, production traces/metrics, dashboards, actionable alerts, synthetic checks and staging-workload SLO verification remain outstanding."
+      "blocked_reason": "Tenant-safe worker aggregates, privacy-safe STT lifecycle events, an injected OpenTelemetry meter/tracer bridge and shared process-local circuit-breaker integration are implemented. Production exporter/resource/sampling configuration, shared distributed circuit state, dashboards, actionable alerts, synthetic checks, staging workload and SLO verification remain."
     },
     {
       "id": "VP-0036",
