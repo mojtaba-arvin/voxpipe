@@ -8,6 +8,7 @@ from typing import Protocol, Sequence
 from uuid import UUID
 
 from voxpipe.retrieval.ports import EmbeddingPort, RetrievalFilters, SemanticSearchPort
+from voxpipe.retrieval.normalization import normalize_persian_query
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,13 +153,16 @@ class HybridRetrievalService:
             raise TypeError("filters must include authenticated tenant scope")
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
             raise ValueError("limit must be between 1 and 100")
+        normalized_query = normalize_persian_query(query)
+        if not normalized_query:
+            raise ValueError("query must contain searchable text after normalization")
         lexical = self._lexical.search_transcript_segments(
-            filters.tenant_id, query, transcript_id=filters.transcript_id,
+            filters.tenant_id, normalized_query, transcript_id=filters.transcript_id,
             asset_id=filters.asset_id, revision=filters.revision, language=filters.language,
             speaker_id=filters.speaker_id, start_ms=filters.start_ms, end_ms=filters.end_ms,
             limit=limit, offset=0,
         )
-        embedding = self._embeddings.embed_query(query)
+        embedding = self._embeddings.embed_query(normalized_query)
         semantic = self._semantic.search_similar(
             filters.tenant_id, embedding, filters=filters, limit=limit,
         )
