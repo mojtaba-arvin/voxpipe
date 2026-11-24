@@ -1,2 +1,0 @@
-jsonschema[format]>=4.26.0,<5
--r requirements-postgres.txt

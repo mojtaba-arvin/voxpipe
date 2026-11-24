@@ -1,7 +1,0 @@
-# Local-only SpeechBrain language identification benchmark.
-datasets>=5.0.1,<6
-fsspec>=2026.9.0,<2027
-huggingface_hub>=2.4.0,<3
-numpy>=1.26,<3
-soundfile>=0.14.0,<1
-speechbrain>=1.0.3,<2

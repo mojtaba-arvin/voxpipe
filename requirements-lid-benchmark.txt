@@ -1,8 +1,0 @@
-# Direct benchmark runtime versions. datasets 5.2.0 supports Hub 2.x and fsspec 2026.9.
-numpy==2.5.5
-soundfile==0.14.0
-datasets==5.2.0
-fsspec==2026.9.0
-huggingface-hub==2.4.0
-speechbrain==1.1.2
-torch==2.15.0
