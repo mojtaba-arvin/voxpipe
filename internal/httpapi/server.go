@@ -17,11 +17,61 @@ import (
 const (
 	scopeIngestionRead  = "ingestion:read"
 	scopeIngestionWrite = "ingestion:write"
+	scopeTranscriptRead = "transcript:read"
 )
 
 var (
 	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
-	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}package httpapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const (
+	scopeIngestionRead  = "ingestion:read"
+	scopeIngestionWrite = "ingestion:write"
+	scopeTranscriptRead = "transcript:read"
+)
+
+var (
+	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
+)
+	languagePattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{1,34}package httpapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const (
+	scopeIngestionRead  = "ingestion:read"
+	scopeIngestionWrite = "ingestion:write"
+	scopeTranscriptRead = "transcript:read"
+)
+
+var (
+	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
+)
 )
 
 type Server struct {
@@ -104,6 +154,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/ingestions/{session_id}", s.cancelIngestion)
 	mux.HandleFunc("GET /v1/assets/{asset_id}", s.getAsset)
 	mux.HandleFunc("GET /v1/assets/search", s.searchAssets)
+	mux.HandleFunc("GET /v1/transcripts/search", s.searchTranscripts)
 	return mux
 }
 
@@ -383,6 +434,101 @@ func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
 	asset, err := s.store.GetAsset(r.Context(), principal.TenantID, assetID)
 	if err != nil { writeStoreError(w, err); return }
 	writeJSON(w, http.StatusOK, publicAsset(asset))
+}
+
+
+func (s *Server) searchTranscripts(w http.ResponseWriter, r *http.Request) {
+	principal, ok := s.principal(w, r, scopeTranscriptRead)
+	if !ok { return }
+	queryValues := r.URL.Query()
+	allowed := map[string]bool{
+		"q": true, "limit": true, "offset": true, "transcript_id": true,
+		"asset_id": true, "revision": true, "language": true, "speaker_id": true,
+		"start_ms": true, "end_ms": true,
+	}
+	for key, values := range queryValues {
+		if !allowed[key] || len(values) != 1 {
+			writeError(w, http.StatusBadRequest, "INVALID_SEARCH_FILTER", "Search filters are invalid")
+			return
+		}
+	}
+	query := strings.TrimSpace(queryValues.Get("q"))
+	if len(query) < 1 || len(query) > 256 {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_QUERY", "q must contain between 1 and 256 characters")
+		return
+	}
+	limit, err := parseBoundedQueryInt(queryValues, "limit", 20, 1, 100)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_LIMIT", "limit must be between 1 and 100")
+		return
+	}
+	offset, err := parseBoundedQueryInt(queryValues, "offset", 0, 0, 10000)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_SEARCH_OFFSET", "offset must be between 0 and 10000")
+		return
+	}
+	filters := TranscriptSearchFilters{}
+	if value := queryValues.Get("transcript_id"); value != "" {
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_TRANSCRIPT_ID", "transcript_id must be a UUID"); return }
+		filters.TranscriptID = &value
+	}
+	if value := queryValues.Get("asset_id"); value != "" {
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_ASSET_ID", "asset_id must be a UUID"); return }
+		filters.AssetID = &value
+	}
+	if value := queryValues.Get("speaker_id"); value != "" {
+		if !isUUID(value) { writeError(w, http.StatusBadRequest, "INVALID_SPEAKER_ID", "speaker_id must be a UUID"); return }
+		filters.SpeakerID = &value
+	}
+	if value := queryValues.Get("revision"); value != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_REVISION", "revision must be a positive integer"); return }
+		filters.Revision = &parsed
+	}
+	if value := queryValues.Get("language"); value != "" {
+		if !languagePattern.MatchString(value) { writeError(w, http.StatusBadRequest, "INVALID_LANGUAGE", "language filter is invalid"); return }
+		filters.Language = &value
+	}
+	if value := queryValues.Get("start_ms"); value != "" {
+		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr != nil || parsed < 0 { writeError(w, http.StatusBadRequest, "INVALID_START_MS", "start_ms must be a non-negative integer"); return }
+		filters.StartMS = &parsed
+	}
+	if value := queryValues.Get("end_ms"); value != "" {
+		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr != nil || parsed < 1 { writeError(w, http.StatusBadRequest, "INVALID_END_MS", "end_ms must be a positive integer"); return }
+		filters.EndMS = &parsed
+	}
+	if filters.StartMS != nil && filters.EndMS != nil && *filters.EndMS <= *filters.StartMS {
+		writeError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "end_ms must be greater than start_ms")
+		return
+	}
+	items, err := s.store.SearchTranscriptSegments(r.Context(), principal.TenantID, query, filters, limit, offset)
+	if err != nil { writeStoreError(w, err); return }
+	result := make([]map[string]any, 0, len(items))
+	for _, item := range items { result = append(result, publicTranscriptSearchResult(item)) }
+	writeJSON(w, http.StatusOK, map[string]any{"items": result, "limit": limit, "offset": offset})
+}
+
+func parseBoundedQueryInt(values map[string][]string, key string, fallback, minimum, maximum int) (int, error) {
+	raw := values.Get(key)
+	if raw == "" { return fallback, nil }
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < minimum || value > maximum { return 0, fmt.Errorf("query parameter is outside its allowed bounds") }
+	return value, nil
+}
+
+// publicTranscriptSearchResult exposes only transcript search fields; tenant IDs,
+// audio hashes and storage/object references remain private.
+func publicTranscriptSearchResult(item map[string]any) map[string]any {
+	result := map[string]any{}
+	for _, key := range []string{
+		"transcript_id", "revision", "asset_id", "language", "provider", "model",
+		"model_version", "segment_id", "start_ms", "end_ms", "text", "speaker_id", "rank",
+	} {
+		if value, exists := item[key]; exists { result[key] = value }
+	}
+	return result
 }
 
 func (s *Server) searchAssets(w http.ResponseWriter, r *http.Request) {
