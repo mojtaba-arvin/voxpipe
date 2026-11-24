@@ -1,0 +1,67 @@
+{
+  "dataset": {
+    "id": "google/fleurs",
+    "config": "fa_ir",
+    "split": "test",
+    "revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "file_sha256": "e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36",
+    "license": "CC BY 4.0",
+    "samples": 100
+  },
+  "model": {
+    "name": "medium",
+    "id": "Systran/faster-whisper-medium",
+    "revision": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+    "model_bin_sha256": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae",
+    "license": "MIT",
+    "device": "cpu",
+    "compute_type": "int8",
+    "beam_size": 5,
+    "vad_filter": true
+  },
+  "metrics": {
+    "files": 100,
+    "normalization": "fa-norm-v1",
+    "raw": {
+      "wer": 0.423721881390593,
+      "cer": 0.1155445386214617,
+      "reference_words": 2445,
+      "hypothesis_words": 2573
+    },
+    "normalized": {
+      "wer": 0.3163538873994638,
+      "cer": 0.09120755925688662,
+      "reference_words": 2611,
+      "hypothesis_words": 2580
+    },
+    "wer": 0.3163538873994638,
+    "cer": 0.09120755925688662,
+    "real_time_factor": 0.8571526813710311,
+    "latency_seconds_p50": 13.19401587400003,
+    "latency_seconds_p95": 17.602212528449993,
+    "per_file_rtf_p50": 0.884835356848471,
+    "per_file_rtf_p95": 1.1505402262088213,
+    "audio_seconds": 1588.4399999999994,
+    "inference_seconds": 1361.535605197,
+    "estimated_api_cost_usd": null
+  },
+  "environment": {
+    "python": "3.12.16",
+    "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.43",
+    "processor": ""
+  },
+  "result_files": [
+    "results.jsonl",
+    "corpus-manifest.json"
+  ],
+  "provenance": {
+    "source_commit": "2f67283e2994422a40b2a792040089a130906c25",
+    "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/45426624093",
+    "source_run_id": 45426624093,
+    "source_run_attempt": 1,
+    "generated_at": "2026-11-24T15:55:32Z",
+    "artifact_id": 14938943485,
+    "artifact_name": "persian-fleurs-cpu-benchmark",
+    "note": "The original CI artifact contains per-file results.jsonl and corpus-manifest.json; this committed summary preserves aggregate metrics and immutable provenance."
+  }
+}
