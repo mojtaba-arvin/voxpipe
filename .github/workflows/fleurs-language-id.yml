@@ -39,7 +39,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r requirements-lid.txt
       - name: Run multilingual language ID benchmark
         run: python scripts/run_fleurs_lid_benchmark.py --max-samples 20 --output-dir benchmark-results/fleurs-lid
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: fleurs-language-id-benchmark
