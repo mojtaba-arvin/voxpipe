@@ -141,7 +141,7 @@ def candidate_schema_constraints(candidates):
                 entity_candidates.append(candidate)
                 entity_types.add("organization")
         location = re.search(
-            r"در\s+(?P<name>(?:دفتر|مرکز|ساختمان|اتاق|محل)\s+[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)?)",
+            r"در\s+(?P<name>(?:دفتر|مرکز|ساختمان|اتاق|محل)\s+[\u0600-\u06FF]+(?:\s+(?!برگزار|است|بود|شد|می‌شود|خواهد)[\u0600-\u06FF]+)?)",
             quote,
         )
         if location:
