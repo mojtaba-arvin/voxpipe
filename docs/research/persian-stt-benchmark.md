@@ -77,12 +77,13 @@ One JSONL row per audio file must retain at least:
 
 Do not commit private audio, raw customer transcripts, credentials, or unreviewed personal data. Public benchmark results may be committed only with attribution and licensing notices.
 
-## 7. Completion gate
+## 7. Extended quality-evaluation gate
 
-VP-0022 can be marked Done only after:
+The initial provider comparison, first adapter, scoring harness and pinned FLEURS baseline are delivered under VP-0022. The following gates apply to broader model-quality acceptance and any future production-default promotion; they are not a claim that the initial adapter is production quality:
 - Immutable corpus and model revisions are pinned and checksummed.
-- The selected Test split is downloaded and validated with a rejection report.
-- Real faster-whisper inference has completed on both corpora on identified hardware.
-- Raw per-file results and aggregate reports are reproducible from the committed manifest.
+- The selected Test splits are downloaded and validated with rejection reports.
+- Real inference completes on both FLEURS and the consented Persian conversational corpus on identified target hardware.
+- Raw per-file results and aggregate reports are reproducible from committed manifests.
+- Performance is measured over repeated runs with resource usage and confidence intervals.
 - No quality/performance figures are copied from vendor claims or invented.
 - CI runs the offline scorer and contract tests; live inference remains an explicit, separately recorded benchmark operation.

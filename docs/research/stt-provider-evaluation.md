@@ -104,7 +104,7 @@ On this single run, Medium reduced normalized WER by 39.4% and CER by 44.5% rela
 
 **Decision:** retain Small as the worker default. Medium is an opt-in candidate for quality-sensitive, latency-tolerant jobs, not an approved production default. The comparison is one run on read speech, with no three-repeat performance distribution, no peak RSS/VRAM measurement, no human conversational Persian set, no dialect/noise stratification and no word-timestamp accuracy evaluation. Do not claim production quality from these results. Large-v3 and natural conversational evaluation remain open.
 
-## 8. Official sources
+## 7. Official sources
 
 - faster-whisper implementation, model loading, word timestamps and upstream benchmark: https://github.com/SYSTRAN/faster-whisper
 - OpenAI Whisper multilingual model card: https://huggingface.co/openai/whisper-large-v3
