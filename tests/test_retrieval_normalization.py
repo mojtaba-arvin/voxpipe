@@ -9,7 +9,7 @@ class PersianQueryNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_persian_query("كِتاب يَك ۱۲۳ ١٢٣"), "کتاب یک 123 123")
 
     def test_zwnj_is_a_token_boundary_and_whitespace_is_collapsed(self):
-        self.assertEqual(normalize_persian_query("می‌روم   به\\tخانه"), "می روم به خانه")
+        self.assertEqual(normalize_persian_query("می‌روم   به\tخانه"), "می روم به خانه")
 
     def test_preserves_phrase_and_negation_search_operators(self):
         self.assertEqual(normalize_persian_query('"جلسه فروش" -لغو'), '"جلسه فروش" -لغو')
