@@ -492,7 +492,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 8, 9))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 8, 9, 10))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
