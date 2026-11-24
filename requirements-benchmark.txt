@@ -1,7 +1,7 @@
 # Public, reproducible CPU benchmark dependencies. No credentials or hosted inference.
 datasets>=5.0.1,<6
 fsspec>=2026.6.0,<2027
-huggingface_hub>=0.25,<1
+huggingface_hub>=2.4.0,<3
 numpy>=1.26,<3
 soundfile>=0.14.0,<1
 -r requirements-stt.txt
