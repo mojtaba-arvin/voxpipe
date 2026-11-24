@@ -25,7 +25,7 @@ def render(data):
     lines.extend(["## Security and search boundaries","",
       "- Tenant identity comes from the authenticated principal; caller-supplied tenant IDs are forbidden.",
       "- Asset responses omit tenant identifiers and private storage/object references.",
-      "- search_assets performs metadata search only. Transcript, vector, and semantic search are not implemented.",
+      "- search_assets performs metadata search only. search_transcripts performs PostgreSQL lexical full-text search over transcript segments. Vector/hybrid semantic search is not yet exposed through the Go API or MCP.",
       "- MCP creates ingestion sessions; audio bytes are transferred separately through the authenticated HTTP upload API.",""])
     return "\n".join(lines)
 def main():
