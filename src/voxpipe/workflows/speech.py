@@ -37,6 +37,7 @@ from voxpipe.workflows.runner import WorkflowHandlerError, WorkflowStepContext
 
 class SpeechAssetTranscriptRepository(Protocol):
     def get_asset(self, tenant_id: str, asset_id: str) -> dict[str, Any] | None: ...
+    def get_transcript_revision(self, tenant_id: str, transcript_id: str, revision: int) -> dict[str, Any] | None: ...
     def create_transcript_revision(self, transcript: dict[str, Any]) -> dict[str, Any]: ...
 
 
@@ -181,6 +182,44 @@ class SpeechTranscriptionWorkflowHandler:
             or not isinstance(object_key, str) or not object_key
         ):
             raise WorkflowHandlerError("STT_ASSET_METADATA_INVALID", retryable=False)
+
+        # A prior attempt may have persisted successfully but lost its lease
+        # before the workflow journal acknowledged completion. Reuse that
+        # immutable revision instead of submitting another potentially billable
+        # provider request or generating a conflicting timestamp on replay.
+        try:
+            existing = self._repository.get_transcript_revision(
+                tenant_id, transcript_id, revision,
+            )
+        except Exception:
+            raise self._retry_failure(context, "STT_REVISION_LOOKUP_FAILED", retryable=True) from None
+        if existing is not None:
+            if (
+                str(existing.get("tenant_id")) != tenant_id
+                or str(existing.get("transcript_id")) != transcript_id
+                or str(existing.get("asset_id")) != asset_id
+                or existing.get("revision") != revision
+                or existing.get("audio_sha256") != audio_sha256
+            ):
+                raise WorkflowHandlerError("STT_REVISION_CONFLICT", retryable=False)
+            segments = existing.get("segments")
+            if not isinstance(segments, list):
+                raise WorkflowHandlerError("STT_PERSISTED_REVISION_INVALID", retryable=False)
+            return {
+                "asset_id": asset_id,
+                "transcript_id": transcript_id,
+                "revision": revision,
+                "provider": existing.get("provider"),
+                "model": existing.get("model"),
+                "language": existing.get("language"),
+                "audio_sha256": audio_sha256,
+                "segment_count": len(segments),
+                "word_count": sum(
+                    len(segment.get("words", []))
+                    for segment in segments if isinstance(segment, dict)
+                    and isinstance(segment.get("words", []), list)
+                ),
+            }
 
         try:
             info = self._object_store.head(object_key)
