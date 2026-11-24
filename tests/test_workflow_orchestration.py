@@ -6,6 +6,7 @@ import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+import time
 from uuid import uuid4
 
 from voxpipe.ingestion import apply_migrations
@@ -222,6 +223,67 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
         restarted_repository.complete_step(
             self.tenant, self.workflow, self.step1.step_id, new_worker, {"ok": True},
         )
+
+
+    def test_repeated_worker_contention_drains_all_workflows_without_duplicates(self):
+        worker_count = 8
+        workflows_per_worker = 8
+        total_workflows = worker_count * workflows_per_worker
+        start = Barrier(worker_count)
+        candidates = set()
+
+        for index in range(total_workflows):
+            workflow_id = str(uuid4())
+            step = WorkflowStepSpec(str(uuid4()), "process", {"sequence": index})
+            self.repository.create_workflow(
+                self.tenant,
+                workflow_id,
+                "sustained-contention-probe",
+                "1.0",
+                f"sustained-contention-{workflow_id}",
+                (step,),
+            )
+            candidates.add((workflow_id, step.step_id))
+
+        def drain(worker_id):
+            repository = PostgresWorkflowRepository(APP_DSN)
+            start.wait(timeout=10)
+            completed = []
+            for _ in range(workflows_per_worker):
+                claim = None
+                for _attempt in range(50):
+                    claim = repository.claim_next_ready_step(
+                        self.tenant, worker_id, scan_limit=total_workflows,
+                    )
+                    if claim is not None:
+                        break
+                    time.sleep(0.01)
+                if claim is None:
+                    raise AssertionError("worker could not claim its assigned workflow")
+                completed.append((claim["workflow_id"], claim["step_id"]))
+                repository.complete_step(
+                    self.tenant,
+                    claim["workflow_id"],
+                    claim["step_id"],
+                    worker_id,
+                    {"result_ref": f"completed/{claim['workflow_id']}"},
+                )
+                # Keep workers overlapping across repeated claim/complete rounds
+                # instead of measuring only a single synchronized claim burst.
+                time.sleep(0.005)
+            return completed
+
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            batches = list(pool.map(lambda _: drain(str(uuid4())), range(worker_count)))
+
+        completed = [item for batch in batches for item in batch]
+        self.assertEqual(len(completed), total_workflows)
+        self.assertEqual(len(set(completed)), total_workflows)
+        self.assertEqual(set(completed), candidates)
+        for workflow_id, _step_id in candidates:
+            state = self.repository.get_workflow(self.tenant, workflow_id)
+            self.assertEqual(state["workflow"]["state"], "completed")
+            self.assertEqual(state["steps"][0]["state"], "completed")
 
 
 if __name__ == "__main__":
