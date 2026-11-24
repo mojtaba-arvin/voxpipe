@@ -68,6 +68,65 @@ func TestPostgresStoreEnforcesTenantStagingAndRateQuotas(t *testing.T) {
 	}
 }
 
+
+func TestPostgresStoreSearchesTranscriptSegmentsWithinTenant(t *testing.T) {
+	dsn := os.Getenv("VOXPIPE_TEST_POSTGRES_APP_DSN")
+	if dsn == "" { t.Skip("PostgreSQL application DSN is not configured") }
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	store, err := NewPostgresStore(ctx, dsn)
+	if err != nil { t.Fatal(err) }
+	defer store.Close()
+
+	tenantID, _ := newUUID()
+	otherTenant, _ := newUUID()
+	assetID, _ := newUUID()
+	transcriptID, _ := newUUID()
+	segmentID, _ := newUUID()
+	speakerID, _ := newUUID()
+	now := time.Now().UTC()
+	tx, err := store.beginTenant(ctx, tenantID)
+	if err != nil { t.Fatal(err) }
+	_, err = tx.Exec(ctx, "INSERT INTO audio_assets (asset_id, tenant_id, payload, updated_at) VALUES ($1,$2,$3::jsonb,$4)",
+		assetID, tenantID, `{"asset_id":"`+assetID+`","source":{"kind":"test"}}`, now)
+	if err != nil { t.Fatal(err) }
+	_, err = tx.Exec(ctx, `INSERT INTO transcripts
+		(tenant_id, transcript_id, asset_id, revision, language, text, provider, model, audio_sha256, generated_at)
+		VALUES ($1,$2,$3,1,'fa','جلسه فروش فردا','faster-whisper','small',$4,$5)`,
+		tenantID, transcriptID, assetID, strings.Repeat("a", 64), now)
+	if err != nil { t.Fatal(err) }
+	_, err = tx.Exec(ctx, "INSERT INTO transcript_speakers (tenant_id,transcript_id,revision,speaker_id,label) VALUES ($1,$2,1,$3,'speaker_1')",
+		tenantID, transcriptID, speakerID)
+	if err != nil { t.Fatal(err) }
+	_, err = tx.Exec(ctx, `INSERT INTO transcript_segments
+		(tenant_id,transcript_id,revision,segment_id,start_ms,end_ms,text,speaker_id)
+		VALUES ($1,$2,1,$3,1200,2400,'جلسه فروش فردا',$4)`,
+		tenantID, transcriptID, segmentID, speakerID)
+	if err != nil { t.Fatal(err) }
+	if err := tx.Commit(ctx); err != nil { t.Fatal(err) }
+
+	items, err := store.SearchTranscriptSegments(ctx, tenantID, "جلسه فروش", TranscriptSearchFilters{
+		AssetID: &assetID, Language: stringPointer("fa"), SpeakerID: &speakerID,
+		StartMS: int64Pointer(1000), EndMS: int64Pointer(3000),
+	}, 10, 0)
+	if err != nil { t.Fatal(err) }
+	if len(items) != 1 || items[0]["transcript_id"] != transcriptID || items[0]["text"] != "جلسه فروش فردا" {
+		t.Fatalf("unexpected transcript search result: %#v", items)
+	}
+	crossTenant, err := store.SearchTranscriptSegments(ctx, otherTenant, "جلسه فروش", TranscriptSearchFilters{}, 10, 0)
+	if err != nil || len(crossTenant) != 0 {
+		t.Fatalf("cross-tenant search must return no rows: %#v %v", crossTenant, err)
+	}
+	filtered, err := store.SearchTranscriptSegments(ctx, tenantID, "جلسه فروش", TranscriptSearchFilters{Revision: intPointer(2)}, 10, 0)
+	if err != nil || len(filtered) != 0 {
+		t.Fatalf("revision filter should exclude other revisions: %#v %v", filtered, err)
+	}
+}
+
+func stringPointer(value string) *string { return &value }
+func intPointer(value int) *int { return &value }
+func int64Pointer(value int64) *int64 { return &value }
+
 func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	dsn := os.Getenv("VOXPIPE_TEST_POSTGRES_APP_DSN")
 	if dsn == "" { t.Skip("PostgreSQL application DSN is not configured") }
