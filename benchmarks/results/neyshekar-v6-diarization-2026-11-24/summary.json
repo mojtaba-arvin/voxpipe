@@ -1,0 +1,132 @@
+{
+  "dataset": {
+    "id": "shekar-ai/Neyshekar",
+    "release": "V6.0",
+    "revision": "30696ada746a66bb3047c984744b5ecfd60fe4e9",
+    "license": "CC0-1.0",
+    "zenodo_doi": "10.5281/zenodo.18073632",
+    "validation_samples": 6,
+    "test_samples": 6,
+    "speakers": 3,
+    "construction": "Six read-speech clips alternating three anonymous speakers, with 250 ms inserted silence; no overlap.",
+    "test_sample_ids": [
+      "11",
+      "49",
+      "245",
+      "384",
+      "215",
+      "252"
+    ],
+    "validation_sample_ids": [
+      "4",
+      "248",
+      "483",
+      "543",
+      "711",
+      "656"
+    ]
+  },
+  "model": {
+    "id": "speechbrain/spkrec-ecapa-voxceleb",
+    "revision": "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
+    "license": "Apache-2.0",
+    "window_ms": 1500,
+    "selected_threshold": 0.2,
+    "device": "cpu"
+  },
+  "threshold_sweep_on_validation": {
+    "0.05": {
+      "der": 0.5238095238095238,
+      "jer": 0.8412698412698413,
+      "speaker_count_error": 2
+    },
+    "0.1": {
+      "der": 0.23809523809523808,
+      "jer": 0.48484848484848486,
+      "speaker_count_error": 1
+    },
+    "0.15": {
+      "der": 0.23809523809523808,
+      "jer": 0.48484848484848486,
+      "speaker_count_error": 1
+    },
+    "0.2": {
+      "der": 0,
+      "jer": 0,
+      "speaker_count_error": 0
+    },
+    "0.3": {
+      "der": 0,
+      "jer": 0,
+      "speaker_count_error": 0
+    },
+    "0.4": {
+      "der": 0.14285714285714285,
+      "jer": 0.18888888888888888,
+      "speaker_count_error": 3
+    },
+    "0.5": {
+      "der": 0.2857142857142857,
+      "jer": 0.35555555555555557,
+      "speaker_count_error": 6
+    },
+    "0.6": {
+      "der": 0.6190476190476191,
+      "jer": 0.6555555555555556,
+      "speaker_count_error": 13
+    },
+    "0.7": {
+      "der": 0.8095238095238095,
+      "jer": 0.8111111111111112,
+      "speaker_count_error": 17
+    },
+    "0.8": {
+      "der": 0.8571428571428571,
+      "jer": 0.8444444444444444,
+      "speaker_count_error": 18
+    },
+    "0.9": {
+      "der": 0.8571428571428571,
+      "jer": 0.8444444444444444,
+      "speaker_count_error": 18
+    }
+  },
+  "test_metrics": {
+    "single_speaker_baseline": {
+      "der": 0.5714285714285714,
+      "jer": 0.8571428571428571,
+      "missed_speaker_frames": 0,
+      "false_alarm_speaker_frames": 0,
+      "speaker_confusion_frames": 180,
+      "reference_speaker_frames": 315,
+      "speaker_count_error": 2,
+      "collar_ms": 0,
+      "frame_ms": 100,
+      "skip_overlap": false,
+      "overlap_supported": false
+    },
+    "ecapa_validation_tuned": {
+      "der": 0.23809523809523808,
+      "jer": 0.23597883597883595,
+      "missed_speaker_frames": 0,
+      "false_alarm_speaker_frames": 0,
+      "speaker_confusion_frames": 75,
+      "reference_speaker_frames": 315,
+      "speaker_count_error": 2,
+      "collar_ms": 0,
+      "frame_ms": 100,
+      "skip_overlap": false,
+      "overlap_supported": false
+    }
+  },
+  "limitations": [
+    "controlled concatenation, not natural conversation",
+    "no overlapping speech",
+    "ECAPA was trained on VoxCeleb, not Persian",
+    "speaker IDs are anonymous dataset labels; no identity inference"
+  ],
+  "generated_at": "2026-11-24T10:11:11.990951+00:00",
+  "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/45372030457",
+  "source_artifact_id": 14908629457,
+  "source_commit": "a6d11279ace1bb590ac20f2d1b0afb8444cc3398"
+}

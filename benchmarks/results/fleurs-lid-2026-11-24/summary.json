@@ -1,0 +1,116 @@
+{
+  "dataset": {
+    "id": "google/fleurs",
+    "revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "split": "test",
+    "license": "CC BY 4.0",
+    "samples_per_language": 20,
+    "total_samples": 60
+  },
+  "model": {
+    "id": "speechbrain/lang-id-voxlingua107-ecapa",
+    "revision": "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
+    "license": "Apache-2.0",
+    "device": "cpu",
+    "threshold": 0,
+    "supported_languages": [
+      "de",
+      "en",
+      "fa"
+    ],
+    "threshold_policy": "calibrated on disjoint pinned FLEURS validation split"
+  },
+  "calibration": {
+    "mode": "validation-calibrated",
+    "split": "validation",
+    "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+    "samples_per_language": 100,
+    "total_samples": 300,
+    "constraints": {
+      "min_selective_accuracy": 0.99,
+      "min_coverage": 0.5
+    },
+    "result": {
+      "feasible": true,
+      "threshold": 0,
+      "coverage": 0.9366666666666666,
+      "selective_accuracy": 1,
+      "min_coverage": 0.5,
+      "min_selective_accuracy": 0.99
+    }
+  },
+  "metrics": {
+    "accuracy": 0.95,
+    "macro_f1": 0.7297297297297297,
+    "per_class": {
+      "de": {
+        "precision": 1,
+        "recall": 0.85,
+        "f1": 0.9189189189189189
+      },
+      "en": {
+        "precision": 1,
+        "recall": 1,
+        "f1": 1
+      },
+      "fa": {
+        "precision": 1,
+        "recall": 1,
+        "f1": 1
+      },
+      "und": {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+      }
+    },
+    "confusion_matrix": {
+      "de": {
+        "de": 17,
+        "en": 0,
+        "fa": 0,
+        "und": 3
+      },
+      "en": {
+        "de": 0,
+        "en": 20,
+        "fa": 0,
+        "und": 0
+      },
+      "fa": {
+        "de": 0,
+        "en": 0,
+        "fa": 20,
+        "und": 0
+      },
+      "und": {
+        "de": 0,
+        "en": 0,
+        "fa": 0,
+        "und": 0
+      }
+    },
+    "expected_calibration_error": 0.04450611499144673,
+    "coverage": 0.95,
+    "selective_accuracy": 1,
+    "abstention_rate": 0.05
+  },
+  "environment": {
+    "python": "3.12.16",
+    "device": "cpu",
+    "runtime_lock_sha256": "5b8dd7112c84bb1802078c257a78decca02268b8d7512024147650202f37d655",
+    "dependencies": {
+      "numpy": "2.5.5",
+      "soundfile": "0.14.0",
+      "datasets": "5.2.0",
+      "huggingface-hub": "2.4.0",
+      "speechbrain": "1.1.2",
+      "torch": "2.15.0+cpu",
+      "torchaudio": "2.11.1+cpu"
+    }
+  },
+  "generated_at": "2026-11-24T10:16:16.387897+00:00",
+  "source_run": "https://github.com/mojtaba-arvin/voxpipe/actions/runs/45372030409",
+  "source_artifact_id": 14910071605,
+  "source_commit": "a6d11279ace1bb590ac20f2d1b0afb8444cc3398"
+}
