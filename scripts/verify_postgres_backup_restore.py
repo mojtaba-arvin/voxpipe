@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
-import tempfile
-from pathlib import Path
 from urllib.parse import unquote, urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -40,22 +37,33 @@ def _parts(dsn: str):
 
 
 def _pg_env(parts: dict[str, str]) -> dict[str, str]:
-    env = os.environ.copy()
-    env.update({
-        "PGHOST": parts["host"],
+    # Run matching PostgreSQL 16 client binaries inside the service container.
+    return {
+        "PGHOST": "localhost",
         "PGPORT": parts["port"],
         "PGUSER": parts["user"],
-        "PGPASSWORD": parts["password"],
         "PGDATABASE": parts["database"],
-    })
-    return env
+    }
 
 
-def _run_pg(command: list[str], env: dict[str, str], tool: str) -> None:
+def _run_pg(
+    command: list[str], env: dict[str, str], tool: str, *,
+    container_id: str, input_data: bytes | None = None,
+) -> bytes:
+    docker_command = ["docker", "exec"]
+    if input_data is not None:
+        docker_command.append("-i")
+    for key, value in env.items():
+        docker_command.extend(["-e", f"{key}={value}"])
+    # This credential is the disposable service password defined in the CI job.
+    docker_command.extend(["-e", "PGPASSWORD=postgres", container_id, *command])
     try:
-        subprocess.run(command, env=env, check=True, capture_output=True, text=True)
+        completed = subprocess.run(
+            docker_command, input=input_data, check=True, capture_output=True,
+        )
+        return completed.stdout
     except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or "").replace(env.get("PGPASSWORD", ""), "[REDACTED]")
+        detail = (exc.stderr or b"").decode("utf-8", errors="replace")
         raise RuntimeError(f"{tool} failed with exit code {exc.returncode}: {detail[-2000:]}") from None
 
 
@@ -89,9 +97,9 @@ def main() -> None:
         raise SystemExit("refusing to run outside the disposable voxpipe_test database")
     if app["user"] != "voxpipe_app":
         raise SystemExit("application DSN must use the NOBYPASSRLS voxpipe_app role")
-    for executable in ("pg_dump", "pg_restore"):
-        if shutil.which(executable) is None:
-            raise SystemExit(f"{executable} is required")
+    container_id = os.environ.get("VOXPIPE_TEST_POSTGRES_CONTAINER_ID", "").strip()
+    if not container_id:
+        raise SystemExit("VOXPIPE_TEST_POSTGRES_CONTAINER_ID is required")
 
     tenant_id, other_tenant_id = str(uuid4()), str(uuid4())
     workflow_id, step_id = str(uuid4()), str(uuid4())
@@ -135,21 +143,17 @@ def main() -> None:
         connection.execute(f"CREATE DATABASE {RESTORE_DATABASE}")
 
     try:
-        with tempfile.TemporaryDirectory(prefix="voxpipe-pg-restore-") as temp_dir:
-            dump_path = Path(temp_dir) / "voxpipe.dump"
-            source_env = _pg_env(admin)
-            _run_pg([
-                "pg_dump", "--no-password", "--format=custom", "--no-owner", "--no-acl",
-                "--file", str(dump_path),
-            ], source_env, "pg_dump")
-            if not dump_path.is_file() or dump_path.stat().st_size == 0:
-                raise RuntimeError("pg_dump produced an empty backup")
+        dump_bytes = _run_pg([
+            "pg_dump", "--no-password", "--format=custom", "--no-owner", "--no-acl",
+        ], _pg_env(admin), "pg_dump", container_id=container_id)
+        if not dump_bytes:
+            raise RuntimeError("pg_dump produced an empty backup")
 
-            restore_parts = {**admin, "database": RESTORE_DATABASE}
-            _run_pg([
-                "pg_restore", "--no-password", "--exit-on-error", "--no-owner", "--no-acl",
-                "--dbname", RESTORE_DATABASE, str(dump_path),
-            ], _pg_env(restore_parts), "pg_restore")
+        restore_parts = {**admin, "database": RESTORE_DATABASE}
+        _run_pg([
+            "pg_restore", "--no-password", "--exit-on-error", "--no-owner", "--no-acl",
+            "--dbname", RESTORE_DATABASE,
+        ], _pg_env(restore_parts), "pg_restore", container_id=container_id, input_data=dump_bytes)
 
         with psycopg.connect(restore_dsn, autocommit=True) as connection:
             _grant_application_role(connection)

@@ -10,7 +10,7 @@ The repository validation workflow runs `scripts/verify_postgres_backup_restore.
 4. Reapplies the explicit application-role grants and verifies the workflow journal, breaker state and forced-RLS metadata.
 5. Connects as the NOBYPASSRLS `voxpipe_app` role and verifies that the restored workflow row is visible only with its tenant context.
 
-The script refuses to run unless the source database is exactly `voxpipe_test`; the restore target is the hard-coded disposable `voxpipe_restore` database and is removed after the check. Credentials are passed through libpq environment variables rather than command-line arguments.
+The script refuses to run unless the source database is exactly `voxpipe_test`; the restore target is the hard-coded disposable `voxpipe_restore` database and is removed after the check. It executes the matching PostgreSQL 16 `pg_dump` and `pg_restore` binaries inside the service container, avoiding a client/server major-version mismatch. The only password supplied to Docker is the disposable CI service password defined in the workflow, never a production credential.
 
 ## Production requirements not covered by CI
 
