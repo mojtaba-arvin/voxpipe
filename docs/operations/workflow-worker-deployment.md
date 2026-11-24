@@ -60,7 +60,8 @@ The worker handles SIGTERM/SIGINT by setting its stop event. Transient PostgreSQ
 - The local object store is not shared storage. Multi-node deployment requires a shared object-storage adapter and coordinated deployment.
 - Long-running STT uses cooperative heartbeat renewal. A lost lease fences result persistence; do not shorten lease or stop timeouts without measuring inference duration.
 - The service has no automatic database migration step. Schema changes must be applied and verified before starting new workers.
-- This template does not prove production readiness. Backup/restore, load, host restart, storage durability, alert delivery and staging SLO drills remain separate acceptance gates.
+- CI runs a disposable PostgreSQL custom-format backup/restore rehearsal that checks workflow state, provider-breaker state and restored forced-RLS tenant isolation. This is not a substitute for production backup encryption, off-host retention, point-in-time recovery, restore-time objectives or a target-host drill.
+- This template does not prove production readiness. Production backup/restore, load, host restart, storage durability, alert delivery and staging SLO drills remain separate acceptance gates.
 
 ## Rollback
 
