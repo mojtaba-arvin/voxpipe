@@ -2,7 +2,7 @@ name: Persian FLEURS CPU benchmark
 
 on:
   push:
-    branches: [feat/phase2-6-execution-foundation]
+    branches: [main, feat/phase2-6-execution-foundation]
     paths:
       - "scripts/run_fleurs_stt_benchmark.py"
       - "scripts/benchmark_stt.py"
