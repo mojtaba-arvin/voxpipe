@@ -343,7 +343,8 @@ func (s *PostgresStore) SearchTranscriptSegments(
 	filters TranscriptSearchFilters,
 	limit, offset int,
 ) ([]map[string]any, error) {
-	if len(query) < 1 || len(query) > 256 {
+	query = normalizePersianSearchQuery(query)
+	if len([]rune(query)) < 1 || len([]rune(query)) > 256 {
 		return nil, fmt.Errorf("transcript search query must contain 1..256 characters")
 	}
 	if limit < 1 || limit > 100 || offset < 0 || offset > 10000 {
