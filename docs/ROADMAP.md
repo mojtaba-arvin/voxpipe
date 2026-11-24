@@ -84,7 +84,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 The first PostgreSQL-native workflow journal is a bounded sequential proof of concept that complements the ingestion queue; it is not yet the final orchestration-engine selection. See [durable workflow architecture](architecture/durable-workflows.md) and [ADR-0034](decisions/ADR-0034-postgres-native-workflows.md).
 
-- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. Exact-head integration CI passed for the merged changes; sustained load, process supervision, backup/restore rehearsal and DBOS/Temporal comparison remain).
+- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. A tenant-scoped systemd template and local speech-worker runtime/entrypoint are added in the current implementation candidate; target-host restart/shutdown drill, sustained load, backup/restore rehearsal and DBOS/Temporal comparison remain).
 - Add bounded self-healing for known transient failures.
 - Detect regressions and open evidence-rich remediation tasks.
 - [ ] Add production alerting and SLOs (VP-0035; tenant-safe worker aggregates, content-free STT lifecycle events and an injected OpenTelemetry bridge are implemented; exporter/resource configuration, dashboards, actionable alerts, synthetic checks and staging SLO verification remain).
