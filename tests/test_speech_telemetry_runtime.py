@@ -14,7 +14,7 @@ class SpeechTelemetryRuntimeConfigTests(unittest.TestCase):
                 configure_speech_otel(service_name="  ")
 
     def test_rejects_non_finite_or_out_of_range_sample_ratio(self):
-        for ratio in (float("nan"), float("inf"), -0.01, 1.01, True):
+        for ratio in (float("nan"), float("inf"), -0.01, 1.01, 10**1000, True):
             with self.subTest(ratio=ratio):
                 with self.assertRaisesRegex(ValueError, "trace_sample_ratio"):
                     configure_speech_otel(service_name="voxpipe-worker", trace_sample_ratio=ratio)
