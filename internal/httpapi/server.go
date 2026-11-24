@@ -23,56 +23,8 @@ const (
 
 var (
 	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
-	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}package httpapi
-
-import (
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"math"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
-)
-
-const (
-	scopeIngestionRead  = "ingestion:read"
-	scopeIngestionWrite = "ingestion:write"
-	scopeTranscriptRead = "transcript:read"
-)
-
-var (
-	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
-)
-	languagePattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{1,34}package httpapi
-
-import (
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"math"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
-)
-
-const (
-	scopeIngestionRead  = "ingestion:read"
-	scopeIngestionWrite = "ingestion:write"
-	scopeTranscriptRead = "transcript:read"
-)
-
-var (
-	idempotencyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,128}$`)
-)
+	sha256Pattern      = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+	languagePattern    = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9-]{1,34}$")
 )
 
 type Server struct {
@@ -436,7 +388,6 @@ func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
 	if err != nil { writeStoreError(w, err); return }
 	writeJSON(w, http.StatusOK, publicAsset(asset))
 }
-
 
 
 func normalizePersianSearchQuery(query string) string {
