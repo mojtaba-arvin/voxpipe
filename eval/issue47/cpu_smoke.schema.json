@@ -12,6 +12,7 @@
     "model_license",
     "device",
     "cpu_count",
+    "torch_num_threads",
     "evaluation_language",
     "detected_language",
     "source_kind",
@@ -105,6 +106,10 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "torch_num_threads": {
+      "type": "integer",
+      "minimum": 1
     }
   }
 }
