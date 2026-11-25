@@ -35,6 +35,14 @@ avoiding uncoordinated duplicate provider traffic over availability during a
 coordination-store outage. Recovery is automatic on a later request after the
 database is healthy; no local shadow state is created.
 
+A PostgreSQL half-open probe owns a five-minute lease. If its worker exits
+without reporting success/failure or releasing the probe, another worker may
+acquire a fresh fenced probe after that lease expires. Configure every provider
+request's hard timeout below this lease; the old permit cannot clear or reopen
+a circuit after a replacement probe has been issued. Migration `0011` adds the
+expiry column and preserves any in-flight probe for at most five minutes during
+upgrade.
+
 The factory does not enable hosted inference, alter the router allowlist, add
 implicit retries, or claim production activation. The default remains local
 until an operator deliberately configures PostgreSQL in each worker's
