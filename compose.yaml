@@ -51,6 +51,8 @@ services:
       VOXPIPE_API_TOKEN_HASHES: ${API_TOKEN_HASHES}
       VOXPIPE_STAGING_ROOT: /var/lib/voxpipe/staging
       VOXPIPE_MAX_UPLOAD_BYTES: "104857600"
+      VOXPIPE_RETRIEVAL_URL: ${VOXPIPE_RETRIEVAL_URL:-}
+      VOXPIPE_RETRIEVAL_INTERNAL_TOKEN: ${VOXPIPE_RETRIEVAL_INTERNAL_TOKEN:-}
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
@@ -75,6 +77,29 @@ services:
       - objects_data:/var/lib/voxpipe/objects
     depends_on:
       storage-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+
+  retrieval:
+    profiles: ["retrieval"]
+    build:
+      context: .
+      dockerfile: Dockerfile.retrieval
+    environment:
+      VOXPIPE_RETRIEVAL_LISTEN_ADDR: ":8090"
+      VOXPIPE_RETRIEVAL_DATABASE_DSN: postgresql://voxpipe_app:${APP_DB_PASSWORD}@postgres:5432/voxpipe_dev
+      VOXPIPE_RETRIEVAL_INTERNAL_TOKEN: ${VOXPIPE_RETRIEVAL_INTERNAL_TOKEN:-}
+      VOXPIPE_EMBEDDING_MODEL_PATH: /models
+      VOXPIPE_EMBEDDING_MODEL: ${VOXPIPE_EMBEDDING_MODEL:-}
+      VOXPIPE_EMBEDDING_MODEL_VERSION: ${VOXPIPE_EMBEDDING_MODEL_VERSION:-}
+      VOXPIPE_EMBEDDING_DIMENSIONS: ${VOXPIPE_EMBEDDING_DIMENSIONS:-384}
+      VOXPIPE_EMBEDDING_QUERY_PREFIX: ${VOXPIPE_EMBEDDING_QUERY_PREFIX:-}
+      VOXPIPE_EMBEDDING_DOCUMENT_PREFIX: ${VOXPIPE_EMBEDDING_DOCUMENT_PREFIX:-}
+    volumes:
+      - ${VOXPIPE_EMBEDDING_MODEL_HOST_PATH:-./models/not-configured}:/models:ro
+    depends_on:
+      bootstrap:
         condition: service_completed_successfully
     restart: unless-stopped
 

@@ -138,3 +138,20 @@ class PostgresSemanticSearchAdapter:
                 (tenant, model, model_version),
             )
             return cursor.rowcount
+
+
+    def has_indexed_segments(self, tenant_id: str) -> bool:
+        """Return whether this tenant has segments indexed for this exact model version."""
+        try:
+            tenant = str(UUID(tenant_id))
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError("tenant_id must be a UUID") from None
+        with self._tenant_connection(tenant) as connection:
+            row = connection.execute(
+                """SELECT EXISTS (
+                       SELECT 1 FROM transcript_segment_embeddings
+                       WHERE tenant_id=%s AND embedding_model=%s AND embedding_version=%s
+                   ) AS available""",
+                (tenant, self.model, self.model_version),
+            ).fetchone()
+        return bool(row["available"])

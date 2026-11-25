@@ -15,3 +15,10 @@ htmlcov
 dist
 build
 .voxpipe
+models/
+.cache/
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.bin

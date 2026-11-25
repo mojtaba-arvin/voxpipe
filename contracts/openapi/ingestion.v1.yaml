@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VoxPipe Ingestion API
-  version: 1.1.0
+  version: 1.2.0
   description: Authenticated, tenant-scoped batch media ingestion. Production uses OIDC JWTs with introspection; audio bytes are streamed separately from JSON metadata.
 servers:
   - url: https://api.example.invalid
@@ -227,6 +227,83 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/retrieval/hybrid-search:
+    post:
+      operationId: searchHybridTranscripts
+      summary: Search transcript segments using lexical and local-vector retrieval
+      description: Requires transcript:read. Tenant identity is derived from the bearer principal. Local model configuration is mandatory; the endpoint fails closed when no pre-provisioned model is configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HybridSearchRequest'
+      responses:
+        '200':
+          description: Fused, source-attributed transcript segments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HybridSearchResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller lacks transcript:read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Local embedding model is not configured or the authenticated tenant has no index for the configured model version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/transcripts/{transcript_id}/index:
+    post:
+      operationId: indexTranscriptRevision
+      summary: Idempotently index one immutable transcript revision
+      description: Requires transcript:index. Uses only the deployment-configured local embedding model; vectors are bound to immutable source text and model version.
+      parameters:
+        - name: transcript_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: revision
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Transcript revision indexed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptIndexResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller lacks transcript:index
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Local embedding model is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -454,6 +531,469 @@ components:
           format: uuid
         rank:
           type: number
+    HybridSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 256
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        transcript_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+          pattern: '^[A-Za-z0-9][A-Za-z0-9-]{1,34}      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  responses:
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Authenticated principal lacks the required capability
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource does not exist in the authenticated tenant
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Idempotency, lifecycle, or concurrent update conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PayloadTooLarge:
+      description: Upload exceeds configured or declared byte limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UploadTimeout:
+      description: Upload exceeded the configured inactivity or total duration deadline
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Tenant upload quota or ingestion rate limit was exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+        - name: speaker_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: start_ms
+          in: query
+          required: false
+          description: Return segments whose end_ms is at or after this value.
+          schema:
+            type: integer
+            minimum: 0
+        - name: end_ms
+          in: query
+          required: false
+          description: Return segments whose start_ms is before this value.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Matching transcript segments and safe provenance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptSearchResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          description: Search backend failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/ingestions/{session_id}:
+    get:
+      operationId: getIngestion
+      summary: Read the caller tenant's ingestion status
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Current session and optional job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cancelIngestion
+      summary: Cancel a non-terminal ingestion session and its job
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '202':
+          description: Cancellation accepted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._:-]+$'
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateIngestionRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_size_bytes, expected_sha256, source]
+      properties:
+        expected_size_bytes:
+          type: integer
+          minimum: 1
+        expected_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        content_type_hint:
+          type: string
+          maxLength: 128
+        source:
+          type: object
+          additionalProperties: false
+          required: [kind]
+          properties:
+            kind:
+              type: string
+              enum: [file_upload, device_capture, telephony, live_stream, import]
+            external_reference:
+              type: string
+              minLength: 1
+              maxLength: 2048
+            recorded_at:
+              type: string
+              format: date-time
+            declared_by:
+              type: string
+              maxLength: 256
+    IngestionSession:
+      type: object
+      additionalProperties: false
+      required: [session_id, state, expected_size_bytes, expected_sha256, upload_url]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [created, receiving, finalizing, queued, processing, completed, failed, cancelled, expired]
+        expected_size_bytes:
+          type: integer
+        expected_sha256:
+          type: string
+        upload_url:
+          type: string
+          format: uri-reference
+    AcceptedJob:
+      type: object
+      additionalProperties: false
+      required: [session_id, job_id, state]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [pending, leased, completed, dead, cancelled]
+    IngestionStatus:
+      type: object
+      additionalProperties: false
+      required: [session_id, state, created_at, updated_at]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+        job:
+          type: object
+          properties:
+            job_id:
+              type: string
+              format: uuid
+            state:
+              type: string
+              enum: [pending, leased, completed, dead, cancelled]
+            attempts:
+              type: integer
+            max_attempts:
+              type: integer
+            last_error_code:
+              type: string
+        asset_id:
+          type: string
+          format: uuid
+        failure:
+          type: object
+          properties:
+            code:
+              type: string
+            retryable:
+              type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AssetMetadata:
+      type: object
+      additionalProperties: false
+      required: [asset_id, source, media, integrity, state, created_at, updated_at]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        source:
+          type: object
+          properties:
+            kind:
+              type: string
+        media:
+          type: object
+          properties:
+            mime_type:
+              type: string
+            container_format:
+              type: string
+            codec:
+              type: string
+            duration_ms:
+              type: integer
+            size_bytes:
+              type: integer
+            sample_rate_hz:
+              type: integer
+            channels:
+              type: integer
+        integrity:
+          type: object
+          properties:
+            algorithm:
+              type: string
+            digest:
+              type: string
+        state:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        retention_policy_id:
+          type: string
+        retention_expires_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  responses:
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource does not exist in the authenticated tenant
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Idempotency, lifecycle, or concurrent update conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PayloadTooLarge:
+      description: Upload exceeds configured or declared byte limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UploadTimeout:
+      description: Upload exceeded the configured inactivity or total duration deadline
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Tenant upload quota or ingestion rate limit was exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+        speaker_id:
+          type: string
+          format: uuid
+        start_ms:
+          type: integer
+          minimum: 0
+        end_ms:
+          type: integer
+          minimum: 1
+    HybridSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [items, model, model_version]
+      properties:
+        model:
+          type: string
+        model_version:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [transcript_id, revision, asset_id, segment_id, start_ms, end_ms, text, language, fused_score]
+            properties:
+              transcript_id:
+                type: string
+                format: uuid
+              revision:
+                type: integer
+              asset_id:
+                type: string
+                format: uuid
+              segment_id:
+                type: string
+                format: uuid
+              start_ms:
+                type: integer
+              end_ms:
+                type: integer
+              text:
+                type: string
+              language:
+                type: string
+              speaker_id:
+                type: string
+                format: uuid
+              fused_score:
+                type: number
+              lexical_rank:
+                type: integer
+              semantic_rank:
+                type: integer
+    TranscriptIndexResponse:
+      type: object
+      additionalProperties: false
+      required: [transcript_id, revision, indexed_segments, model, model_version]
+      properties:
+        transcript_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+        indexed_segments:
+          type: integer
+          minimum: 0
+        model:
+          type: string
+        model_version:
+          type: string
     Error:
       type: object
       additionalProperties: false

@@ -14,7 +14,7 @@ class FakeEncoder:
 
     def encode(self, texts, **kwargs):
         self.calls.append((texts, kwargs))
-        return [list(self.values)]
+        return [list(self.values) for _ in texts]
 
 
 class LocalEmbeddingAdapterTests(unittest.TestCase):
@@ -37,6 +37,14 @@ class LocalEmbeddingAdapterTests(unittest.TestCase):
         self.assertEqual(query.model, "local-e5")
         self.assertEqual(query.model_version, "sha256:abc")
         self.assertEqual(query.values, document.values)
+
+    def test_document_batch_embedding_preserves_order_and_prefix(self):
+        encoder = FakeEncoder()
+        adapter = self.make_adapter(encoder, document_prefix="passage: ")
+        embeddings = adapter.embed_documents(["first", "second"])
+        self.assertEqual(len(embeddings), 2)
+        self.assertEqual(encoder.calls[0][0], ["passage: first", "passage: second"])
+        self.assertEqual([item.values for item in embeddings], [(0.6, 0.8), (0.6, 0.8)])
 
     def test_rejects_model_dimension_mismatch(self):
         with self.assertRaisesRegex(ValueError, "dimension"):

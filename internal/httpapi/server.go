@@ -19,6 +19,7 @@ const (
 	scopeIngestionRead  = "ingestion:read"
 	scopeIngestionWrite = "ingestion:write"
 	scopeTranscriptRead = "transcript:read"
+	scopeTranscriptIndex = "transcript:index"
 )
 
 var (
@@ -39,6 +40,7 @@ type Server struct {
 	uploadIdleTimeout time.Duration
 	uploadMaxDuration time.Duration
 	clock        func() time.Time
+	retrieval    HybridRetrievalClient
 }
 
 type TenantLimits struct {
@@ -75,6 +77,10 @@ func NewServer(store Store, auth Authenticator, stager *LocalStager, maxUpload i
 	}, nil
 }
 
+func (s *Server) SetHybridRetrievalClient(client HybridRetrievalClient) {
+	s.retrieval = client
+}
+
 func (s *Server) SetTenantLimits(limits TenantLimits) error {
 	if limits.MaxConcurrentUploads < 1 || limits.MaxConcurrentUploads > 100 || limits.MaxStagedBytes < 1 || limits.MaxIngestionsPerMinute < 1 || limits.MaxIngestionsPerMinute > 100000 {
 		return fmt.Errorf("tenant quota limits are invalid")
@@ -108,6 +114,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/assets/{asset_id}", s.getAsset)
 	mux.HandleFunc("GET /v1/assets/search", s.searchAssets)
 	mux.HandleFunc("GET /v1/transcripts/search", s.searchTranscripts)
+	mux.HandleFunc("POST /v1/retrieval/hybrid-search", s.hybridSearch)
+	mux.HandleFunc("POST /v1/transcripts/{transcript_id}/index", s.indexTranscript)
 	return mux
 }
 

@@ -20,7 +20,7 @@ class MCPExternalClientTests(unittest.TestCase):
                               {"jsonrpc":"2.0","id":2,"method":"tools/list"}])
         self.assertEqual(result[0]["result"]["serverInfo"]["name"],"voxpipe")
         self.assertEqual({x["name"] for x in result[1]["result"]["tools"]},
-                         {"create_ingestion","get_ingestion_status","get_asset","search_assets","search_transcripts"})
+                         {"create_ingestion","get_ingestion_status","get_asset","search_assets","search_transcripts","search_hybrid_transcripts","index_transcript"})
     def test_external_agent_ingestion_lifecycle(self):
         session="11111111-1111-4111-8111-111111111111"
         result=self.exchange([
@@ -39,6 +39,43 @@ class MCPExternalClientTests(unittest.TestCase):
         self.assertFalse(result[0]["result"]["isError"])
         self.assertIn("/v1/assets/22222222-2222-4222-8222-222222222222",self.api.calls[0][1])
         self.assertIn("q=wav",self.api.calls[1][1])
+    def test_hybrid_search_maps_filters_without_accepting_tenant_id(self):
+        transcript="11111111-1111-4111-8111-111111111111"
+        result=self.exchange([{"jsonrpc":"2.0","id":18,"method":"tools/call","params":{
+            "name":"search_hybrid_transcripts","arguments":{
+                "query":"جلسه فروش","limit":8,"transcript_id":transcript,"language":"fa",
+                "start_ms":100,"end_ms":900}}}])[0]
+        self.assertFalse(result["result"]["isError"])
+        method,path,payload,key=self.api.calls[0]
+        self.assertEqual(method,"POST")
+        self.assertEqual(path,"/v1/retrieval/hybrid-search")
+        self.assertEqual(payload["query"],"جلسه فروش")
+        self.assertEqual(payload["transcript_id"],transcript)
+        self.assertEqual(payload["limit"],8)
+        self.assertNotIn("tenant_id",payload)
+        self.assertIsNone(key)
+
+    def test_index_transcript_uses_dedicated_authenticated_api_scope(self):
+        transcript="22222222-2222-4222-8222-222222222222"
+        result=self.exchange([{"jsonrpc":"2.0","id":19,"method":"tools/call","params":{
+            "name":"index_transcript","arguments":{"transcript_id":transcript,"revision":3}}}])[0]
+        self.assertFalse(result["result"]["isError"])
+        method,path,payload,key=self.api.calls[0]
+        self.assertEqual(method,"POST")
+        self.assertEqual(path,"/v1/transcripts/"+transcript+"/index?revision=3")
+        self.assertIsNone(payload)
+        self.assertIsNone(key)
+
+    def test_hybrid_search_rejects_client_tenant_and_invalid_time_range(self):
+        for arguments in (
+            {"query":"meeting","tenant_id":"11111111-1111-4111-8111-111111111111"},
+            {"query":"meeting","start_ms":900,"end_ms":100},
+        ):
+            result=self.exchange([{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{
+                "name":"search_hybrid_transcripts","arguments":arguments}}])[0]
+            self.assertTrue(result["result"]["isError"])
+        self.assertEqual(self.api.calls,[])
+
     def test_invalid_arguments_fail_before_api_call(self):
         result=self.exchange([{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_asset","arguments":{"asset_id":"bad"}}}])[0]
         self.assertTrue(result["result"]["isError"])

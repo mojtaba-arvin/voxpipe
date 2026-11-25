@@ -51,6 +51,9 @@ func main() {
 	if err != nil { log.Fatalf("configure private staging: %v", err) }
 	api, err := httpapi.NewServer(store, auth, stager, maxUpload, time.Duration(sessionTTLSeconds)*time.Second, maxAttempts)
 	if err != nil { log.Fatalf("configure HTTP API: %v", err) }
+	retrievalClient, err := httpapi.NewLocalRetrievalClientFromEnv()
+	if err != nil { log.Fatalf("configure local retrieval service: %v", err) }
+	if retrievalClient != nil { api.SetHybridRetrievalClient(retrievalClient) }
 	if err := api.SetRetentionDays(retentionDays); err != nil { log.Fatalf("configure retention policy: %v", err) }
 	if err := api.SetTenantLimits(httpapi.TenantLimits{MaxConcurrentUploads: maxConcurrentUploads, MaxStagedBytes: maxStagedBytes, MaxIngestionsPerMinute: maxIngestionsPerMinute}); err != nil { log.Fatalf("configure tenant quotas: %v", err) }
 	if err := api.SetUploadTimeouts(time.Duration(uploadIdleSeconds)*time.Second, time.Duration(uploadMaxSeconds)*time.Second); err != nil { log.Fatalf("configure upload deadlines: %v", err) }

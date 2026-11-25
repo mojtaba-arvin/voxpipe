@@ -168,7 +168,7 @@ func (a *OIDCAuthenticator) Authenticate(token string) (Principal, error) {
 	}
 	scopes := make(map[string]struct{})
 	for _, scope := range strings.Fields(claims.Scope) {
-		if scope == scopeIngestionRead || scope == scopeIngestionWrite || scope == scopeTranscriptRead {
+		if scope == scopeIngestionRead || scope == scopeIngestionWrite || scope == scopeTranscriptRead || scope == scopeTranscriptIndex {
 			scopes[scope] = struct{}{}
 		}
 	}
