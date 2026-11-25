@@ -25,20 +25,24 @@ def main() -> int:
     dsn = os.environ.get("VOXPIPE_DATABASE_DSN", "").strip()
     staging_root = os.environ.get("VOXPIPE_STAGING_ROOT", "").strip()
     object_root = os.environ.get("VOXPIPE_OBJECT_STORE_ROOT", "").strip()
-    if not dsn or not staging_root:
-        parser.error("VOXPIPE_DATABASE_DSN and VOXPIPE_STAGING_ROOT are required; local storage also requires VOXPIPE_OBJECT_STORE_ROOT")
+    if not dsn:
+        parser.error("VOXPIPE_DATABASE_DSN is required")
 
     repository = PostgresIngestionRepository(dsn)
-    object_store, _storage_provider = build_object_store(
+    object_store, storage_provider = build_object_store(
         os.environ,
         local_root=object_root or None,
         local_root_env="VOXPIPE_OBJECT_STORE_ROOT",
         max_object_size_bytes=512 * 1024 * 1024,
     )
+    if storage_provider == "local" and not staging_root:
+        parser.error("VOXPIPE_STAGING_ROOT is required for local staging")
+
     reconciler = IngestionOrphanReconciler(
         repository=repository,
         object_store=object_store,
-        staging_root=staging_root,
+        staging_root=staging_root or None,
+        storage_provider=storage_provider,
     )
     report = reconciler.run(tenant_id=tenant_id, limit=args.limit)
     print(json.dumps({
