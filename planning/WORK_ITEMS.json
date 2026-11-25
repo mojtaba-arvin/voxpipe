@@ -1161,7 +1161,8 @@
       "evidence": [
         "2026-11-25: created issue #153. Product priority follows VP-0044 because the shared object adapter is now available; design/implementation work is beginning.",
         "Architecture boundary: VP-0044 shares persistent audio objects only. Go API and Python ingestion worker still require a shared private VOXPIPE_STAGING_ROOT; VP-0045 removes that remaining shared-volume dependency.",
-        "No hard dependency is declared in the ledger because design can proceed while post-merge CI evidence for VP-0044 is finalized; implementation must target the merged ObjectStoragePort/S3 contract."
+        "No hard dependency is declared in the ledger because design can proceed while post-merge CI evidence for VP-0044 is finalized; implementation must target the merged ObjectStoragePort/S3 contract.",
+        "Design proposal recorded in docs/decisions/ADR-0045-shared-upload-staging.md: versioned staging/v1 tenant/session/upload key contract, Go API streaming to S3, Python worker checksum verification, retry-safe retention and cleanup; local staging remains default."
       ],
       "blocked_reason": null
     }
