@@ -88,6 +88,9 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	env := func(name string) string { return strings.TrimSpace(os.Getenv(name)) }
 	bucket, region := env("VOXPIPE_S3_BUCKET"), env("VOXPIPE_S3_REGION")
 	encryption, kmsKeyID := env("VOXPIPE_S3_SERVER_SIDE_ENCRYPTION"), env("VOXPIPE_S3_KMS_KEY_ID")
+	if encryption == "" {
+		encryption = "AES256"
+	}
 	endpoint, accessKey, secretKey := env("VOXPIPE_S3_ENDPOINT_URL"), env("VOXPIPE_S3_ACCESS_KEY_ID"), env("VOXPIPE_S3_SECRET_ACCESS_KEY")
 	addressingStyle := strings.ToLower(env("VOXPIPE_S3_ADDRESSING_STYLE"))
 	if addressingStyle == "" {
