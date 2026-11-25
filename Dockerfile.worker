@@ -16,6 +16,6 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check -r requirem
        fi
 COPY --chown=10001:10001 src ./src
 COPY --chown=10001:10001 migrations ./migrations
-COPY --chown=10001:10001 scripts/run_ingestion_worker.py scripts/bootstrap_local_postgres.py ./scripts/
+COPY --chown=10001:10001 scripts/run_ingestion_worker.py scripts/bootstrap_local_postgres.py scripts/reconcile_ingestion.py scripts/prepare_s3_e2e_bucket.py ./scripts/
 USER 10001:10001
 CMD ["python", "scripts/run_ingestion_worker.py"]
