@@ -40,6 +40,8 @@ def main() -> int:
         stream.write("".join(f"{key}={value}\n" for key, value in values.items()))
     github_env = os.environ.get("GITHUB_ENV")
     if github_env:
+        for key in ("POSTGRES_PASSWORD", "APP_DB_PASSWORD", "VOXPIPE_API_TOKEN", "API_TOKEN_HASHES"):
+            print(f"::add-mask::{values[key]}")
         with open(github_env, "a", encoding="utf-8") as stream:
             stream.write("".join(f"{key}={value}\n" for key, value in values.items()))
     return 0
