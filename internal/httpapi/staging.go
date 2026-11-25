@@ -139,7 +139,7 @@ func (s *LocalStager) Write(
 		if !errors.Is(err, os.ErrExist) {
 			return 0, "", fmt.Errorf("publish staged upload: %w", err)
 		}
-		existingSize, existingDigest, verifyErr := s.Verify(tenantID, sessionID)
+		existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
 		if verifyErr != nil || existingSize != expectedSize ||
 			existingDigest != strings.ToLower(expectedSHA256) {
 			return 0, "", ErrUploadConflict
