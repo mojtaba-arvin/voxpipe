@@ -89,6 +89,14 @@ def verify_api_identity_cannot_access_durable(
                 raise
         else:
             raise RuntimeError("API staging identity accessed a durable tenant object")
+    try:
+        client.put_object(Bucket=bucket, Key=durable_key, Body=b"")
+    except ClientError as error:
+        code = error.response.get("Error", {}).get("Code")
+        if code not in {"AccessDenied", "403"}:
+            raise
+    else:
+        raise RuntimeError("API staging identity wrote a durable tenant object")
 
 def main() -> int:
     token = os.environ["VOXPIPE_API_TOKEN"]
