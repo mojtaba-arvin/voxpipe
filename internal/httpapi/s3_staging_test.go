@@ -137,6 +137,33 @@ func TestS3StagerWriteVerifyAndRemove(t *testing.T) {
 	}
 }
 
+func TestS3StagerReadinessProbeIsStableAndIdempotent(t *testing.T) {
+	client := newFakeS3StagingClient()
+	stager, err := NewS3Stager(client, "voxpipe-test", 1024, "AES256", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stager.Ready(context.Background()); err != nil {
+		t.Fatalf("first readiness probe should create its reserved object: %v", err)
+	}
+	const tenantID = "00000000-0000-4000-8000-000000000000"
+	const sessionID = "00000000-0000-4000-8000-000000000001"
+	reference, err := stager.Reference(tenantID, sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	object, ok := client.objects[reference]
+	if !ok || string(object.body) != "voxpipe-s3-readiness-v1" {
+		t.Fatalf("readiness probe object missing or incorrect: %#v", object)
+	}
+	if err := stager.Ready(context.Background()); err != nil {
+		t.Fatalf("repeated readiness probe should verify the existing object: %v", err)
+	}
+	if len(client.objects) != 1 {
+		t.Fatalf("readiness probe should remain a single stable object, got %d", len(client.objects))
+	}
+}
+
 func TestS3StagerConditionalWriteIsIdempotentAndConflictsOnDifferentBytes(t *testing.T) {
 	client := newFakeS3StagingClient()
 	stager, err := NewS3Stager(client, "voxpipe-test", 1024, "AES256", "")
