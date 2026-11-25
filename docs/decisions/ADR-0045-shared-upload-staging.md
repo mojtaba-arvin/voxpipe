@@ -14,9 +14,9 @@ VP-0045 removes this remaining shared-volume dependency without changing the gui
 
 ### Cross-language staging contract
 
-- Use the same S3-compatible bucket and encryption/checksum configuration as VP-0044 when `VOXPIPE_STORAGE_BACKEND=s3_compatible`.
+- Use the same S3-compatible bucket and encryption/checksum configuration as VP-0044 when `VOXPIPE_STORAGE_BACKEND=s3_compatible`; this single backend selection applies to both staging and durable audio objects in the first version.
 - Reserve the `staging/v1/` key namespace for transient uploads. The server derives keys as `staging/v1/{tenant_uuid}/{session_uuid}/{upload_uuid}`; tenant identity comes only from authenticated request context.
-- Persist an explicit staging backend and opaque staging object key in the durable job record. Keep the existing local path field for the local backend during migration; never interpret an S3 key as a filesystem path.
+- Persist an explicit `staging_backend` and opaque `staging_reference` in the durable ingestion-session payload; the job continues to reference its session ID. Keep local references relative to `VOXPIPE_STAGING_ROOT`; never interpret an S3 key as a filesystem path.
 - Define a versioned contract for tenant, session, upload, content length, SHA-256, object key, and lifecycle state. Go and Python implementations must share golden contract fixtures.
 - Use immutable conditional create, provider-verified SHA-256, required server-side encryption, and bounded retries. Do not expose bucket names, object keys, endpoint URLs, or presigned URLs in public API responses.
 
@@ -24,7 +24,7 @@ VP-0045 removes this remaining shared-volume dependency without changing the gui
 
 - The Go API streams request bytes into a staging object. It must use the same 512 MiB limit and encryption/checksum requirements as VP-0044. If a request has no trustworthy content length, spool to a private API-local temporary file; never buffer the whole body in memory and never rely on a shared mount in S3 mode.
 - The API creates the ingestion job only after the staged object is committed and verified. On database failure, cleanup is idempotent; ambiguous upload outcomes are reconciled by checksum before retry.
-- The Python worker claims the job, opens the staging object through the S3-compatible adapter, verifies tenant/key/size/SHA-256 against the job record, then writes the durable audio object through `ObjectStoragePort`.
+- The Python worker claims the job, reads `staging_backend` and `staging_reference` from the tenant-scoped session payload, opens the staging object through the S3-compatible adapter, verifies tenant/key/size/SHA-256 against the session, then writes the durable audio object through `ObjectStoragePort`.
 - The durable audio object and its database reference must be committed before the staging object is deleted. Retryable jobs retain staging objects. A crash between object commit and DB commit must be recoverable without losing the source.
 - Reconciliation deletes staging objects only when the durable job/session state proves they are no longer live or retryable. Cleanup must be idempotent and race-safe.
 
