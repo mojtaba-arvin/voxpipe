@@ -209,7 +209,7 @@ jobs:
             --publish 9000:9000 \
             --env MINIO_ROOT_USER=voxpipe-ci \
             --env MINIO_ROOT_PASSWORD=voxpipe-ci-secret-password \
-            --env MINIO_KMS_SECRET_KEY=voxpipe-ci:01234567890123456789012345678901 \
+            --env MINIO_KMS_SECRET_KEY=voxpipe-ci:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= \
             minio/minio:RELEASE.2025-02-07T23-21-09Z server /data
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:9000/minio/health/ready >/dev/null; then
