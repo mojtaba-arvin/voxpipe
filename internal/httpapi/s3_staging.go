@@ -37,11 +37,11 @@ type S3StagingClient interface {
 }
 
 type S3Stager struct {
-	client       S3StagingClient
-	bucket       string
-	maxSize      int64
-	encryption   types.ServerSideEncryption
-	kmsKeyID     string
+	client     S3StagingClient
+	bucket     string
+	maxSize    int64
+	encryption types.ServerSideEncryption
+	kmsKeyID   string
 }
 
 func NewS3Stager(
@@ -73,8 +73,11 @@ func NewS3Stager(
 		return nil, fmt.Errorf("S3 server-side encryption must be explicitly AES256 or aws:kms")
 	}
 	return &S3Stager{
-		client: client, bucket: strings.TrimSpace(bucket), maxSize: maxSize,
-		encryption: algorithm, kmsKeyID: strings.TrimSpace(kmsKeyID),
+		client:     client,
+		bucket:     strings.TrimSpace(bucket),
+		maxSize:    maxSize,
+		encryption: algorithm,
+		kmsKeyID:   strings.TrimSpace(kmsKeyID),
 	}, nil
 }
 
@@ -84,7 +87,9 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	encryption, kmsKeyID := env("VOXPIPE_S3_SERVER_SIDE_ENCRYPTION"), env("VOXPIPE_S3_KMS_KEY_ID")
 	endpoint, accessKey, secretKey := env("VOXPIPE_S3_ENDPOINT_URL"), env("VOXPIPE_S3_ACCESS_KEY_ID"), env("VOXPIPE_S3_SECRET_ACCESS_KEY")
 	addressingStyle := strings.ToLower(env("VOXPIPE_S3_ADDRESSING_STYLE"))
-	if addressingStyle == "" { addressingStyle = "path" }
+	if addressingStyle == "" {
+		addressingStyle = "path"
+	}
 	if bucket == "" || region == "" {
 		return nil, fmt.Errorf("VOXPIPE_S3_BUCKET and VOXPIPE_S3_REGION are required")
 	}
@@ -104,7 +109,9 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 		return nil, fmt.Errorf("VOXPIPE_S3_KMS_KEY_ID is only valid with aws:kms encryption")
 	}
 	if endpoint != "" {
-		if err := validateS3Endpoint(endpoint); err != nil { return nil, err }
+		if err := validateS3Endpoint(endpoint); err != nil {
+			return nil, err
+		}
 	}
 
 	maxAttempts, err := envInt("VOXPIPE_S3_MAX_ATTEMPTS", 3)
@@ -112,9 +119,13 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 		return nil, fmt.Errorf("VOXPIPE_S3_MAX_ATTEMPTS must be between 1 and 5")
 	}
 	connectTimeout, err := envDurationSeconds("VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS", 5, 30)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	readTimeout, err := envDurationSeconds("VOXPIPE_S3_READ_TIMEOUT_SECONDS", 60, 120)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	dialer := &net.Dialer{Timeout: connectTimeout, KeepAlive: 30 * time.Second}
@@ -139,7 +150,9 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	}
 	client := s3.NewFromConfig(configuration, func(options *s3.Options) {
 		options.UsePathStyle = addressingStyle == "path"
-		if endpoint != "" { options.BaseEndpoint = aws.String(endpoint) }
+		if endpoint != "" {
+			options.BaseEndpoint = aws.String(endpoint)
+		}
 	})
 	return NewS3Stager(client, bucket, maxSize, encryption, kmsKeyID)
 }
@@ -153,7 +166,9 @@ func validateS3Endpoint(value string) error {
 	}
 	host := strings.ToLower(parsed.Hostname())
 	loopback := host == "localhost" || host == "::1"
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() { loopback = true }
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		loopback = true
+	}
 	if parsed.Scheme != "https" && !loopback {
 		return fmt.Errorf("VOXPIPE_S3_ENDPOINT_URL must use HTTPS outside loopback development endpoints")
 	}
@@ -162,7 +177,9 @@ func validateS3Endpoint(value string) error {
 
 func envInt(name string, fallback int) (int, error) {
 	value := strings.TrimSpace(os.Getenv(name))
-	if value == "" { return fallback, nil }
+	if value == "" {
+		return fallback, nil
+	}
 	return strconv.Atoi(value)
 }
 
@@ -191,7 +208,9 @@ func (s *S3Stager) Write(
 	expectedSHA256 string,
 ) (int64, string, error) {
 	reference, err := s.Reference(tenantID, sessionID)
-	if err != nil { return 0, "", err }
+	if err != nil {
+		return 0, "", err
+	}
 	if expectedSize < 1 || maxSize < 1 || expectedSize > maxSize || expectedSize > s.maxSize {
 		return 0, "", ErrUploadTooLarge
 	}
@@ -201,10 +220,14 @@ func (s *S3Stager) Write(
 	if _, err := hex.DecodeString(expectedSHA256); err != nil {
 		return 0, "", ErrUploadIntegrity
 	}
-	if err := ctx.Err(); err != nil { return 0, "", err }
+	if err := ctx.Err(); err != nil {
+		return 0, "", err
+	}
 
 	temporary, err := os.CreateTemp("", ".voxpipe-staging-*.part")
-	if err != nil { return 0, "", fmt.Errorf("create private upload spool: %w", err) }
+	if err != nil {
+		return 0, "", fmt.Errorf("create private upload spool: %w", err)
+	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
 	if err := temporary.Chmod(0600); err != nil {
@@ -236,22 +259,26 @@ func (s *S3Stager) Write(
 	}
 
 	input := &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key: aws.String(reference),
-		Body: temporary,
-		ContentLength: aws.Int64(written),
-		ChecksumSHA256: aws.String(base64.StdEncoding.EncodeToString(digest.Sum(nil))),
-		IfNoneMatch: aws.String("*"),
-		Metadata: map[string]string{"voxpipe-sha256": actualDigest},
+		Bucket:               aws.String(s.bucket),
+		Key:                  aws.String(reference),
+		Body:                 temporary,
+		ContentLength:        aws.Int64(written),
+		ChecksumSHA256:       aws.String(base64.StdEncoding.EncodeToString(digest.Sum(nil))),
+		IfNoneMatch:          aws.String("*"),
+		Metadata:             map[string]string{"voxpipe-sha256": actualDigest},
 		ServerSideEncryption: s.encryption,
 	}
-	if s.kmsKeyID != "" { input.SSEKMSKeyId = aws.String(s.kmsKeyID) }
+	if s.kmsKeyID != "" {
+		input.SSEKMSKeyId = aws.String(s.kmsKeyID)
+	}
 	_, putErr := s.client.PutObject(ctx, input)
 	closeErr := temporary.Close()
 	if putErr != nil {
 		existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
 		if verifyErr == nil {
-			if existingSize == written && existingDigest == actualDigest { return written, reference, nil }
+			if existingSize == written && existingDigest == actualDigest {
+				return written, reference, nil
+			}
 			return 0, "", ErrUploadConflict
 		}
 		if !isS3NotFound(verifyErr) {
@@ -259,7 +286,9 @@ func (s *S3Stager) Write(
 		}
 		return 0, "", fmt.Errorf("store staged upload: S3-compatible provider rejected the write")
 	}
-	if closeErr != nil { return 0, "", fmt.Errorf("close private upload spool: %w", closeErr) }
+	if closeErr != nil {
+		return 0, "", fmt.Errorf("close private upload spool: %w", closeErr)
+	}
 	existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
 	if verifyErr != nil || existingSize != written || existingDigest != actualDigest {
 		return 0, "", ErrUploadIntegrity
@@ -269,7 +298,9 @@ func (s *S3Stager) Write(
 
 func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int64, string, error) {
 	reference, err := s.Reference(tenantID, sessionID)
-	if err != nil { return 0, "", err }
+	if err != nil {
+		return 0, "", err
+	}
 	head, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket), Key: aws.String(reference), ChecksumMode: types.ChecksumModeEnabled,
 	})
@@ -277,7 +308,9 @@ func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int6
 		head, err = s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(reference)})
 	}
 	if err != nil {
-		if isS3NotFound(err) { return 0, "", ErrStagingNotFound }
+		if isS3NotFound(err) {
+			return 0, "", ErrStagingNotFound
+		}
 		return 0, "", fmt.Errorf("read staged object metadata: S3-compatible provider request failed")
 	}
 	if head.ContentLength == nil || *head.ContentLength < 0 || *head.ContentLength > s.maxSize {
@@ -289,14 +322,20 @@ func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int6
 	metadataDigest := head.Metadata["voxpipe-sha256"]
 	if head.ChecksumSHA256 != nil {
 		decoded, decodeErr := base64.StdEncoding.DecodeString(*head.ChecksumSHA256)
-		if decodeErr != nil || len(decoded) != sha256.Size { return 0, "", ErrUploadIntegrity }
+		if decodeErr != nil || len(decoded) != sha256.Size {
+			return 0, "", ErrUploadIntegrity
+		}
 		digest := hex.EncodeToString(decoded)
-		if metadataDigest != "" && metadataDigest != digest { return 0, "", ErrUploadIntegrity }
+		if metadataDigest != "" && metadataDigest != digest {
+			return 0, "", ErrUploadIntegrity
+		}
 		return *head.ContentLength, digest, nil
 	}
 	output, getErr := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(reference)})
 	if getErr != nil {
-		if isS3NotFound(getErr) { return 0, "", ErrStagingNotFound }
+		if isS3NotFound(getErr) {
+			return 0, "", ErrStagingNotFound
+		}
 		return 0, "", fmt.Errorf("read staged object: S3-compatible provider request failed")
 	}
 	defer output.Body.Close()
@@ -305,16 +344,24 @@ func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int6
 	}
 	digest := sha256.New()
 	size, readErr := io.Copy(digest, output.Body)
-	if readErr != nil { return 0, "", fmt.Errorf("verify staged object stream: %w", readErr) }
-	if size != *head.ContentLength { return 0, "", ErrUploadIntegrity }
+	if readErr != nil {
+		return 0, "", fmt.Errorf("verify staged object stream: %w", readErr)
+	}
+	if size != *head.ContentLength {
+		return 0, "", ErrUploadIntegrity
+	}
 	checksum := hex.EncodeToString(digest.Sum(nil))
-	if metadataDigest != "" && metadataDigest != checksum { return 0, "", ErrUploadIntegrity }
+	if metadataDigest != "" && metadataDigest != checksum {
+		return 0, "", ErrUploadIntegrity
+	}
 	return size, checksum, nil
 }
 
 func (s *S3Stager) Remove(ctx context.Context, tenantID, sessionID string) error {
 	reference, err := s.Reference(tenantID, sessionID)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	_, err = s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(reference)})
 	if err != nil && !isS3NotFound(err) {
 		return fmt.Errorf("delete staged object: S3-compatible provider request failed")
@@ -337,7 +384,9 @@ func isS3NotFound(err error) bool {
 	var apiError smithy.APIError
 	if errors.As(err, &apiError) {
 		code := apiError.ErrorCode()
-		if code == "NoSuchKey" || code == "NotFound" || code == "404" { return true }
+		if code == "NoSuchKey" || code == "NotFound" || code == "404" {
+			return true
+		}
 	}
 	var responseError *smithyhttp.ResponseError
 	return errors.As(err, &responseError) && responseError.HTTPStatusCode() == http.StatusNotFound
@@ -347,7 +396,9 @@ func isUnsupportedS3ChecksumMode(err error) bool {
 	var apiError smithy.APIError
 	if errors.As(err, &apiError) {
 		code := apiError.ErrorCode()
-		if code == "InvalidArgument" || code == "NotImplemented" { return true }
+		if code == "InvalidArgument" || code == "NotImplemented" {
+			return true
+		}
 	}
 	var responseError *smithyhttp.ResponseError
 	return errors.As(err, &responseError) && responseError.HTTPStatusCode() == http.StatusNotImplemented
