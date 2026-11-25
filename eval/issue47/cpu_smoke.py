@@ -35,6 +35,8 @@ def audio_duration_seconds(path: Path) -> float:
 
 def build_report(
     *,
+    model_download_seconds: float,
+    model_size_bytes: int,
     model_load_seconds: float,
     inference_seconds: float,
     audio_seconds: float,
@@ -47,6 +49,8 @@ def build_report(
 ) -> dict[str, Any]:
     if min(model_load_seconds, inference_seconds, audio_seconds) <= 0:
         raise ValueError("model load, inference and audio durations must be positive")
+    if model_download_seconds < 0 or model_size_bytes <= 0:
+        raise ValueError("model download duration and model size must be valid")
     if cpu_count < 1 or not detected_language.strip() or not transcript.strip():
         raise ValueError("CPU count, detected language and transcript must be non-empty")
     result = {
@@ -58,6 +62,8 @@ def build_report(
         "device": "cpu",
         "cpu_count": cpu_count,
         "torch_num_threads": torch_num_threads,
+        "model_download_seconds": round(model_download_seconds, 4),
+        "model_size_bytes": model_size_bytes,
         "evaluation_language": "English",
         "detected_language": detected_language,
         "source_kind": "public_model_card_sample",
@@ -98,6 +104,7 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
     from qwen_asr import Qwen3ASRModel
 
     torch.set_num_threads(max(1, min(os.cpu_count() or 1, 4)))
+    download_started = time.perf_counter()
     model_dir = Path(
         snapshot_download(
             repo_id=MODEL_ID,
@@ -105,6 +112,8 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
             cache_dir=str(cache_dir),
         )
     )
+    model_download_seconds = time.perf_counter() - download_started
+    model_size_bytes = sum(item.stat().st_size for item in model_dir.rglob("*") if item.is_file())
     os.environ["HF_HUB_OFFLINE"] = "1"
 
     with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-smoke-") as temporary:
@@ -132,6 +141,8 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
         detected_language = str(results[0].language or "")
 
     report = build_report(
+        model_download_seconds=model_download_seconds,
+        model_size_bytes=model_size_bytes,
         model_load_seconds=model_load_seconds,
         inference_seconds=inference_seconds,
         audio_seconds=duration,
