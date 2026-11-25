@@ -1,7 +1,7 @@
 from __future__ import annotations
 import hashlib, json, tempfile, unittest
 from pathlib import Path
-from scripts.voxpipe import APIClient, APIError, ingest, sha256_file
+from scripts.voxpipe_cli import APIClient, APIError, ingest, sha256_file
 
 class FakeResponse:
     def __init__(self, payload=b"{}"): self.payload = payload
