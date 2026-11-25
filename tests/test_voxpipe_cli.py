@@ -2,7 +2,7 @@ from __future__ import annotations
 import hashlib, json, tempfile, unittest, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from scripts.voxpipe_cli import APIClient, APIError, ingest, sha256_file
+from scripts.voxpipe_cli import APIClient, APIError, ingest, sha256_file, main
 
 class FakeResponse:
     def __init__(self, payload=b"{}"): self.payload = payload
@@ -86,5 +86,28 @@ class VoxPipeCLITests(unittest.TestCase):
         with self.assertRaises(APIError) as caught:
             client.request("GET", "/v1/ingestions/11111111-1111-4111-8111-111111111111")
         self.assertEqual(caught.exception.code, "RESPONSE_TOO_LARGE")
+
+
+    def test_health_command_uses_dedicated_operational_endpoint(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from unittest.mock import patch
+        output = StringIO()
+        with patch("scripts.voxpipe_cli.APIClient") as factory, redirect_stdout(output):
+            factory.return_value.request.return_value = {"window_hours":12,"jobs":{"total":3}}
+            result = main(["--api-url","http://127.0.0.1:8080","health","--window-hours","12"])
+        self.assertEqual(result,0)
+        factory.return_value.request.assert_called_once_with(
+            "GET","/v1/operations/ingestion/summary?window_hours=12"
+        )
+        self.assertIn('"jobs"',output.getvalue())
+
+    def test_health_command_rejects_unbounded_windows_before_network(self):
+        from unittest.mock import patch
+        with patch("scripts.voxpipe_cli.APIClient") as factory:
+            result = main(["--api-url","http://127.0.0.1:8080","health","--window-hours","169"])
+        self.assertEqual(result,1)
+        factory.return_value.request.assert_not_called()
+
 
 if __name__ == "__main__": unittest.main()

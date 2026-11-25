@@ -20,6 +20,7 @@ const (
 	scopeIngestionWrite = "ingestion:write"
 	scopeTranscriptRead = "transcript:read"
 	scopeTranscriptIndex = "transcript:index"
+	scopeOperationsRead = "operations:read"
 )
 
 var (
@@ -116,6 +117,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/transcripts/search", s.searchTranscripts)
 	mux.HandleFunc("POST /v1/retrieval/hybrid-search", s.hybridSearch)
 	mux.HandleFunc("POST /v1/transcripts/{transcript_id}/index", s.indexTranscript)
+	mux.HandleFunc("GET /v1/operations/ingestion/summary", s.getOperationalSummary)
 	return mux
 }
 

@@ -1011,7 +1011,7 @@
       "title": "Expose configured hybrid transcript retrieval through authenticated API and MCP",
       "phase": 7,
       "priority": 40,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0031",
         "VP-0039"
@@ -1033,7 +1033,8 @@
         "2026-11-25: added a private Python retrieval sidecar over the internal network, local-only pre-provisioned SentenceTransformer loading, 384-dim model/version metadata, batched idempotent transcript indexing (max 5000 segments, batches of 64), hybrid RRF search, and fail-closed RETRIEVAL_NOT_CONFIGURED behavior. Optional Compose profile is off by default and mounts model files read-only.",
         "2026-11-25: added MCP 1.2.0 search_hybrid_transcripts and index_transcript tools, OpenAPI 1.2.0 request/response contracts, ADR-0040, and unit/API/MCP tests. Exact-head CI and security review pending.",
         "2026-11-25: stacked hardening PR #145 merged into the VP-0040 feature branch as d0e9235 after exact-head CI run 45588526622 passed all six jobs. Added tenant/model-version-scoped index readiness under RLS and stable 503 RETRIEVAL_INDEX_NOT_READY; hybrid search no longer returns lexical-only hits as hybrid when no matching vectors exist.",
-        "2026-11-25 product decision: indexing is explicit through the authenticated transcript:index API/MCP operation, not automatic during transcript persistence. This keeps ingestion independent of optional model provisioning and prevents hidden embedding inference/compute. Model version must be sha256:<64 lowercase hex> and dimensions must be explicitly 384."
+        "2026-11-25 product decision: indexing is explicit through the authenticated transcript:index API/MCP operation, not automatic during transcript persistence. This keeps ingestion independent of optional model provisioning and prevents hidden embedding inference/compute. Model version must be sha256:<64 lowercase hex> and dimensions must be explicitly 384.",
+        "2026-11-25: PR #146 squash-merged to main as 97df157e53a2d79a0e407541950abc27db6af964. Exact-head CI run 45589072997 passed all six jobs; post-merge main CI run 45589337613 also passed all six jobs. The API/MCP sidecar, immutable model config, explicit indexing and fail-closed matching-index behavior are verified on main."
       ],
       "blocked_reason": null
     },
@@ -1042,7 +1043,7 @@
       "title": "Add a privacy-safe operational view for ingestion and queue health",
       "phase": 7,
       "priority": 41,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0039"
       ],
@@ -1051,10 +1052,14 @@
         "Keep aggregation tenant-scoped and enforce a dedicated least-privilege read scope; never allow cross-tenant enumeration from an ordinary tenant credential.",
         "Bound query windows, response sizes and database work; expose health as observed data with explicit freshness rather than inferred open/healthy status.",
         "Add PostgreSQL integration tests for tenant isolation, role/scope enforcement, aggregate correctness and content redaction.",
-        "Document deployment wiring, access controls, limitations and alert/retention interactions."
+        "Document deployment wiring, access controls, limitations and alert/retention interactions.",
+        "Expose the operational summary through the first-party CLI health command, requiring operations:read; no web dashboard or cross-tenant superadmin surface is implied by this repository milestone.",
+        "Document that the view does not create metric snapshots or extend retention; existing session/job cleanup remains authoritative and purged rows disappear from historical aggregates."
       ],
       "evidence": [
-        "2026-11-25 product sequencing: schedule after VP-0040; operational visibility must use tenant-safe aggregates and never expose transcript/audio content."
+        "2026-11-25 product sequencing: schedule after VP-0040; operational visibility must use tenant-safe aggregates and never expose transcript/audio content.",
+        "2026-11-25: started an independent implementation branch after VP-0039. The operational view is deliberately tenant-scoped (no global tenant enumeration), requires a dedicated operations:read capability, limits queries to 1–168 hours, and returns only aggregate counts/freshness/queue ages; raw errors and media/transcript data are excluded. API + CLI health command, RLS integration coverage and query indexes are being implemented.",
+        "2026-11-25: implemented aggregate-only tenant operations API + CLI health view on PR #144. Dedicated operations:read, forced-RLS integration coverage, bounded window, queue/retry/dead-letter metrics, privacy redaction and supporting indexes are present. Previous exact-head CI run 45586846025 passed all six jobs; rebase onto VP-0040 main is in progress and must pass CI again before merge."
       ],
       "blocked_reason": null
     }

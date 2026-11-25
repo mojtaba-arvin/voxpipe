@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: VoxPipe Operations API
+  version: 1.0.0
+  description: Tenant-scoped, aggregate-only ingestion and queue operations summary. No cross-tenant enumeration or customer content is exposed.
+servers:
+  - url: https://api.example.invalid
+security:
+  - bearerAuth: []
+paths:
+  /v1/operations/ingestion/summary:
+    get:
+      operationId: getTenantIngestionOperationsSummary
+      summary: Get aggregate ingestion and queue health for the authenticated tenant
+      description: Requires the dedicated operations:read scope. Tenant identity is derived from the verified bearer principal. The bounded window applies to ingestion/job activity; current queue metrics are a point-in-time snapshot.
+      parameters:
+        - name: window_hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+            default: 24
+      responses:
+        '200':
+          description: Aggregate-only tenant operational summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalSummary'
+        '400':
+          description: Invalid or unsupported query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Credential lacks operations:read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Aggregate query unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    OperationalSummary:
+      type: object
+      additionalProperties: false
+      required: [window_hours, observed_at, ingestions, jobs, queue]
+      properties:
+        window_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        observed_at:
+          type: string
+          format: date-time
+        ingestions:
+          type: object
+          additionalProperties: false
+          required: [total, by_state]
+          properties:
+            total:
+              type: integer
+              minimum: 0
+            by_state:
+              type: object
+              additionalProperties: false
+              properties:
+                created: {type: integer, minimum: 0}
+                receiving: {type: integer, minimum: 0}
+                finalizing: {type: integer, minimum: 0}
+                queued: {type: integer, minimum: 0}
+                processing: {type: integer, minimum: 0}
+                completed: {type: integer, minimum: 0}
+                failed: {type: integer, minimum: 0}
+                cancelled: {type: integer, minimum: 0}
+                expired: {type: integer, minimum: 0}
+        jobs:
+          type: object
+          additionalProperties: false
+          required: [total, by_state, retry_count, processing_failure_count, completed_processing_seconds_avg]
+          properties:
+            total: {type: integer, minimum: 0}
+            by_state:
+              type: object
+              additionalProperties: false
+              properties:
+                pending: {type: integer, minimum: 0}
+                leased: {type: integer, minimum: 0}
+                completed: {type: integer, minimum: 0}
+                dead: {type: integer, minimum: 0}
+                cancelled: {type: integer, minimum: 0}
+            retry_count: {type: integer, minimum: 0}
+            processing_failure_count: {type: integer, minimum: 0}
+            completed_processing_seconds_avg: {type: number, minimum: 0}
+        queue:
+          type: object
+          additionalProperties: false
+          required: [pending_depth, oldest_pending_age_seconds, active_leases, expired_leases, dead_letter_count]
+          properties:
+            pending_depth: {type: integer, minimum: 0}
+            oldest_pending_age_seconds: {type: number, minimum: 0}
+            active_leases: {type: integer, minimum: 0}
+            expired_leases: {type: integer, minimum: 0}
+            dead_letter_count: {type: integer, minimum: 0}
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}

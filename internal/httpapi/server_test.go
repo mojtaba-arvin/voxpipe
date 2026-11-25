@@ -28,6 +28,7 @@ type memoryStore struct {
 	lastTranscriptFilters TranscriptSearchFilters
 	lastTranscriptLimit int
 	lastTranscriptOffset int
+	operationalSummary map[string]any
 }
 
 func newMemoryStore() *memoryStore {
@@ -92,6 +93,14 @@ func (m *memoryStore) SearchTranscriptSegments(_ context.Context, tenant, query 
 	for _, item := range m.transcriptResults { result = append(result, cloneMap(item)) }
 	return result, nil
 }
+func (m *memoryStore) GetOperationalSummary(_ context.Context, _ string, windowHours int) (map[string]any, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.operationalSummary == nil { return map[string]any{"window_hours":windowHours}, nil }
+	result := cloneMap(m.operationalSummary)
+	result["window_hours"] = windowHours
+	return result, nil
+}
 func (m *memoryStore) BeginUpload(_ context.Context, tenant, session, owner string, leaseSeconds, maxConcurrent int) error { return nil }
 func (m *memoryStore) EndUpload(_ context.Context, tenant, session, owner, outcome, errorCode string) error { return nil }
 func (m *memoryStore) RecordAuditEvent(_ context.Context, tenant, session, asset, eventType, outcome, errorCode string, metadata map[string]any) error { return nil }
@@ -110,7 +119,7 @@ func testServer(t *testing.T) (*Server,*memoryStore,string,string) {
 	tenant:="11111111-1111-4111-8111-111111111111"
 	token:="voxpipe-test-token"
 	digest:=sha256.Sum256([]byte(token))
-	auth,err:=NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":"+tenant+":ingestion:read,ingestion:write,transcript:read"})
+	auth,err:=NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":"+tenant+":ingestion:read,ingestion:write,transcript:read,operations:read"})
 	if err!=nil { t.Fatal(err) }
 	stager,err:=NewLocalStager(t.TempDir()); if err!=nil { t.Fatal(err) }
 	store:=newMemoryStore()
@@ -576,4 +585,44 @@ func TestStagerRejectsOversizedAndChecksumMismatch(t *testing.T) {
 	if _,_,err:=stager.Write(tenant,session,bytes.NewReader([]byte("1234")),4,8,strings.Repeat("0",64)); err!=ErrUploadIntegrity {
 		t.Fatalf("expected integrity error, got %v",err)
 	}
+}
+
+
+func TestOperationalSummaryRequiresDedicatedScopeAndReturnsOnlyAggregates(t *testing.T) {
+	server, store, _, token := testServer(t)
+	store.operationalSummary = map[string]any{
+		"observed_at":"2026-11-25T09:00:00Z",
+		"ingestions":map[string]any{"total":4,"by_state":map[string]any{"failed":1}},
+		"jobs":map[string]any{"total":4,"retry_count":2,"processing_failure_count":1},
+		"queue":map[string]any{"pending_depth":1,"oldest_pending_age_seconds":12.5},
+	}
+	response := request(server.Handler(), http.MethodGet, "/v1/operations/ingestion/summary?window_hours=12", token, nil)
+	if response.Code != http.StatusOK { t.Fatalf("summary failed: %d %s", response.Code, response.Body.String()) }
+	body := decodeResponse(t, response)
+	if body["window_hours"] != float64(12) || body["ingestions"] == nil || body["jobs"] == nil || body["queue"] == nil {
+		t.Fatalf("unexpected aggregate summary: %#v", body)
+	}
+	for _, forbidden := range []string{"tenant_id","transcript","audio","storage_path","token","last_error_code","error_detail"} {
+		if strings.Contains(strings.ToLower(response.Body.String()), forbidden) {
+			t.Fatalf("operational response leaked forbidden field %q: %s", forbidden, response.Body.String())
+		}
+	}
+	for _, path := range []string{
+		"/v1/operations/ingestion/summary?tenant_id=22222222-2222-4222-8222-222222222222",
+		"/v1/operations/ingestion/summary?window_hours=0",
+		"/v1/operations/ingestion/summary?window_hours=169",
+	} {
+		invalid := request(server.Handler(), http.MethodGet, path, token, nil)
+		if invalid.Code != http.StatusBadRequest { t.Fatalf("invalid query %s returned %d", path, invalid.Code) }
+	}
+
+	digest := sha256.Sum256([]byte("read-only-without-operations"))
+	auth, err := NewStaticTokenAuthenticator([]string{hex.EncodeToString(digest[:])+":11111111-1111-4111-8111-111111111111:ingestion:read"})
+	if err != nil { t.Fatal(err) }
+	stager, err := NewLocalStager(t.TempDir())
+	if err != nil { t.Fatal(err) }
+	limited, err := NewServer(store, auth, stager, 1024, time.Hour, 3)
+	if err != nil { t.Fatal(err) }
+	denied := request(limited.Handler(), http.MethodGet, "/v1/operations/ingestion/summary", "read-only-without-operations", nil)
+	if denied.Code != http.StatusForbidden { t.Fatalf("ordinary tenant scope must not access operations: %d", denied.Code) }
 }

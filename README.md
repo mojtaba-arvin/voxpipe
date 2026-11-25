@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) and VP-0039 (guided local quickstart) are complete. VP-0040 (hybrid retrieval API/MCP) is in progress; it exposes local-only vector retrieval without selecting a production model. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) and VP-0039 (guided local quickstart) are complete. VP-0040 (hybrid retrieval API/MCP) is the next product milestone. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
@@ -50,8 +50,6 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── Makefile
 ├── Dockerfile.api
 ├── Dockerfile.worker
-├── Dockerfile.retrieval (optional local embedding profile)
-├── requirements-embedding.txt
 ├── compose.yaml
 ├── README.md
 ├── LICENSE
@@ -180,9 +178,10 @@ export VOXPIPE_API_TOKEN='...'
 PYTHONPATH=src python scripts/voxpipe_cli.py ingest ./meeting.wav --wait
 PYTHONPATH=src python scripts/voxpipe_cli.py status SESSION_UUID
 PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --language fa
+PYTHONPATH=src python scripts/voxpipe_cli.py health --window-hours 24
 ```
 
-See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The API token must have the capability required by each command; use HTTPS outside loopback.
+See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The `health` command requires the separate `operations:read` scope and returns aggregate-only tenant queue/processing metrics. The API token must have the capability required by each command; use HTTPS outside loopback.
 
 ## Guided local quickstart
 
@@ -195,10 +194,6 @@ python3 scripts/dev_quickstart.py up
 This builds and starts PostgreSQL 16, the Go API and Python worker, applies migrations, creates a random local tenant/token and ingests a generated WAV tone through the CLI. The API binds to loopback only; PostgreSQL is not exposed to the host. The tone verifies ingestion and media validation only—it is not speech and does not produce a transcript. No hosted provider or model download is used.
 
 Stop containers while preserving local data with `python3 scripts/dev_quickstart.py down`. See [the full quickstart and its security boundaries](docs/architecture/local-quickstart.md).
-
-## Optional hybrid retrieval
-
-Hybrid retrieval is exposed through the authenticated Go API and MCP, but embedding inference remains disabled unless a pre-provisioned local SentenceTransformer model is explicitly configured. The optional Compose profile mounts model files read-only; it does not download weights or enable a hosted provider. Use the separate `transcript:index` scope to index immutable transcript revisions and `transcript:read` for hybrid search. See [hybrid retrieval architecture and model provisioning](docs/architecture/hybrid-retrieval.md).
 
 ## Development workflow
 
