@@ -140,6 +140,8 @@ class DurableWorkflowIntegrationTests(unittest.TestCase):
         approved = self.repository.decide_approval(self.tenant, self.workflow, step.step_id,
             self.actor, approved=True)
         self.assertEqual(approved["steps"][0]["approval_decision"], "approved")
+        self.assertEqual(approved["steps"][0]["approval_actor_id"], self.actor)
+        self.assertIsNotNone(approved["steps"][0]["approval_decided_at"])
         resumed = self.repository.claim_next_step(self.tenant, self.workflow, self.worker)
         self.assertEqual(resumed["step_id"], step.step_id)
         completed = self.repository.complete_step(self.tenant, self.workflow, step.step_id,

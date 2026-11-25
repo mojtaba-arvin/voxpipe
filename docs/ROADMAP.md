@@ -91,7 +91,7 @@ The first PostgreSQL-native workflow journal is a bounded sequential proof of co
 - Detect regressions and open evidence-rich remediation tasks.
 - [x] Implement privacy-safe observability and CI-verified alert rules (VP-0035; tenant-safe aggregates, content-free STT events, OTLP SDK bootstrap, pinned Collector/Prometheus config, synthetic OTLP delivery, Prometheus scrape and promtool alert-firing tests pass in GitHub Actions. Live notification delivery and staging SLO measurement are deployment-specific and non-gating).
 - [ ] Implement release, canary and rollback automation (VP-0036; build/SBOM/checksum/provenance workflow is implemented. Remaining CI gates are an actual workflow_dispatch artifact-attestation run and an isolated canary/rollback simulation; production traffic rollout is out of scope).
-- [ ] Add bounded autonomous maintenance workflows (VP-0037; dependency/security automation is PR-only. Remaining gates are protected-branch review/check verification and deterministic safe-stop/rollback tests; no auto-approval or general autonomous coding agent).
+- [x] Add bounded autonomous maintenance workflows (VP-0037; grouped Dependabot and vulnerability checks remain PR-only; main ruleset requires PRs and strict Python/Go checks, resolves review threads, blocks deletion/force-push and has no bypass. Durable workflow actions support actor-attributed human approval, rejection and cancellation; SIGTERM/SIGINT safe-stop is tested. Reverts remain auditable PRs; no auto-approval, auto-merge or general autonomous coding agent).
 - Automate dependency/security updates and compatibility checks.
 
 **Exit gate:** Routine maintenance and recovery can be performed autonomously within explicit blast-radius and spending limits.
