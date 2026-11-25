@@ -39,10 +39,13 @@ class CpuSmokeReportTests(unittest.TestCase):
     def test_report_rejects_empty_transcript_or_invalid_timings(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be positive"):
             build_report(
+                model_download_seconds=0,
+                model_size_bytes=1,
                 model_load_seconds=1,
                 inference_seconds=0,
                 audio_seconds=2,
                 cpu_count=2,
+                torch_num_threads=2,
                 detected_language="English",
                 transcript="x",
                 torch_version="2.8.0",
@@ -50,10 +53,13 @@ class CpuSmokeReportTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(ValueError, "must be non-empty"):
             build_report(
+                model_download_seconds=0,
+                model_size_bytes=1,
                 model_load_seconds=1,
                 inference_seconds=1,
                 audio_seconds=2,
                 cpu_count=2,
+                torch_num_threads=2,
                 detected_language="English",
                 transcript="",
                 torch_version="2.8.0",
