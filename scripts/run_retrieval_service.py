@@ -122,6 +122,9 @@ class RetrievalHandler(BaseHTTPRequestHandler):
         if self.runtime is None:
             self._respond(503, {"code": "RETRIEVAL_NOT_CONFIGURED"})
             return
+        if self.headers.get_content_type() != "application/json":
+            self._respond(415, {"code": "UNSUPPORTED_CONTENT_TYPE"})
+            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > MAX_BODY_BYTES:
@@ -131,19 +134,20 @@ class RetrievalHandler(BaseHTTPRequestHandler):
                 raise ValueError("request body must be an object")
             if self.path.endswith("/search"):
                 request = _validate_search(payload)
-                result = self.runtime.search(request.pop("tenant_id"), request)
+                operation = lambda: self.runtime.search(request.pop("tenant_id"), request)
             else:
                 request = _validate_index(payload)
                 tenant_id = request.pop("tenant_id")
                 transcript_id = request.pop("transcript_id")
-                result = self.runtime.index_transcript(
-                    tenant_id, transcript_id, request.get("revision"),
-                )
-            self._respond(200, result)
-        except LookupError:
-            self._respond(404, {"code": "TRANSCRIPT_NOT_FOUND"})
+                revision = request.get("revision")
+                operation = lambda: self.runtime.index_transcript(tenant_id, transcript_id, revision)
         except (ValueError, TypeError, KeyError, json.JSONDecodeError):
             self._respond(400, {"code": "INVALID_RETRIEVAL_REQUEST"})
+            return
+        try:
+            self._respond(200, operation())
+        except LookupError:
+            self._respond(404, {"code": "TRANSCRIPT_NOT_FOUND"})
         except Exception:
             self._respond(500, {"code": "RETRIEVAL_SERVICE_ERROR"})
 
