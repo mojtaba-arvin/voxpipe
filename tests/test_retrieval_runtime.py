@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+import os
+import unittest
+from unittest.mock import patch
+
+from scripts.run_retrieval_service import _validate_index, _validate_search, build_runtime
+from voxpipe.retrieval.hybrid import SearchCandidate, SearchHit
+from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime
+
+TENANT = "11111111-1111-4111-8111-111111111111"
+TRANSCRIPT = "22222222-2222-4222-8222-222222222222"
+ASSET = "33333333-3333-4333-8333-333333333333"
+SEGMENT = "44444444-4444-4444-8444-444444444444"
+
+
+class FakeRepository:
+    def __init__(self):
+        self.calls = []
+
+    def get_transcript_revision(self, tenant_id, transcript_id, revision):
+        self.calls.append((tenant_id, transcript_id, revision))
+        return {
+            "revision": 2, "asset_id": ASSET, "language": "fa",
+            "segments": [{
+                "segment_id": SEGMENT, "start_ms": 100, "end_ms": 900,
+                "text": "جلسه فروش فردا", "speaker_id": None,
+            }],
+        }
+
+
+class FakeEmbeddings:
+    def __init__(self):
+        self.documents = []
+
+    def embed_document(self, text):
+        self.documents.append(text)
+        return ("embedding", text)
+
+
+class FakeSemantic:
+    def __init__(self):
+        self.stored = []
+
+    def store_embedding(self, tenant_id, candidate, embedding):
+        self.stored.append((tenant_id, candidate, embedding))
+
+
+class FakeHybrid:
+    def __init__(self, hit):
+        self.hit = hit
+        self.call = None
+
+    def search(self, query, *, filters, limit):
+        self.call = (query, filters, limit)
+        return (self.hit,)
+
+
+class RetrievalServiceTests(unittest.TestCase):
+    def test_internal_search_contract_requires_authenticated_tenant_uuid_and_bounds(self):
+        request = _validate_search({
+            "tenant_id": TENANT, "query": " جلسه فروش ", "limit": 10,
+            "asset_id": ASSET, "language": "fa",
+        })
+        self.assertEqual(request["tenant_id"], TENANT)
+        self.assertEqual(request["query"], "جلسه فروش")
+        self.assertEqual(request["limit"], 10)
+        with self.assertRaises(ValueError):
+            _validate_search({"tenant_id": "not-a-uuid", "query": "meeting"})
+        with self.assertRaises(ValueError):
+            _validate_search({"tenant_id": TENANT, "query": "meeting", "tenant_override": TENANT})
+
+    def test_internal_index_contract_is_strict_and_revision_is_positive(self):
+        request = _validate_index({"tenant_id": TENANT, "transcript_id": TRANSCRIPT, "revision": 2})
+        self.assertEqual(request["revision"], 2)
+        with self.assertRaises(ValueError):
+            _validate_index({"tenant_id": TENANT, "transcript_id": TRANSCRIPT, "revision": 0})
+        with self.assertRaises(ValueError):
+            _validate_index({"tenant_id": TENANT, "transcript_id": TRANSCRIPT, "caller": "untrusted"})
+
+    def test_indexing_uses_authenticated_tenant_and_is_safe_to_retry(self):
+        runtime = LocalHybridRetrievalRuntime.__new__(LocalHybridRetrievalRuntime)
+        runtime.model = "local-e5"
+        runtime.model_version = "sha256:model-revision"
+        runtime.repository = FakeRepository()
+        runtime.embeddings = FakeEmbeddings()
+        runtime.semantic = FakeSemantic()
+        from threading import RLock
+        runtime._model_lock = RLock()
+
+        first = runtime.index_transcript(TENANT, TRANSCRIPT, 2)
+        second = runtime.index_transcript(TENANT, TRANSCRIPT, 2)
+        self.assertEqual(first["indexed_segments"], 1)
+        self.assertEqual(second["indexed_segments"], 1)
+        self.assertEqual(runtime.repository.calls, [(TENANT, TRANSCRIPT, 2)] * 2)
+        self.assertEqual(len(runtime.semantic.stored), 2)
+        self.assertEqual(runtime.semantic.stored[0][0], TENANT)
+        self.assertEqual(runtime.semantic.stored[0][1].text, "جلسه فروش فردا")
+
+    def test_search_preserves_source_provenance_and_model_version(self):
+        candidate = SearchCandidate(
+            transcript_id=TRANSCRIPT, revision=2, asset_id=ASSET, segment_id=SEGMENT,
+            start_ms=100, end_ms=900, text="جلسه فروش فردا", language="fa",
+        )
+        hit = SearchHit(candidate, 0.031, 1, 2)
+        runtime = LocalHybridRetrievalRuntime.__new__(LocalHybridRetrievalRuntime)
+        runtime.model = "local-e5"
+        runtime.model_version = "sha256:model-revision"
+        from threading import RLock
+        runtime._model_lock = RLock()
+        runtime.hybrid = FakeHybrid(hit)
+        result = runtime.search(TENANT, {"query": "جلسه", "limit": 5, "language": "fa"})
+        self.assertEqual(runtime.hybrid.call[0], "جلسه")
+        self.assertEqual(runtime.hybrid.call[1].tenant_id, TENANT)
+        self.assertEqual(runtime.hybrid.call[1].language, "fa")
+        self.assertEqual(result["model_version"], "sha256:model-revision")
+        self.assertEqual(result["items"][0]["segment_id"], SEGMENT)
+        self.assertEqual(result["items"][0]["fused_score"], 0.031)
+
+    def test_no_model_configuration_keeps_retrieval_disabled(self):
+        values = {
+            "VOXPIPE_EMBEDDING_MODEL": "",
+            "VOXPIPE_EMBEDDING_MODEL_VERSION": "",
+            "VOXPIPE_RETRIEVAL_DATABASE_DSN": "",
+            "VOXPIPE_RETRIEVAL_INTERNAL_TOKEN": "",
+        }
+        with patch.dict(os.environ, values):
+            self.assertIsNone(build_runtime())
+
+    def test_partial_model_configuration_fails_closed(self):
+        with patch.dict(os.environ, {
+            "VOXPIPE_EMBEDDING_MODEL": "local-e5",
+            "VOXPIPE_EMBEDDING_MODEL_VERSION": "",
+        }):
+            with self.assertRaises(SystemExit):
+                build_runtime()
+
+
+if __name__ == "__main__":
+    unittest.main()
