@@ -144,6 +144,19 @@ class S3CompatibleObjectStoreTests(unittest.TestCase):
         self.client.omit_checksum = True
         self.assertEqual(self.store.head(info.key), info)
 
+    def test_head_retries_without_checksum_mode_for_compatible_endpoint(self) -> None:
+        class NoChecksumModeClient(FakeS3Client):
+            def head_object(self, *, Bucket: str, Key: str, ChecksumMode: str | None = None) -> dict:
+                if ChecksumMode:
+                    raise FakeClientError("NotImplemented", 501)
+                return super().head_object(Bucket=Bucket, Key=Key)
+
+        client = NoChecksumModeClient()
+        client.omit_checksum = True
+        store = S3CompatibleObjectStore(client, bucket="voxpipe-test")
+        info = store.put("tenant-a/legacy.wav", io.BytesIO(b"legacy-compatible"))
+        self.assertEqual(store.head(info.key), info)
+
     def test_head_rejects_mismatched_provider_checksum_and_metadata(self) -> None:
         self.store.put("tenant-a/asset.wav", io.BytesIO(b"verified"))
         self.client.objects["tenant-a/asset.wav"]["metadata"]["voxpipe-sha256"] = "0" * 64
