@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -301,6 +302,32 @@ class IngestionRecoveryTests(unittest.TestCase):
         self.assertNotIn("lease", expired)
         with self.assertRaises(ObjectNotFoundError):
             self.object_store.head(result.asset["storage"]["object_key"])
+
+    def test_reconciler_removes_s3_staging_without_shared_root(self) -> None:
+        result = self.service.ingest(self.request())
+        session = dict(result.session)
+        staging_key = f"staging/v1/{session['tenant_id']}/{session['session_id']}/source"
+        self.object_store.put(staging_key, io.BytesIO(self.path.read_bytes()))
+        session["staging_reference"] = staging_key
+        session["staging_backend"] = "s3_compatible"
+        self.repository.update_session(
+            session["tenant_id"], session["session_id"], "completed", session
+        )
+
+        reconciler = IngestionOrphanReconciler(
+            repository=self.repository,
+            object_store=self.object_store,
+            staging_root=None,
+            storage_provider="s3_compatible",
+        )
+        report = reconciler.run(tenant_id=session["tenant_id"])
+
+        self.assertEqual(report.errors, 0)
+        self.assertEqual(report.cleaned, 1)
+        with self.assertRaises(ObjectNotFoundError):
+            self.object_store.head(staging_key)
+        durable_key = result.asset["storage"]["object_key"]
+        self.assertEqual(self.object_store.head(durable_key).sha256, result.asset["integrity"]["digest"])
 
     def test_reconciler_removes_completed_staging_but_retains_asset(self) -> None:
         result = self.service.ingest(self.request())
