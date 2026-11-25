@@ -105,9 +105,11 @@ def write_queries(
     payload = "".join(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n" for item in records)
     output_path.write_text(payload, encoding="utf-8")
     corpus_payload = "".join(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n" for item in sorted(corpus, key=lambda x: x["passage_id"]))
+    source_kinds = {item["source_kind"] for item in corpus}
+    source_kind = next(iter(source_kinds)) if len(source_kinds) == 1 else "mixed_or_external"
     metadata = {
         "schema_version": 1,
-        "source_kind": "synthetic_template" if all(x["source_kind"] == "synthetic_template" for x in corpus) else "mixed_or_external",
+        "source_kind": source_kind,
         "query_kind": "deterministic_template_silver",
         "seed": records[0]["seed"] if records else None,
         "query_count": len(records),
