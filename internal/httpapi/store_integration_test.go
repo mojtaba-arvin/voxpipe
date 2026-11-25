@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -260,7 +261,9 @@ func TestPostgresStoreOperationalSummaryIsTenantScopedAndAggregateOnly(t *testin
 		tx, err := store.beginTenant(ctx, tenantID); if err != nil { t.Fatal(err) }
 		defer tx.Rollback(ctx)
 		statement := "INSERT INTO ingestion_worker_heartbeats (tenant_id,worker_id,state,started_at,heartbeat_at,last_job_started_at,stopped_at,updated_at) VALUES ($1::uuid,$2::uuid,$3,now()-interval '1 hour',now()-$4::interval,CASE WHEN $5::boolean THEN now()-$6::interval ELSE NULL END,CASE WHEN $3='stopped' THEN now() ELSE NULL END,now())"
-		_, err = tx.Exec(ctx, statement, tenantID, workerID, state, heartbeatAge, jobAge != "", jobAge)
+		jobAgeValue := jobAge
+		if jobAgeValue == "" { jobAgeValue = "0 seconds" }
+		_, err = tx.Exec(ctx, statement, tenantID, workerID, state, heartbeatAge, jobAge != "", jobAgeValue)
 		if err != nil { t.Fatal(err) }
 		if err := tx.Commit(ctx); err != nil { t.Fatal(err) }
 		return workerID
