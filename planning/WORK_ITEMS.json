@@ -974,7 +974,8 @@
         "2026-11-25: implementation started on feat/first-class-cli. Added scripts/voxpipe.py with ingest/status/search commands, incremental SHA-256, streamed upload, existing API scopes, TLS guard, response cap, and bounded optional polling.",
         "2026-11-25: added tests/test_voxpipe_cli.py and docs/architecture/cli.md. Exact-head validation and review pending.",
         "2026-11-25: first PR CI run exposed a Python import-shadowing regression because scripts/voxpipe.py masked the voxpipe package for unrelated scripts. Renamed the entrypoint to scripts/voxpipe_cli.py, updated tests/docs/README, and retained the standard-library-only design. Exact new-head CI rerun pending.",
-        "2026-11-25: separated ordinary API timeout from a configurable 30-minute upload timeout to match the API's bounded upload duration; this prevents large uploads being cut off by the short status/search timeout. Added an assertion for the upload timeout."
+        "2026-11-25: separated ordinary API timeout from a configurable 30-minute upload timeout to match the API's bounded upload duration; this prevents large uploads being cut off by the short status/search timeout. Added an assertion for the upload timeout.",
+        "2026-11-25: final CLI scope includes a dedicated configurable upload timeout (default 30 minutes) separate from the 30-second API timeout, so large files are not cut off by status/search settings. A loopback HTTP integration test is being added to verify the standard-library client actually streams the file body."
       ],
       "blocked_reason": null
     }
