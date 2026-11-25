@@ -63,9 +63,9 @@ def _safe_extract_tar(archive: Path, destination: Path) -> None:
             target = (root / member.name).resolve()
             if target != root and root not in target.parents:
                 raise ValueError(f"unsafe archive member path: {member.name}")
-            if member.issym() or member.islnk():
-                raise ValueError(f"archive links are not accepted: {member.name}")
-        stream.extractall(destination, members=members)
+            if member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
+                raise ValueError(f"unsupported archive member type: {member.name}")
+        stream.extractall(destination, members=members, filter="data")
 
 
 def _model_paths(root: Path) -> tuple[Path, Path, Path]:
@@ -111,7 +111,7 @@ def calculate_overlap_window(duration_a: float, duration_b: float) -> tuple[floa
 def mix_samples(
     first: Sequence[float], second: Sequence[float], sample_rate: int, delay_seconds: float
 ) -> tuple[array, int]:
-    if sample_rate <= 0 or not first or not second:
+    if sample_rate <= 0 or len(first) == 0 or len(second) == 0:
         raise ValueError("sample rate and both audio streams must be non-empty")
     delay_samples = round(delay_seconds * sample_rate)
     if delay_samples < 0 or delay_samples >= len(first):
