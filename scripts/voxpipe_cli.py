@@ -55,7 +55,7 @@ def sha256_file(path: Path) -> tuple[int, str]:
     return size, digest.hexdigest()
 
 def ingest(client: APIClient, path: Path, source_kind: str, external_reference: str | None,
-           wait: bool, poll_interval: float, timeout: float, upload_timeout: float) -> dict[str, Any]:
+           wait: bool, poll_interval: float, timeout: float, upload_timeout: float = 1800.0) -> dict[str, Any]:
     if not path.is_file(): raise ValueError("audio path must be a regular file")
     size, digest = sha256_file(path)
     if size < 1: raise ValueError("audio file must not be empty")
