@@ -36,11 +36,12 @@ class StorageIntegrityError(StorageError):
 class StorageIOError(StorageError):
     code = "STORAGE_IO_ERROR"
 
+
 def validate_object_key(key: str) -> tuple[str, ...]:
     """Validate an opaque relative POSIX object key shared by all adapters."""
     if not isinstance(key, str) or not key or len(key) > 1024:
         raise InvalidObjectKeyError("object key must contain 1 to 1024 characters")
-    if "\\x00" in key or "\\\\" in key or key.startswith("/"):
+    if "\x00" in key or "\\" in key or key.startswith("/"):
         raise InvalidObjectKeyError("object key must be a relative POSIX path")
     if ":" in key.split("/", 1)[0]:
         raise InvalidObjectKeyError("object key must not contain a drive prefix")
