@@ -11,6 +11,14 @@ The readiness check has a two-second deadline. It does not return DSNs, database
 
 These endpoints are intended for container/orchestrator probes and must not be used as customer-facing service guarantees. They do not assert worker progress, queue drain time, model availability, SLO compliance, or production capacity.
 
+## Worker liveness and progress view
+
+The worker supervisor registers one tenant-scoped heartbeat row per explicitly authorized tenant and refreshes it every 15 seconds from a thread independent of job execution and job-lease renewal. Graceful shutdown marks the row stopped. A crash leaves the last state and timestamp in place; after 45 seconds without a heartbeat it is counted as stale.
+
+The tenant-authorized `GET /v1/operations/ingestion/summary` response includes a `workers` aggregate with active/stale, idle/busy and stale-busy counts plus the oldest busy duration. It never returns worker IDs or tenant identifiers. The states distinguish an idle live worker from a busy live worker and from a process that stopped refreshing its heartbeat.
+
+This is liveness and job-state visibility, not proof that audio processing is making semantic progress. A live busy worker may be processing a legitimately long job. Correlate busy age with queue age and lease state; do not terminate or replay work solely because a job is old. Heartbeat aggregates are available to operator tooling, but automated alert delivery remains unconfigured until an exporter and alert manager are deployed.
+
 ## Container and Compose behavior
 
 The API image includes a Docker `HEALTHCHECK` that invokes the statically linked API binary in `healthcheck` mode. The probe calls the loopback readiness endpoint on the port selected by `VOXPIPE_LISTEN_ADDR`; it requires no shell, curl, wget, credentials, or external network access.

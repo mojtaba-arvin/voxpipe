@@ -31,7 +31,7 @@ def main() -> int:
     apply_migrations(admin_dsn)
     with psycopg.connect(admin_dsn, autocommit=True) as connection:
         connection.execute("GRANT USAGE ON SCHEMA public TO voxpipe_app")
-        connection.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app")
+        connection.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events, ingestion_worker_heartbeats TO voxpipe_app")
         connection.execute("GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app")
         connection.execute("GRANT SELECT, INSERT, UPDATE ON workflow_runs, workflow_steps TO voxpipe_app")
         connection.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON transcript_segment_embeddings, provider_circuit_breakers TO voxpipe_app")

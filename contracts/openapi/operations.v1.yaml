@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: VoxPipe Operations API
   version: 1.0.0
-  description: Tenant-scoped, aggregate-only ingestion and queue operations summary. No cross-tenant enumeration or customer content is exposed.
+  description: Tenant-scoped, aggregate-only ingestion, queue and worker liveness summary. No cross-tenant enumeration or customer content is exposed.
 servers:
   - url: https://api.example.invalid
 security:
@@ -11,8 +11,8 @@ paths:
   /v1/operations/ingestion/summary:
     get:
       operationId: getTenantIngestionOperationsSummary
-      summary: Get aggregate ingestion and queue health for the authenticated tenant
-      description: Requires the dedicated operations:read scope. Tenant identity is derived from the verified bearer principal. The bounded window applies to ingestion/job activity; current queue metrics are a point-in-time snapshot.
+      summary: Get aggregate ingestion, queue and worker health for the authenticated tenant
+      description: Requires the dedicated operations:read scope. Tenant identity is derived from the verified bearer principal. The bounded window applies to ingestion/job activity; queue and worker metrics are point-in-time snapshots. Worker heartbeats refresh every 15 seconds and are stale after 45 seconds.
       parameters:
         - name: window_hours
           in: query
@@ -62,7 +62,7 @@ components:
     OperationalSummary:
       type: object
       additionalProperties: false
-      required: [window_hours, observed_at, ingestions, jobs, queue]
+      required: [window_hours, observed_at, ingestions, jobs, queue, workers]
       properties:
         window_hours:
           type: integer
@@ -120,6 +120,19 @@ components:
             active_leases: {type: integer, minimum: 0}
             expired_leases: {type: integer, minimum: 0}
             dead_letter_count: {type: integer, minimum: 0}
+        workers:
+          type: object
+          additionalProperties: false
+          required: [active, stale, idle, busy, stale_busy, oldest_busy_seconds, heartbeat_interval_seconds, stale_after_seconds]
+          properties:
+            active: {type: integer, minimum: 0}
+            stale: {type: integer, minimum: 0}
+            idle: {type: integer, minimum: 0}
+            busy: {type: integer, minimum: 0}
+            stale_busy: {type: integer, minimum: 0}
+            oldest_busy_seconds: {type: number, minimum: 0}
+            heartbeat_interval_seconds: {type: integer, minimum: 1}
+            stale_after_seconds: {type: integer, minimum: 1}
     Error:
       type: object
       additionalProperties: false

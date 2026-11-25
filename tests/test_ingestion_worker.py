@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import unittest
+from threading import Event, Thread
 from uuid import uuid4
 
 from voxpipe.ingestion.jobs import JobLeaseLost
@@ -29,6 +30,22 @@ class FakeQueue:
         self.heartbeats = 0
         self.lose_on_complete = lose_on_complete
         self.heartbeat_error = heartbeat_error
+        self.worker_registrations: set[tuple[str, str]] = set()
+        self.worker_heartbeats = 0
+        self.worker_states: list[tuple[str, str, str]] = []
+        self.worker_stops: set[tuple[str, str]] = set()
+
+    def register_worker(self, tenant_id: str, worker_id: str) -> None:
+        self.worker_registrations.add((tenant_id, worker_id))
+
+    def heartbeat_worker(self, tenant_id: str, worker_id: str) -> None:
+        self.worker_heartbeats += 1
+
+    def set_worker_state(self, tenant_id: str, worker_id: str, state: str) -> None:
+        self.worker_states.append((tenant_id, worker_id, state))
+
+    def stop_worker(self, tenant_id: str, worker_id: str) -> None:
+        self.worker_stops.add((tenant_id, worker_id))
 
     def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict:
         return self.job
@@ -82,10 +99,40 @@ class StopAfterWait:
         self.waited = True
         return True
 
+    def set(self) -> None:
+        self.waited = True
+
+
+class IdleQueue(FakeQueue):
+    def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict | None:
+        return None
+
 
 class FailingClaimQueue(FakeQueue):
     def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict:
         raise OSError("simulated database outage")
+
+
+class OneShotQueue(FakeQueue):
+    def __init__(self) -> None:
+        super().__init__()
+        self.claimed = False
+
+    def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict | None:
+        if self.claimed:
+            return None
+        self.claimed = True
+        return self.job
+
+
+class SlowService(FakeService):
+    def __init__(self, started: Event, delay: float) -> None:
+        super().__init__(delay=delay)
+        self.started = started
+
+    def resume_session(self, tenant_id: str, session_id: str) -> None:
+        self.started.set()
+        super().resume_session(tenant_id, session_id)
 
 
 class IngestionJobWorkerTests(unittest.TestCase):
@@ -151,6 +198,72 @@ class IngestionJobWorkerTests(unittest.TestCase):
         self.assertEqual(result.outcome, "lease_lost")
         self.assertFalse(queue.completed)
         self.assertGreaterEqual(queue.heartbeats, 2)
+
+    def test_claimed_job_updates_worker_busy_and_idle_state(self) -> None:
+        queue = FakeQueue()
+        result = self.worker(queue, FakeService()).run_once(self.tenant_id)
+        self.assertEqual(result.outcome, "completed")
+        self.assertEqual(
+            [state for tenant, worker, state in queue.worker_states],
+            ["busy", "idle"],
+        )
+
+    def test_supervisor_refreshes_idle_worker_heartbeat_and_stops_gracefully(self) -> None:
+        queue = IdleQueue()
+        worker = self.worker(queue, FakeService())
+        stop = Event()
+        supervisor = Thread(
+            target=run_forever,
+            args=(worker, [self.tenant_id], stop),
+            kwargs={
+                "poll_seconds": 0.005,
+                "heartbeat_interval_seconds": 0.01,
+                "logger": logging.getLogger("test.worker.heartbeat"),
+            },
+            daemon=True,
+        )
+        supervisor.start()
+        deadline = time.monotonic() + 2
+        while queue.worker_heartbeats < 1 and time.monotonic() < deadline:
+            time.sleep(0.005)
+        stop.set()
+        supervisor.join(timeout=2)
+        self.assertFalse(supervisor.is_alive(), "worker supervisor did not stop")
+        self.assertIn((self.tenant_id, self.worker_id), queue.worker_registrations)
+        self.assertGreaterEqual(queue.worker_heartbeats, 1)
+        self.assertIn((self.tenant_id, self.worker_id), queue.worker_stops)
+
+    def test_process_heartbeat_continues_while_job_execution_is_busy(self) -> None:
+        queue = OneShotQueue()
+        service_started = Event()
+        worker = self.worker(queue, SlowService(service_started, delay=0.15))
+        stop = Event()
+        supervisor = Thread(
+            target=run_forever,
+            args=(worker, [self.tenant_id], stop),
+            kwargs={"poll_seconds": 0.005, "heartbeat_interval_seconds": 0.01},
+            daemon=True,
+        )
+        supervisor.start()
+        self.assertTrue(service_started.wait(2), "worker did not begin the claimed job")
+        heartbeat_count_at_start = queue.worker_heartbeats
+        deadline = time.monotonic() + 1
+        while queue.worker_heartbeats <= heartbeat_count_at_start and time.monotonic() < deadline:
+            time.sleep(0.005)
+        self.assertGreater(
+            queue.worker_heartbeats,
+            heartbeat_count_at_start,
+            "process liveness heartbeat stopped while the job was executing",
+        )
+        self.assertIn((self.tenant_id, self.worker_id, "busy"), queue.worker_states)
+        deadline = time.monotonic() + 2
+        while not queue.completed and time.monotonic() < deadline:
+            time.sleep(0.005)
+        stop.set()
+        supervisor.join(timeout=2)
+        self.assertFalse(supervisor.is_alive(), "worker supervisor did not stop")
+        self.assertTrue(queue.completed)
+        self.assertIn((self.tenant_id, self.worker_id, "idle"), queue.worker_states)
 
     def test_metrics_are_partitioned_by_tenant_and_outcome(self) -> None:
         worker = self.worker(FakeQueue(), FakeService())

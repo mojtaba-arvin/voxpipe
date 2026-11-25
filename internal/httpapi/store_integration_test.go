@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -254,11 +255,31 @@ func TestPostgresStoreOperationalSummaryIsTenantScopedAndAggregateOnly(t *testin
 	insert(tenant,"dead",3,"STT_FAILED",false,true)
 	insert(otherTenant,"pending",0,"",false,false)
 
+	insertWorker := func(tenantID, state, heartbeatAge, jobAge string) string {
+		t.Helper()
+		workerID, err := newUUID(); if err != nil { t.Fatal(err) }
+		tx, err := store.beginTenant(ctx, tenantID); if err != nil { t.Fatal(err) }
+		defer tx.Rollback(ctx)
+		statement := "INSERT INTO ingestion_worker_heartbeats (tenant_id,worker_id,state,started_at,heartbeat_at,last_job_started_at,stopped_at,updated_at) VALUES ($1::uuid,$2::uuid,$3,now()-interval '1 hour',now()-$4::interval,CASE WHEN $5::boolean THEN now()-$6::interval ELSE NULL END,CASE WHEN $3='stopped' THEN now() ELSE NULL END,now())"
+		jobAgeValue := jobAge
+		if jobAgeValue == "" { jobAgeValue = "0 seconds" }
+		_, err = tx.Exec(ctx, statement, tenantID, workerID, state, heartbeatAge, jobAge != "", jobAgeValue)
+		if err != nil { t.Fatal(err) }
+		if err := tx.Commit(ctx); err != nil { t.Fatal(err) }
+		return workerID
+	}
+	workerIdleID := insertWorker(tenant,"idle","0 seconds","")
+	workerBusyID := insertWorker(tenant,"busy","0 seconds","15 seconds")
+	workerStaleBusyID := insertWorker(tenant,"busy","2 minutes","3 minutes")
+	insertWorker(tenant,"stopped","0 seconds","")
+	insertWorker(otherTenant,"idle","0 seconds","")
+
 	summary, err := store.GetOperationalSummary(ctx,tenant,24)
 	if err != nil { t.Fatal(err) }
 	ingestions := summary["ingestions"].(map[string]any)
 	jobs := summary["jobs"].(map[string]any)
 	queue := summary["queue"].(map[string]any)
+	workers := summary["workers"].(map[string]any)
 	if ingestions["total"] != int64(4) || jobs["total"] != int64(4) {
 		t.Fatalf("summary must include only four rows from the authenticated tenant: %#v",summary)
 	}
@@ -268,12 +289,27 @@ func TestPostgresStoreOperationalSummaryIsTenantScopedAndAggregateOnly(t *testin
 	if queue["pending_depth"] != int64(1) || queue["active_leases"] != int64(1) || queue["dead_letter_count"] != int64(1) {
 		t.Fatalf("queue aggregates are incorrect: %#v",queue)
 	}
+	if workers["active"] != int64(2) || workers["stale"] != int64(1) ||
+		workers["idle"] != int64(1) || workers["busy"] != int64(1) || workers["stale_busy"] != int64(1) {
+		t.Fatalf("worker aggregates are incorrect: %#v", workers)
+	}
+	if workers["oldest_busy_seconds"].(float64) < 170 {
+		t.Fatalf("busy duration should reveal stale processing: %#v", workers)
+	}
+	if strings.Contains(fmt.Sprintf("%#v", summary), workerIdleID) ||
+		strings.Contains(fmt.Sprintf("%#v", summary), workerBusyID) ||
+		strings.Contains(fmt.Sprintf("%#v", summary), workerStaleBusyID) {
+		t.Fatal("worker identifiers must not be returned in aggregate summary")
+	}
 	if _, exists := jobs["last_error_code"]; exists { t.Fatal("raw error codes must not be returned") }
 	if _, exists := summary["tenant_id"]; exists { t.Fatal("tenant identity must not be echoed") }
 	other, err := store.GetOperationalSummary(ctx,otherTenant,24)
 	if err != nil { t.Fatal(err) }
 	if other["jobs"].(map[string]any)["total"] != int64(1) {
 		t.Fatalf("cross-tenant aggregate leaked rows: %#v",other)
+	}
+	if other["workers"].(map[string]any)["active"] != int64(1) {
+		t.Fatalf("worker aggregates crossed tenant boundaries: %#v", other["workers"])
 	}
 	if _, err := store.GetOperationalSummary(ctx,tenant,169); err == nil {
 		t.Fatal("summary window above 168 hours must be rejected")
