@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"context"
 	"encoding/base64"
 	"errors"
