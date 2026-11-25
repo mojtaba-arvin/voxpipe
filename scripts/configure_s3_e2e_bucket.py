@@ -45,7 +45,7 @@ def main() -> int:
             ]
         },
     )
-    print("Disposable S3 bucket versioning and staging lifecycle configured.")
+    print("Staging lifecycle configured on the active bucket; versioning enabled only on the recovery bucket.")
     return 0
 
 
