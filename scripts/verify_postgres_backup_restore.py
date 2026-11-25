@@ -71,7 +71,7 @@ def _grant_application_role(connection) -> None:
     connection.execute("GRANT USAGE ON SCHEMA public TO voxpipe_app")
     connection.execute(
         "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, "
-        "ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
+        "ingestion_jobs, ingestion_upload_leases, ingestion_audit_events, ingestion_worker_heartbeats TO voxpipe_app"
     )
     connection.execute(
         "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, "
