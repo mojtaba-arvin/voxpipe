@@ -23,6 +23,7 @@ jobs:
     env:
       VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/voxpipe_test
       VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test
+      PYTHONPATH: src
     services:
       postgres:
         image: pgvector/pgvector:0.8.7-pg16-bookworm
