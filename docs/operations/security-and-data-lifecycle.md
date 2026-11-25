@@ -71,7 +71,7 @@ Reconciliation expires stale created/receiving sessions only when their session 
 Run per tenant with:
 PYTHONPATH=src python scripts/reconcile_ingestion.py --tenant-id <UUID>
 
-Required environment: VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, VOXPIPE_OBJECT_STORE_ROOT. API and worker must use the same private staging and object-store volumes. The operation is destructive but idempotent; it should be scheduled only after confirming the deployment's retention setting and backup policy.
+Required environment: VOXPIPE_DATABASE_DSN and VOXPIPE_STAGING_ROOT. With the default local backend, also set VOXPIPE_OBJECT_STORE_ROOT and ensure API/worker share the private staging and object-store volumes. With VOXPIPE_STORAGE_BACKEND=s3_compatible, configure the S3 variables in the storage architecture guide; staging must still be shared between the Go upload API and worker. The operation is destructive but idempotent; schedule it only after confirming retention and backup policy.
 
 
 ## API identity and abuse controls
