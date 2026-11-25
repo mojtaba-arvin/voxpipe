@@ -18,8 +18,7 @@ CREATE TABLE ingestion_worker_heartbeats (
 );
 
 CREATE INDEX idx_ingestion_worker_heartbeats_tenant_seen
-    ON ingestion_worker_heartbeats (tenant_id, heartbeat_at DESC)
-    WHERE state <> 'stopped';
+    ON ingestion_worker_heartbeats (tenant_id, heartbeat_at DESC);
 
 ALTER TABLE ingestion_worker_heartbeats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingestion_worker_heartbeats FORCE ROW LEVEL SECURITY;
