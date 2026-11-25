@@ -25,8 +25,8 @@
 3. Run Python and Go validation independently.
 4. For a bad merged update, revert through a new PR and rerun the same gates; never rewrite shared history.
 5. The supervised worker treats SIGTERM and SIGINT as safe-stop requests and exits its polling loop cleanly.
-5. Record the advisory, affected versions, fix version and verification run in the PR.
+6. Record the advisory, affected versions, fix version and verification run in the PR.
 
 ## Limits
 
-This is bounded dependency/security automation, not a general autonomous coding agent. Automatic issue triage, patch generation, human-approval orchestration and canary rollback are not enabled. Keep those tasks human-controlled until a permission model, audit trail, budget and stop/rollback behavior are tested.
+This is bounded dependency/security automation, not a general autonomous coding agent. General autonomous issue triage, patch generation and automatic canary rollback are not enabled. Durable workflow human-approval gates are implemented and tested, but they do not authorize arbitrary code changes or production deployment.
