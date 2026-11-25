@@ -78,11 +78,14 @@ def main() -> int:
         if candidate is rule:
             continue
         if candidate.get("Status") == "Enabled" and candidate.get("Expiration") and (
-            prefix == "" or prefix.startswith("tenant/")
+            prefix == "" or prefix.startswith("tenant")
         ):
             raise RuntimeError("lifecycle policy must not expire all objects or durable tenant objects")
 
-    print(f"S3 staging lifecycle verified: {configured_days} days (minimum {minimum_days}); active bucket unversioned, recovery bucket versioned.")
+    print(
+        f"S3 staging lifecycle verified: {configured_days} days "
+        f"(minimum {minimum_days}); active bucket unversioned, recovery bucket versioned."
+    )
     return 0
 
 
