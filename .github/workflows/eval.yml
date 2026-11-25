@@ -14,7 +14,12 @@ on:
         type: boolean
         default: true
       run_eval_47:
-        description: "Run Group C speech evaluation"
+        description: "Run Group C Qwen3-ASR CPU feasibility smoke"
+        required: false
+        type: boolean
+        default: true
+      run_tts_overlap:
+        description: "Run synthetic Persian TTS overlap fixtures"
         required: false
         type: boolean
         default: true
@@ -222,10 +227,65 @@ jobs:
           export COMMENT_BODY
           bash scripts/comment_issue.sh
 
+
+  tts-overlap:
+    name: Synthetic Persian TTS overlap fixtures
+    if: ${{ inputs.run_tts_overlap }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Install local TTS evaluation dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-eval-tts.txt
+      - name: Generate 50 Persian synthetic overlap fixtures
+        run: python -m eval.issue47.synthetic_overlap --count 50 --seed 20261125
+      - name: Upload audio-free overlap annotations
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: synthetic-overlap-annotations
+          path: |
+            eval/artifacts/issue47/overlap_annotations.jsonl
+            eval/artifacts/issue47/overlap_manifest.json
+          if-no-files-found: error
+      - name: Disclose synthetic overlap results on issue 179
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: "179"
+        run: |
+          COMMENT_BODY="$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("eval/artifacts/issue47/overlap_manifest.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Synthetic Persian TTS overlap fixtures",
+              "",
+              f"- Conversations / overlaps: {result['conversation_count']} / {result['overlap_count']}",
+              f"- TTS runtime: {result['tts_runtime']} {result['tts_runtime_version']}",
+              f"- Voice variants: {result['voice_models']}",
+              f"- Mean overlap: {result['mean_overlap_seconds']:.3f}s",
+              f"- Leading pause / background noise SNR: {result['leading_silence_seconds']:.2f}s / {result['background_noise_snr_db']:.1f} dB",
+              f"- Mixed audio generated: {result['audio_files_generated']} temporary files",
+              "",
+              "Only synthetic timing annotations and aggregate metadata are uploaded. WAVs and transcript text are not persisted.",
+              "This validates synthetic overlap plumbing only; it is not natural-speech or distinct-speaker diarization evidence.",
+          ]
+          print("\n".join(lines))
+          PY
+          )"
+          export COMMENT_BODY
+          bash scripts/comment_issue.sh
+
   post-results:
     name: Aggregate evaluation outcomes
     if: ${{ always() }}
-    needs: [eval-32, eval-48, eval-47]
+    needs: [eval-32, eval-48, eval-47, tts-overlap]
     runs-on: ubuntu-latest
     steps:
       - name: Publish truthful group status summary
@@ -233,6 +293,7 @@ jobs:
           GROUP_A: ${{ needs['eval-32'].result }}
           GROUP_B: ${{ needs['eval-48'].result }}
           GROUP_C: ${{ needs['eval-47'].result }}
+          TTS_OVERLAP: ${{ needs['tts-overlap'].result }}
         run: |
           {
             echo "## VoxPipe silver evaluation baseline"
@@ -241,7 +302,8 @@ jobs:
             echo "|---|---|"
             echo "| Extraction (#32) | ${GROUP_A} |"
             echo "| Retrieval (#48) | ${GROUP_B} |"
-            echo "| Speech (#47) | ${GROUP_C} |"
+            echo "| Speech CPU smoke (#166) | ${GROUP_C} |"
+            echo "| Synthetic overlap (#179) | ${TTS_OVERLAP} |"
             echo
             echo "These are automated silver-baseline results, not human gold or production-quality claims."
           } >> "$GITHUB_STEP_SUMMARY"
