@@ -47,7 +47,7 @@ Deletion is one operation in a larger asset lifecycle. The application layer mus
 - `VOXPIPE_STORAGE_BACKEND=local` is the default and preserves the guided quickstart.
 - `VOXPIPE_STORAGE_BACKEND=s3_compatible` selects the S3 API adapter and fails closed if configuration or the optional SDK is missing.
 - Install the optional SDK with `pip install -r requirements-s3.txt`.
-- Configure `VOXPIPE_S3_BUCKET`, `VOXPIPE_S3_REGION`, and `VOXPIPE_S3_SERVER_SIDE_ENCRYPTION` (`AES256` or `aws:kms`). KMS mode also requires `VOXPIPE_S3_KMS_KEY_ID`.
+- Configure `VOXPIPE_S3_BUCKET`, `VOXPIPE_S3_REGION`, and `VOXPIPE_S3_SERVER_SIDE_ENCRYPTION` (`AES256` or `aws:kms`). KMS mode also requires `VOXPIPE_S3_KMS_KEY_ID`; configure the canonical key ID/ARN returned by the provider (not an alias), which the adapter verifies on reads.
 - `VOXPIPE_S3_ENDPOINT_URL` is optional for standard AWS S3 and required for most self-hosted S3-compatible services. Non-loopback endpoints must use HTTPS. Path-style addressing is the default; `VOXPIPE_S3_ADDRESSING_STYLE` may be `path` or `virtual`.
 - Credentials are supplied as a pair through `VOXPIPE_S3_ACCESS_KEY_ID` and `VOXPIPE_S3_SECRET_ACCESS_KEY`, or obtained from the SDK's default credential chain (for example, an AWS workload role). Never embed credentials in the endpoint URL.
 - Connection/read timeouts and SDK retry attempts are bounded by `VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS`, `VOXPIPE_S3_READ_TIMEOUT_SECONDS`, and `VOXPIPE_S3_MAX_ATTEMPTS`.
