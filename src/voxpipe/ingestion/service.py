@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 
 from voxpipe.media.probe import FFprobeMediaInspector, MediaInspectionError, MediaMetadata
 from voxpipe.media.validation import FFmpegDecodeValidator
-from voxpipe.storage.ports import ObjectStoragePort, StorageError, StorageIntegrityError
+from voxpipe.storage.ports import ObjectNotFoundError, ObjectStoragePort, StorageError, StorageIntegrityError
 from voxpipe.ingestion.repository import IngestionRepositoryConflict, IngestionRepositoryPort
 
 
@@ -432,7 +432,7 @@ class IngestionService:
             raise StagedFileMissingError("staged media metadata is invalid")
         try:
             stored = self._object_store.head(reference)
-        except Exception:
+        except ObjectNotFoundError:
             raise StagedFileMissingError("staged media is not available") from None
         if stored.size_bytes != expected_size or stored.sha256 != expected_sha256:
             raise MediaInspectionError(
