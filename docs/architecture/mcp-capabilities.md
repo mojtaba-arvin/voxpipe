@@ -644,6 +644,7 @@ Output schema:
 
 Stable errors:
 - INVALID_RETRIEVAL_REQUEST; retryable: false
+- RETRIEVAL_INDEX_NOT_READY; retryable: false
 - RETRIEVAL_NOT_CONFIGURED; retryable: false
 - RETRIEVAL_SERVICE_UNAVAILABLE; retryable: true
 - UNAUTHENTICATED; retryable: false

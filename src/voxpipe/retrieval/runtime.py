@@ -13,17 +13,23 @@ from voxpipe.retrieval import (
 )
 
 
+class RetrievalIndexNotReady(RuntimeError):
+    """The tenant has no segment index for the configured embedding model version."""
+
+
 class LocalHybridRetrievalRuntime:
     def __init__(
-        self, *, database_dsn: str, model_path: str, model: str, model_version: str,
+        self, *, database_dsn: str, model_path: str, model: str, model_version: str, dimensions: int,
         query_prefix: str = "", document_prefix: str = "",
     ) -> None:
+        if dimensions != 384:
+            raise ValueError("the transcript embedding index contract requires exactly 384 dimensions")
         self.model = model
         self._model_lock = RLock()
         self.model_version = model_version
         self.repository = PostgresIngestionRepository(database_dsn)
         self.embeddings = LocalSentenceTransformerEmbeddingAdapter(
-            model_path, model=model, model_version=model_version, dimensions=384,
+            model_path, model=model, model_version=model_version, dimensions=dimensions,
             device="cpu", query_prefix=query_prefix, document_prefix=document_prefix,
         )
         self.semantic = PostgresSemanticSearchAdapter(
@@ -85,6 +91,8 @@ class LocalHybridRetrievalRuntime:
             start_ms=request.get("start_ms"),
             end_ms=request.get("end_ms"),
         )
+        if not self.semantic.has_indexed_segments(tenant_id):
+            raise RetrievalIndexNotReady("no transcript segments are indexed for the configured model version")
         with self._model_lock:
             hits = self.hybrid.search(
                 request["query"], filters=filters, limit=request.get("limit", 20),

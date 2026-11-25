@@ -8,7 +8,7 @@ import re
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime
+from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime, RetrievalIndexNotReady
 
 MAX_BODY_BYTES = 64 * 1024
 
@@ -80,15 +80,22 @@ def build_runtime():
         return None
     if not model or not version:
         raise SystemExit("embedding model and immutable model version must be configured together")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", version):
+        raise SystemExit("embedding model version must be sha256:<64 lowercase hex characters>")
+    model_path = os.environ.get("VOXPIPE_EMBEDDING_MODEL_PATH", "").strip()
+    dimensions = os.environ.get("VOXPIPE_EMBEDDING_DIMENSIONS", "").strip()
+    if not model_path or not os.path.isabs(model_path) or dimensions != "384":
+        raise SystemExit("an absolute VOXPIPE_EMBEDDING_MODEL_PATH and VOXPIPE_EMBEDDING_DIMENSIONS=384 are required")
     dsn = os.environ.get("VOXPIPE_RETRIEVAL_DATABASE_DSN", "").strip()
     token = os.environ.get("VOXPIPE_RETRIEVAL_INTERNAL_TOKEN", "").strip()
     if not dsn or len(token) < 32:
         raise SystemExit("retrieval database DSN and a 32-character internal token are required")
     return LocalHybridRetrievalRuntime(
         database_dsn=dsn,
-        model_path=os.environ.get("VOXPIPE_EMBEDDING_MODEL_PATH", "/models"),
+        model_path=model_path,
         model=model,
         model_version=version,
+        dimensions=int(dimensions),
         query_prefix=os.environ.get("VOXPIPE_EMBEDDING_QUERY_PREFIX", ""),
         document_prefix=os.environ.get("VOXPIPE_EMBEDDING_DOCUMENT_PREFIX", ""),
     )
@@ -148,6 +155,8 @@ class RetrievalHandler(BaseHTTPRequestHandler):
             self._respond(200, operation())
         except LookupError:
             self._respond(404, {"code": "TRANSCRIPT_NOT_FOUND"})
+        except RetrievalIndexNotReady:
+            self._respond(503, {"code": "RETRIEVAL_INDEX_NOT_READY"})
         except Exception:
             self._respond(500, {"code": "RETRIEVAL_SERVICE_ERROR"})
 

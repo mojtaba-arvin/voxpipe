@@ -256,7 +256,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '503':
-          description: Local embedding model is not configured
+          description: Local embedding model is not configured or the authenticated tenant has no index for the configured model version
           content:
             application/json:
               schema:

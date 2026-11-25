@@ -146,5 +146,17 @@ class PgvectorIntegrationTests(unittest.TestCase):
         self.assertEqual(count, 0)
 
 
+    def test_index_readiness_is_tenant_and_model_version_scoped(self):
+        self.assertFalse(self.adapter.has_indexed_segments(self.tenant))
+        self.adapter.store_embedding(self.tenant, self.candidate_a, self.vector(1, 0))
+        self.assertTrue(self.adapter.has_indexed_segments(self.tenant))
+        other_tenant = str(uuid4())
+        self.assertFalse(self.adapter.has_indexed_segments(other_tenant))
+        other_version = PostgresSemanticSearchAdapter(
+            APP_DSN, model=MODEL, model_version="different-immutable-version"
+        )
+        self.assertFalse(other_version.has_indexed_segments(self.tenant))
+
+
 if __name__ == "__main__":
     unittest.main()
