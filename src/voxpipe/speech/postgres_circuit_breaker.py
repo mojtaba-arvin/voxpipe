@@ -173,14 +173,15 @@ class PostgresProviderCircuitBreaker:
     def snapshot(self) -> dict[str, dict[str, int | str | bool | None]]:
         with self._connection() as connection:
             rows = connection.execute(
-                "SELECT provider, consecutive_failures, opened_at, probe_token "
+                "SELECT provider, consecutive_failures, opened_at, "
+                "(probe_token IS NOT NULL AND probe_expires_at > now()) "
                 "FROM provider_circuit_breakers ORDER BY provider"
             ).fetchall()
         return {
             provider: {
                 "consecutive_failures": failures,
                 "opened_at": opened_at.isoformat() if opened_at is not None else None,
-                "probe_in_flight": probe_token is not None,
+                "probe_in_flight": probe_in_flight,
             }
-            for provider, failures, opened_at, probe_token in rows
+            for provider, failures, opened_at, probe_in_flight in rows
         }
