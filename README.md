@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) and VP-0039 (guided local quickstart) are complete. VP-0040 (hybrid retrieval API/MCP) is the next product milestone. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository status:** VP-0001–VP-0037 (engineering foundation) and VP-0038–VP-0041 (CLI, guided quickstart, hybrid retrieval API/MCP, and tenant-scoped operational view) are complete for repository scope. Phase 8 is focused on operational readiness; VP-0042 adds API liveness/readiness probes and Compose startup gating. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
@@ -199,6 +199,8 @@ python3 scripts/dev_quickstart.py up
 This builds and starts PostgreSQL 16, the Go API and Python worker, applies migrations, creates a random local tenant/token and ingests a generated WAV tone through the CLI. The API binds to loopback only; PostgreSQL is not exposed to the host. The tone verifies ingestion and media validation only—it is not speech and does not produce a transcript. No hosted provider or model download is used.
 
 Stop containers while preserving local data with `python3 scripts/dev_quickstart.py down`. See [the full quickstart and its security boundaries](docs/architecture/local-quickstart.md).
+
+The API exposes unauthenticated, content-free `/health/live` and `/health/ready` probes for orchestration. Readiness checks PostgreSQL and the core ingestion schema; it does not prove worker progress or production SLOs. See [health-check semantics](docs/operations/health-checks.md).
 
 ## Development workflow
 
