@@ -7,6 +7,7 @@ import os
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 
 def main() -> int:
@@ -26,7 +27,10 @@ def main() -> int:
     recovery_bucket = env["VOXPIPE_S3_RECOVERY_BUCKET"]
     try:
         client.head_bucket(Bucket=recovery_bucket)
-    except Exception:
+    except ClientError as error:
+        code = error.response.get("Error", {}).get("Code")
+        if code not in {"404", "NoSuchBucket", "NotFound"}:
+            raise
         client.create_bucket(Bucket=recovery_bucket)
     client.put_bucket_versioning(
         Bucket=recovery_bucket,
