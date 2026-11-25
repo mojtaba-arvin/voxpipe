@@ -136,8 +136,16 @@ def build_annotation(
     duration_customer: float,
     duration_agent: float,
     sample_rate: int = SAMPLE_RATE,
+    delay_seconds: float | None = None,
 ) -> dict[str, Any]:
-    delay, overlap_end, overlap_duration = calculate_overlap_window(duration_customer, duration_agent)
+    if delay_seconds is None:
+        delay, overlap_end, overlap_duration = calculate_overlap_window(duration_customer, duration_agent)
+    else:
+        delay = round(delay_seconds, 6)
+        overlap_end = round(min(duration_customer, delay + duration_agent), 6)
+        overlap_duration = round(overlap_end - delay, 6)
+        if delay < 0 or overlap_duration < 0.2:
+            raise ValueError("actual mixed audio does not contain a meaningful overlap")
     result = {
         "conversation_id": conversation["conversation_id"],
         "scenario": conversation["scenario"],
@@ -220,12 +228,15 @@ def run_synthesis(
             customer_duration = len(customer_samples) / customer_rate
             agent_duration = len(agent_samples) / agent_rate
             delay, _, overlap_duration = calculate_overlap_window(customer_duration, agent_duration)
-            mixed, _ = mix_samples(customer_samples, agent_samples, customer_rate, delay)
+            mixed, delay_samples = mix_samples(customer_samples, agent_samples, customer_rate, delay)
+            actual_delay = delay_samples / customer_rate
             mix_path = audio_dir / f"{record['conversation_id']}.wav"
             sf.write(mix_path, np.asarray(mixed, dtype=np.float32), customer_rate, subtype="PCM_16")
             if not mix_path.is_file() or mix_path.stat().st_size <= 44:
                 raise RuntimeError(f"{record['conversation_id']}: mixed WAV was not written")
-            annotations.append(build_annotation(record, customer_duration, agent_duration, customer_rate))
+            annotations.append(
+                build_annotation(record, customer_duration, agent_duration, customer_rate, actual_delay)
+            )
             overlap_seconds.append(overlap_duration)
             mixed_audio_seconds += len(mixed) / customer_rate
 
