@@ -15,7 +15,10 @@ from voxpipe.retrieval.ports import Embedding, RetrievalFilters
 from voxpipe.retrieval.postgres import PostgresSemanticSearchAdapter
 
 ADMIN_DSN = os.environ.get("VOXPIPE_TEST_POSTGRES_ADMIN_DSN")
-APP_DSN = "postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test"
+APP_DSN = os.environ.get(
+    "VOXPIPE_TEST_POSTGRES_APP_DSN",
+    "postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test",
+  )
 MODEL = "test-multilingual-embedding"
 MODEL_VERSION = "test-v1"
 

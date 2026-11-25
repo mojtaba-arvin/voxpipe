@@ -21,18 +21,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/voxpipe_test
-      VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test
+      VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/voxpipe_python_test
+      VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_python_test
       PYTHONPATH: src
     services:
-      postgres:
+      postgres-python:
+        image: pgvector/pgvector:0.8.7-pg16-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: voxpipe_python_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d voxpipe_python_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      postgres-go:
         image: pgvector/pgvector:0.8.7-pg16-bookworm
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: voxpipe_test
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d voxpipe_test"
           --health-interval 10s
@@ -66,11 +79,18 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
           sudo apt-get update -o Acquire::Retries=2
           sudo apt-get install --no-install-recommends -y ffmpeg
-      - name: Prepare disposable PostgreSQL test database
-        run: python scripts/prepare_test_database.py
       - name: Run Python and PostgreSQL integration validation
         run: make check
+      - name: Prepare isolated Go PostgreSQL test database
+        env:
+          VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5433/voxpipe_test
+          VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5433/voxpipe_test
+          PYTHONPATH: src
+        run: python scripts/prepare_test_database.py
       - name: Run Go and PostgreSQL integration validation
+        env:
+          VOXPIPE_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@localhost:5433/voxpipe_test
+          VOXPIPE_TEST_POSTGRES_APP_DSN: postgresql://voxpipe_app:voxpipe_app@localhost:5433/voxpipe_test
         run: make go-check
       - name: Collect dependency inventories
         shell: bash
