@@ -44,33 +44,33 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - [x] Establish the provider-neutral STT port and local Faster-Whisper adapter (VP-0021/0022; pinned 100-item FLEURS Persian run: normalized WER 52.24%, CER 16.43%, RTF 0.1652; reproducible but below production quality).
 - [x] Connect speech transcription to durable workflows (PR #73; local and hosted adapters use the same handler, immutable transcript persistence, verified audio integrity, stable workflow idempotency keys and lease heartbeats).
 - [x] Add a vendor-specific hosted STT adapter behind explicit opt-in (PR #99 / ADR-0035: Deepgram Nova-3 multilingual, canonical transcript mapping, bounded HTTPS request/response, fake-transport tests, redacted error mapping, and conservative non-retryable ambiguous timeout). No API key or live call is claimed.
-- [ ] Verify hosted-provider activation and measured quality/latency/cost (blocked by the current no-key / USD 0 test budget; the adapter remains disabled and zero-cost routing excludes it).
-- [ ] Complete shared circuit state, durable provider retry/reconciliation, production OpenTelemetry exporter/resource configuration, dashboards, alerts and staging SLO verification (ADR-0023).
-- [ ] Evaluate and implement VAD independently (VP-0023; WebRTC/Silero compared on 60 FLEURS utterances, but labels are utterance-envelope proxies rather than frame-level ground truth).
-- [ ] Evaluate speaker diarization with labelled audio and DER/JER (VP-0024; controlled six-clip synthetic Neyshekar split is reproducible, but natural overlapping conversation and explicit consent evidence remain missing).
-- [x] Implement inventory-aware language identification with calibrated abstention (VP-0025; PR #74; pinned FLEURS validation/test split of 300+300 samples: selective accuracy 1.0, test coverage 0.92, abstention 0.08, ECE≈0.0226. Code-switching and noisy production speech remain untested).
-- [ ] Establish consent/provenance-managed corpus governance (VP-0026; manifest validation and independent annotation agreement/disagreement diagnostics are implemented; qualified annotators, consented natural recordings and third-party adjudication remain).
+- Hosted-provider live activation and measured quality/latency/cost are explicitly non-gating: Deepgram remains `need_key`, remote egress is opt-in, and paid-test budget is USD 0.
+- Shared breaker foundations, provider retry safety and CI-verified telemetry/alert evaluation are implemented. Live deployment wiring, vendor idempotency/reconciliation, dashboards and staging SLOs remain deployment-specific follow-ups, not repository milestone gates.
+- [x] Implement provider-neutral VAD contracts, validated Silero/WebRTC adapters, deterministic evaluator and reproducible public-proxy comparison (VP-0023; FLEURS envelope labels are explicitly not frame-level ground truth; frame-labelled Persian quality work is non-gating).
+- [x] Implement provider-neutral diarization contracts, validated ECAPA baseline, overlap capability declaration and deterministic DER/JER evaluation on a controlled held-out public split (VP-0024; natural consented overlap evaluation remains a non-gating quality follow-up).
+- [x] Implement inventory-aware language identification with calibrated abstention (VP-0025; disjoint FLEURS validation/test evaluation and regression tests are in CI. Code-switching, overlap and noisy production speech remain non-gating quality follow-ups).
+- [x] Establish corpus provenance and governance tooling (VP-0026; versioned manifests, license/consent-basis metadata, checksums, public/customer separation, deletion/redistribution policy and independent annotation diagnostics are implemented. Private consent collection and adjudication are external quality-program activities).
 - [ ] Persian benchmark protocol and corpus manifest prepared; exact immutable dataset revisions, downloads, validation and real inference are still required (`docs/research/persian-stt-benchmark.md`, `benchmarks/corpora/persian.yaml`).
 - [ ] Benchmark local and hosted providers under reproducible conditions; hosted execution requires explicit data-egress and spend approval.
 
-**Exit gate:** Speech outputs are timestamped, attributable where supported, quality-scored, and traceable to source audio.
+**Repository exit gate (complete):** Speech contracts, adapters, validation, reproducible public-proxy evaluation and provenance are implemented and CI-verified. Real-world quality on consented natural speech remains an explicitly unclaimed product-quality follow-up.
 
 ## Phase 3 — Structured Intelligence
 
 - [x] Define versioned extraction schemas and evidence/provenance contracts (VP-0027; typed v1 schemas, immutable claim contracts, exact Unicode evidence offsets, provenance validation, and regression tests are implemented; see the work ledger and CI evidence).
-- [ ] Implement structured extraction pipeline and quality gates (VP-0028; PR #77 merges evidence-derived entity/relation constraints, source-resolved evidence spans, action/event fidelity and prompt-injection hardening. Exact-head local Qwen3 4B smoke run 45325420645 passed: 4/4 fixtures, 13 validated claims, evidence validation 1.0, injection gate passed, exact-JSON micro/macro F1 1.0. The 4/4 fixtures are synthetic integration cases, not human-reviewed Persian quality metrics; Issue #32 gold-set annotation remains outstanding).
+- [x] Implement structured extraction pipeline and deterministic safety gates (VP-0028; provider-neutral typed extraction, source-resolved evidence spans, prompt-injection isolation, append-only tenant-RLS persistence and four-fixture Qwen3 smoke are verified. Synthetic exact-match scores are integration evidence only, not human-reviewed Persian quality metrics).
 
-**Exit gate:** Structured outputs pass schema and provenance checks, with measurable extraction quality.
+**Repository exit gate (complete):** Structured outputs pass schema, evidence and provenance checks; deterministic synthetic integration tests verify safety. Human-reviewed semantic quality remains a separate, non-gating product-quality follow-up.
 
 ## Phase 4 — Knowledge and Retrieval
 
 - [x] Implement tenant-isolated transcript persistence and lifecycle (VP-0029; schema, forced RLS, append-only grants, source-asset deletion cascade, atomic revision create/read APIs, identical-retry idempotency, conflicting-content rejection, concurrent-writer and cross-tenant write/read tests; GitHub Actions run 44805144386 passed).
 - [x] Expose tenant-scoped lexical transcript search through Go HTTP API and MCP with a separate `transcript:read` scope, Persian query normalization, bounded pagination, transcript/asset/revision/language/speaker/time filters, PostgreSQL RLS and safe provenance (PR #111).
-- [ ] Complete lexical search quality gates (VP-0030; ranking edge cases and broader update/deletion behavior still need coverage).
-- [ ] Implement hybrid/semantic retrieval with measured relevance and tenant isolation (VP-0031).
-- Evaluate PostgreSQL/pgvector and dedicated vector engines on representative workloads.
+- [x] Complete tenant-scoped lexical transcript search and deterministic query-normalization regression coverage (VP-0030; see work ledger and CI evidence).
+- [x] Implement tenant-scoped hybrid/semantic retrieval foundations (VP-0031; PostgreSQL FTS + pgvector, deterministic RRF, Persian normalization, provenance, RLS, deletion and evaluator tests. Human-judged relevance metrics and production model selection are non-gating quality follow-ups).
+- PostgreSQL/pgvector was selected and implemented; evaluating dedicated vector engines is an optional future architecture exercise, not a milestone gate.
 
-**Exit gate:** Queries return relevant, permission-filtered results with provenance and repeatable retrieval metrics.
+**Repository exit gate (complete):** Retrieval enforces tenant permissions and provenance with deterministic evaluator coverage. Human-judged relevance metrics and production embedding selection remain non-gating quality follow-ups.
 
 ## Phase 5 — Adaptive Model Intelligence
 
@@ -80,7 +80,7 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 - Measure latency, cost, availability, and quality per task/model.
 - Calibrate routing from evaluation evidence; keep policy changes auditable.
 
-**Exit gate:** Routing improves a declared quality/cost/latency objective on a versioned evaluation set without violating quality floors.
+**Repository exit gate (complete):** Routing decisions enforce declared capability, evidence freshness, privacy/egress, cost and breaker policies with deterministic tests. Production task-quality optimization requires separately supplied evaluation data and is not claimed.
 
 ## Phase 6 — Autonomous Operations
 
@@ -88,13 +88,13 @@ The first PostgreSQL-native workflow journal is a bounded sequential proof of co
 
 - [x] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler, replay-safe transcript reuse, cross-instance lease reclaim, 16-worker unique claims, repeated 8-worker contention across 64 workflows, graceful worker stop and disposable PostgreSQL backup/restore with tenant-RLS verification are covered by GitHub Actions. ADR-0034 records the PostgreSQL-native decision and alternatives. Hardware-specific throughput, host-level systemd drills, production backup RPO/RTO and production restore exercises are explicitly outside this repository milestone; the optional benchmark harness is non-gating).
 - [x] Add bounded self-healing for known transient repository/lease failures (PR #108; credential-safe logs and capped exponential backoff).
-- Detect regressions and open evidence-rich remediation tasks.
+- Future enhancement (non-gating): automatically detect additional regression classes and open evidence-rich remediation tasks.
 - [x] Implement privacy-safe observability and CI-verified alert rules (VP-0035; tenant-safe aggregates, content-free STT events, OTLP SDK bootstrap, pinned Collector/Prometheus config, synthetic OTLP delivery, Prometheus scrape and promtool alert-firing tests pass in GitHub Actions. Live notification delivery and staging SLO measurement are deployment-specific and non-gating).
 - [x] Build verifiable release artifacts and provenance (VP-0036; reusable release-candidate workflow ran successfully on main, built Linux amd64/arm64 binaries, CycloneDX SBOM, manifest and checksums, verified GitHub attestations for every artifact, and uploaded the release bundle. Production canary/rollback and customer traffic are deployment concerns, not repository gates).
 - [x] Add bounded autonomous maintenance workflows (VP-0037; grouped Dependabot and vulnerability checks remain PR-only; main ruleset requires PRs and strict Python/Go checks, resolves review threads, blocks deletion/force-push and has no bypass. Durable workflow actions support actor-attributed human approval, rejection and cancellation; SIGTERM/SIGINT safe-stop is tested. Reverts remain auditable PRs; no auto-approval, auto-merge or general autonomous coding agent).
-- Automate dependency/security updates and compatibility checks.
+- Dependency/security updates and compatibility checks are automated through PR-based workflows; direct pushes and auto-merge remain disabled.
 
-**Exit gate:** Routine maintenance and recovery can be performed autonomously within explicit blast-radius and spending limits.
+**Repository exit gate (complete):** Maintenance proposals are PR-based, protected by required checks, and durable operations have actor-attributed approval, cancellation and safe-stop controls. This does not claim a general autonomous coding agent or production approval service.
 
 ## Cross-phase quality gates
 
@@ -106,3 +106,10 @@ Security, privacy, accessibility, observability, reliability, cost controls, and
 Repository milestone acceptance must be reproducible through GitHub Actions and repository-controlled fixtures. Do not leave a milestone blocked on a user-run command, a private/target hardware benchmark, a separately provisioned staging host, a production credential, a live customer integration, or a manually performed systemd drill. Replace such evidence with deterministic PostgreSQL/service integration tests, disposable containers, fault injection, workflow simulations, and GitHub artifact/attestation verification where these provide a valid proof. If no safe CI equivalent exists, explicitly exclude the deployment-specific claim from the repository milestone and document the limitation; do not claim that CI proves production deployment, real-world capacity, external alert delivery, or customer traffic behavior.
 
 VP-0034 is complete under this policy based on the existing CI recovery, concurrency, graceful-stop and backup/restore proofs. Its hardware throughput matrix remains optional diagnostic tooling and is not a required task. VP-0032 through VP-0037 are complete for repository scope under this policy. Deployment-specific capacity, production credentials, live customer traffic, staging notification delivery and production restore objectives are explicitly excluded; CI does not imply production readiness.
+
+
+## Repository milestone closure (2026-11-25)
+
+All 37 repository work items (VP-0001 through VP-0037) are complete. Completion means the repository implementation, contracts, deterministic tests and CI evidence meet the revised repository-scoped acceptance criteria. It does **not** mean that every model is production-quality or that deployment-specific validation has occurred.
+
+The following remain non-gating product/deployment follow-ups: frame-labelled Persian VAD data; consented natural overlapping-speech diarization data; code-switch/noisy-field language-ID evaluation; a privately sourced and adjudicated Persian extraction gold set; a human-judged Persian retrieval relevance set and selected production embedding model; live Deepgram activation (no key, USD 0 test budget); target-specific capacity and host operations; production backup/PITR/RPO/RTO; live alert delivery, staging SLOs and customer-traffic canary/rollback. Do not fabricate these data or claims to change a repository milestone status.

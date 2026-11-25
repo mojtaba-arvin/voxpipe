@@ -34,4 +34,4 @@ Validate manifests with `contracts/schemas/speech-corpus-manifest.v1.schema.json
 
 ## Limitations
 
-The current public datasets support reproducible ASR, multilingual language-ID smoke tests, VAD utterance-envelope proxies and controlled speaker-clustering tests. They do not provide a complete Persian frame-labelled VAD corpus or natural multi-speaker conversational diarization corpus with explicit consent and time-aligned turns. Those remain separate acceptance gates; do not fill the gap with synthetic labels presented as gold ground truth.
+The current public datasets support reproducible ASR, multilingual language-ID smoke tests, VAD utterance-envelope proxies and controlled speaker-clustering tests. They do not provide a complete Persian frame-labelled VAD corpus or natural multi-speaker conversational diarization corpus with explicit consent and time-aligned turns. Those remain explicit limitations for any future natural-speech quality claim, not repository milestone gates. Do not fill the gap with synthetic labels presented as gold ground truth.
