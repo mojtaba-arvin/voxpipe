@@ -9,8 +9,7 @@
     "language",
     "source_kind",
     "split",
-    "utterances",
-    "scenario"
+    "utterances"
   ],
   "properties": {
     "conversation_id": {
@@ -151,7 +150,8 @@
       "then": {
         "required": [
           "seed",
-          "reference_slots"
+          "reference_slots",
+          "scenario"
         ]
       }
     }
