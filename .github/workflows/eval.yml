@@ -1,0 +1,79 @@
+name: Evaluation baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      comment_issue:
+        description: "Optional issue number for a one-off disclosure comment"
+        required: false
+        type: string
+      comment_body:
+        description: "Comment body; used only when comment_issue is provided"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: evaluation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  eval-32:
+    name: Group A — structured extraction (silver)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluation implementation pending
+        run: echo "Group A implementation is tracked by issues #168–#171."
+
+  eval-48:
+    name: Group B — retrieval (silver)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluation implementation pending
+        run: echo "Group B implementation is tracked by issues #172–#175."
+
+  eval-47:
+    name: Group C — speech (silver)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluation implementation pending
+        run: echo "Group C implementation is tracked by issues #176–#180."
+
+  post-results:
+    name: Aggregate evaluation outcomes
+    if: ${{ always() }}
+    needs: [eval-32, eval-48, eval-47]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish truthful group status summary
+        env:
+          GROUP_A: ${{ needs['eval-32'].result }}
+          GROUP_B: ${{ needs['eval-48'].result }}
+          GROUP_C: ${{ needs['eval-47'].result }}
+        run: |
+          {
+            echo "## VoxPipe silver evaluation baseline"
+            echo
+            echo "| Group | Result |"
+            echo "|---|---|"
+            echo "| Extraction (#32) | ${GROUP_A} |"
+            echo "| Retrieval (#48) | ${GROUP_B} |"
+            echo "| Speech (#47) | ${GROUP_C} |"
+            echo
+            echo "These are automated silver-baseline results, not human gold or production-quality claims."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post optional disclosure comment
+        if: ${{ inputs.comment_issue != '' && inputs.comment_body != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ inputs.comment_issue }}
+          COMMENT_BODY: ${{ inputs.comment_body }}
+        run: bash scripts/comment_issue.sh
