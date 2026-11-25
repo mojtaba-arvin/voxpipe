@@ -1183,7 +1183,7 @@
       "title": "Harden S3 deployment credentials, lifecycle and recovery",
       "phase": 8,
       "priority": 46,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0045"
       ],
@@ -1200,7 +1200,10 @@
       "evidence": [
         "2026-11-25: created issue #157 after VP-0045 proved separate-container API/worker operation. Product priority is now credential separation, lifecycle safety and recoverability before production S3 deployment claims.",
         "2026-11-25: PR #158 merged as 0ee0756fc67fea611eb59a62e43f2eca9381ff7c; exact-head CI run 45629633269 passed all seven jobs. The Go API now uses a staging-only credential pair or its own workload identity; the Python worker retains separate durable-object credentials. Disposable Silo provisioned distinct prefix-scoped identities and the E2E proved the API identity was denied read/write/delete access to durable tenant objects.",
-        "2026-11-25: continuing VP-0046 in PR #159 scope: content-free database/object-storage readiness, safe staging lifecycle validation against session/retry/recovery windows, and a separate versioned recovery bucket test. Active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions."
+        "2026-11-25: continuing VP-0046 in PR #159 scope: content-free database/object-storage readiness, safe staging lifecycle validation against session/retry/recovery windows, and a separate versioned recovery bucket test. Active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions.",
+        "2026-11-25: PR #159 merged as a22c7e65acf64bb12d235db180b2d5d5c5da4ad6. Exact-head CI run 45633115543 passed all seven jobs; post-merge main validation run 45633886907 also passed all seven jobs. Delivered content-free database/object-storage readiness, lifecycle expiry validation against session/retry/recovery limits, separate versioned recovery-bucket proof, and the S3 deployment/recovery runbook.",
+        "2026-11-25: PR #160 merged as 0c61824b0c1bd6f2618c5d7e32f4310c10916df1. Exact-head CI run 45634043287 passed all seven jobs. Fault injection verifies sanitized transient S3 read errors and retryable cleanup: failed deletion preserves staging bytes and does not mark cleanup complete; a later reconciliation removes staging while retaining the durable asset.",
+        "2026-11-25: post-merge main validation run 45641155682 passed all seven jobs on merge commit 0c61824b0c1bd6f2618c5d7e32f4310c10916df1. VP-0046 repository acceptance is complete. Production provider IAM correctness, durability, backup RPO/RTO, multi-region replication and customer-traffic capacity remain deployment-specific and are not claimed."
       ],
       "blocked_reason": null
     }
