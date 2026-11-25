@@ -296,9 +296,9 @@ jobs:
           mc_image=docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
           mc_host="http://$SILO_ROOT_ACCESS_KEY_ID:$SILO_ROOT_SECRET_ACCESS_KEY@127.0.0.1:9000"
           run_mc() {
-            docker run --rm --network host --entrypoint mc \\
-              -e "MC_HOST_local=$mc_host" \\
-              -v "$GITHUB_WORKSPACE/deploy/s3/policies:/policies:ro" \\
+            docker run --rm --network host --entrypoint mc \
+              -e "MC_HOST_local=$mc_host" \
+              -v "$GITHUB_WORKSPACE/deploy/s3/policies:/policies:ro" \
               "$mc_image" "$@"
           }
           run_mc admin policy create local voxpipe-api-staging /policies/api-staging.json
