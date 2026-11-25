@@ -45,7 +45,8 @@ type LocalRetrievalClient struct {
 }
 
 func NewLocalRetrievalClient(baseURL, token string) (*LocalRetrievalClient, error) {
-	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	baseURL = strings.TrimSpace(baseURL)
+	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
 		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
 		return nil, fmt.Errorf("retrieval service URL must be an absolute HTTP(S) origin without credentials or query")
