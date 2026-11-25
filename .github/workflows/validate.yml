@@ -101,6 +101,8 @@ jobs:
         with:
           go-version: '1.26.11'
           cache: true
+      - name: Lint the evaluation workflow
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/eval.yml
       - name: Validate Go API, formatting, vet, race safety, and PostgreSQL integration
         run: make go-check
 
