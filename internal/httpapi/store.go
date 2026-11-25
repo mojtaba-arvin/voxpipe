@@ -30,6 +30,7 @@ type TranscriptSearchFilters struct {
 }
 
 type Store interface {
+	Ready(context.Context) error
 	CreateSession(context.Context, string, string, map[string]any, TenantLimits) (map[string]any, bool, error)
 	GetSession(context.Context, string, string) (map[string]any, error)
 	UpdateSession(context.Context, string, string, string, map[string]any) error
@@ -55,6 +56,19 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 	return &PostgresStore{pool: pool}, nil
 }
 func (s *PostgresStore) Close() { s.pool.Close() }
+
+// Ready verifies PostgreSQL connectivity and the core schema required by the API.
+// Optional capabilities such as hybrid retrieval are checked by their own endpoints.
+func (s *PostgresStore) Ready(ctx context.Context) error {
+	if err := s.pool.Ping(ctx); err != nil { return err }
+	var schemaReady bool
+	if err := s.pool.QueryRow(ctx, `
+		SELECT to_regclass('public.ingestion_sessions') IS NOT NULL
+		   AND to_regclass('public.ingestion_jobs') IS NOT NULL
+	`).Scan(&schemaReady); err != nil { return err }
+	if !schemaReady { return fmt.Errorf("required ingestion schema is not installed") }
+	return nil
+}
 
 func (s *PostgresStore) beginTenant(ctx context.Context, tenantID string) (pgx.Tx, error) {
 	if !isUUID(tenantID) { return nil, fmt.Errorf("tenant id must be a UUID") }
