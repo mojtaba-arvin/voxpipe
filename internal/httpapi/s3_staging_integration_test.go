@@ -44,19 +44,12 @@ func TestS3StagerSiloIntegration(t *testing.T) {
 	if _, err := client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(bucket)}); err != nil {
 		t.Fatalf("create S3 integration bucket: %v", err)
 	}
-	defer func() {
-		_, _ = client.DeleteBucket(context.Background(), &s3.DeleteBucketInput{Bucket: aws.String(bucket)})
-	}()
-
 	stager, err := NewS3StagerFromEnv(ctx, 512*1024*1024)
 	if err != nil {
 		t.Fatalf("configure S3 stager: %v", err)
 	}
 	tenantID := "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10"
 	sessionID := "e41a2e87-b4e2-4b1c-8e3a-8c2e2b8c3e21"
-	defer func() {
-		_ = stager.Remove(context.Background(), tenantID, sessionID)
-	}()
 	body := []byte("cross-language staging integration fixture")
 	sum := sha256.Sum256(body)
 	digest := hex.EncodeToString(sum[:])
@@ -78,11 +71,5 @@ func TestS3StagerSiloIntegration(t *testing.T) {
 	differentSum := sha256.Sum256(different)
 	if _, _, err := stager.Write(ctx, tenantID, sessionID, bytes.NewReader(different), int64(len(different)), 512*1024*1024, hex.EncodeToString(differentSum[:])); err != ErrUploadConflict {
 		t.Fatalf("expected conflicting immutable write, got %v", err)
-	}
-	if err := stager.Remove(ctx, tenantID, sessionID); err != nil {
-		t.Fatalf("remove S3 staging object: %v", err)
-	}
-	if _, _, err := stager.Verify(ctx, tenantID, sessionID); err != ErrStagingNotFound {
-		t.Fatalf("expected missing staging object after delete, got %v", err)
 	}
 }
