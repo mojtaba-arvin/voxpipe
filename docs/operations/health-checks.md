@@ -10,6 +10,8 @@ The API exposes three unauthenticated, content-free endpoints:
 
 The readiness checks share a two-second deadline and run independently. They do not return DSNs, database errors, schema names, bucket names, object keys, tenant data, or credentials. Optional subsystems such as hybrid retrieval are not part of core API readiness: retrieval remains independently fail-closed and reports its own configuration/index errors through the retrieval contract.
 
+For local staging, the API creates, syncs, reads and removes a small private probe file under the configured staging root; a read-only or unavailable staging volume therefore fails readiness.
+
 For S3-compatible staging, the API verifies a reserved, content-free probe object under the staging namespace. It creates the probe if it is missing (for example, after lifecycle expiry) and verifies its checksum on subsequent checks. The API identity needs only its staging-prefix permissions; no bucket-wide listing permission is required. The probe is not associated with an ingestion session and is never returned by the API.
 
 These endpoints are intended for container/orchestrator probes and must not be used as customer-facing service guarantees. They do not assert worker progress, queue drain time, model availability, SLO compliance, or production capacity.
