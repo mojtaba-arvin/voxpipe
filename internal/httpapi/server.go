@@ -223,9 +223,14 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
-	if err != nil { writeStoreError(w, err); return }
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
 	stagingBackend, _ := session["staging_backend"].(string)
-	if stagingBackend == "" { stagingBackend = "local" }
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
 	if stagingBackend != s.stager.Backend() {
 		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
 		return
@@ -323,7 +328,9 @@ func (s *Server) finalizeIngestion(w http.ResponseWriter, r *http.Request) {
 	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
 	if err != nil { writeStoreError(w, err); return }
 	stagingBackend, _ := session["staging_backend"].(string)
-	if stagingBackend == "" { stagingBackend = "local" }
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
 	if stagingBackend != s.stager.Backend() {
 		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
 		return
@@ -397,7 +404,9 @@ func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stagingBackend, _ := session["staging_backend"].(string)
-	if stagingBackend == "" { stagingBackend = "local" }
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
 	// The store returns the state observed while holding the session row lock.
 	// This prevents deleting a staging object if finalization won the race.
 	priorState, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID)
@@ -646,7 +655,9 @@ func sameCreateRequest(session, upload map[string]any, request CreateIngestionRe
 	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
 	contentType, _ := upload["content_type_hint"].(string)
 	storedBackend, _ := session["staging_backend"].(string)
-	if storedBackend == "" { storedBackend = "local" }
+	if storedBackend == "" {
+		storedBackend = "local"
+	}
 	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
 		digest == strings.ToLower(request.ExpectedSHA256) &&
 		string(sourceBytes) == string(requestSourceBytes) &&
