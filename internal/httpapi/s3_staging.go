@@ -75,11 +75,11 @@ func NewS3Stager(
 		return nil, fmt.Errorf("S3 server-side encryption must be explicitly AES256 or aws:kms")
 	}
 	return &S3Stager{
-		client:     client,
-		bucket:     strings.TrimSpace(bucket),
-		maxSize:    maxSize,
-		encryption: algorithm,
-		kmsKeyID:   strings.TrimSpace(kmsKeyID),
+		client:      client,
+		bucket:      strings.TrimSpace(bucket),
+		maxSize:     maxSize,
+		encryption:  algorithm,
+		kmsKeyID:    strings.TrimSpace(kmsKeyID),
 		readTimeout: 60 * time.Second,
 	}, nil
 }
