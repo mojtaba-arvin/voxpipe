@@ -136,3 +136,13 @@ VP-0038 through VP-0041 are complete for repository scope:
 - VP-0041 tenant-scoped operational summary API/CLI: PR #144, merge commit `f353875`.
 
 Completion is backed by exact-head CI and post-merge CI. It does not establish production deployment readiness, external alert delivery, a production STT provider, or human-validated Persian quality. The remaining external evidence gates are issues #32 (adjudicated Persian extraction gold set), #47 (consented natural-conversation speech corpus), and #48 (human-judged retrieval relevance). Do not fabricate evidence or close those issues without the required consented data and human adjudication.
+
+## Phase 8 — Operational Readiness
+
+**Goal:** Make runtime dependencies and failure states observable to deployment tooling without confusing repository evidence with production proof.
+
+- [ ] Add unauthenticated, content-free API liveness/readiness probes; verify PostgreSQL connectivity and core schema; wire an image healthcheck and gate local worker startup on API readiness (VP-0042; implementation and tests are in progress).
+
+**Operational boundary:** API readiness does not prove worker progress, queue freshness, retrieval model availability, SLO compliance, production storage durability, backup RPO/RTO, or customer-traffic capacity. Worker heartbeats and alert delivery remain separate milestones. Local filesystem object storage remains single-node; production object storage and deployment-specific retention/backup policy must be selected and tested before multi-node production use.
+
+**Next product priority:** VP-0043 — worker liveness and progress heartbeat, tied to queue claim/lease outcomes and surfaced through privacy-safe aggregate operations. It must distinguish a live-but-idle worker from a stuck worker, avoid tenant/media labels, and never expose customer content.
