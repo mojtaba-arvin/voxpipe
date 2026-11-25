@@ -4,6 +4,7 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -96,6 +97,15 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: dist/*
+      - name: Verify artifact attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for artifact in dist/*; do
+            gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" --format json >/dev/null
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: voxpipe-release-candidate

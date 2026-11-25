@@ -1,0 +1,17 @@
+name: One-shot release candidate proof
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-candidate:
+    if: contains(github.event.head_commit.message, '[release-proof]')
+    uses: ./.github/workflows/release-candidate.yml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
