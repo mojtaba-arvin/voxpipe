@@ -986,7 +986,7 @@
       "title": "Deliver a guided local API, worker and PostgreSQL quickstart",
       "phase": 7,
       "priority": 39,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0038"
       ],
@@ -1001,7 +1001,54 @@
       "evidence": [
         "2026-11-25: product gap confirmed: API/worker/PostgreSQL required manual migration, role and shared-filesystem setup; no first-party compose stack existed.",
         "2026-11-25: added Go API and Python worker container definitions, PostgreSQL/pgvector Compose topology, local-only database bootstrap with explicit voxpipe_dev and superuser guards, generated 0600 .env credentials and digest-only API auth, and a deterministic two-second WAV tone.",
-        "2026-11-25: documented ingestion-only semantics: the current durable worker validates and stores audio; this quickstart does not claim STT or transcript generation. Added unit coverage and a dedicated disposable GitHub Actions end-to-end job; exact-head verification pending."
+        "2026-11-25: documented ingestion-only semantics: the current durable worker validates and stores audio; this quickstart does not claim STT or transcript generation. Added unit coverage and a dedicated disposable GitHub Actions end-to-end job; exact-head verification pending.",
+        "2026-11-25: PR #142 merged as c9a91221606ff3fcc6c7f3686090aff1d2db498f. GitHub Actions run 45581360168 passed on exact PR head 2934cbad7c8d3f92d24b2214cffaf20e942e8edc: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime, OpenTelemetry Collector/Prometheus, PostgreSQL backup/restore, and Guided local quickstart end-to-end (Docker build, migrations, restricted app role, API+worker, generated WAV ingestion completed)."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0040",
+      "title": "Expose configured hybrid transcript retrieval through authenticated API and MCP",
+      "phase": 7,
+      "priority": 40,
+      "status": "planned",
+      "depends_on": [
+        "VP-0031",
+        "VP-0039"
+      ],
+      "acceptance_criteria": [
+        "Expose a versioned authenticated hybrid-search API and matching MCP tool; derive tenant identity only from verified API authentication and never accept a caller-supplied tenant ID.",
+        "Define and implement an idempotent indexing lifecycle for persisted transcript revisions using only a pre-provisioned local embedding model; bind each vector to immutable source text SHA-256, transcript revision, model and model version.",
+        "Require explicit deployment configuration for model path, identifier, immutable version and 384-dimensional contract; never download weights at runtime and never select a production model by default.",
+        "When embedding configuration or a matching indexed model version is absent, fail closed with a stable actionable error; do not silently substitute an unconfigured or remote provider.",
+        "Preserve forced tenant RLS, authenticated source/time/speaker filters, model-version isolation, Persian normalization, deterministic RRF, bounded inputs/results and safe provenance in both API and MCP paths.",
+        "Add unit, API, MCP and PostgreSQL/RLS integration tests with injected deterministic encoders; no model weights, external data egress or paid inference in CI.",
+        "Document operational provisioning, re-indexing/model migration, rollback and the fact that relevance quality remains unclaimed until human-judged Persian evaluation exists."
+      ],
+      "evidence": [
+        "2026-11-25 product sequencing: VP-0039 is complete; VP-0040 is next because hybrid retrieval is already implemented as Python ports/adapters but is not exposed through the authenticated Go API/MCP path.",
+        "Existing design evidence: docs/architecture/hybrid-retrieval.md; src/voxpipe/retrieval/{ports.py,hybrid.py,postgres.py,local_embeddings.py}; docs/architecture/mcp-capabilities.md. No production embedding model is selected; local model files must be provisioned out of band."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0041",
+      "title": "Add a privacy-safe operational view for ingestion and queue health",
+      "phase": 7,
+      "priority": 41,
+      "status": "planned",
+      "depends_on": [
+        "VP-0039"
+      ],
+      "acceptance_criteria": [
+        "Provide an authenticated operator view of ingestion totals, state counts, retry/dead-letter counts, processing failures and queue age without returning audio, transcript text, storage paths, tokens or raw error details.",
+        "Keep aggregation tenant-scoped and enforce a dedicated least-privilege read scope; never allow cross-tenant enumeration from an ordinary tenant credential.",
+        "Bound query windows, response sizes and database work; expose health as observed data with explicit freshness rather than inferred open/healthy status.",
+        "Add PostgreSQL integration tests for tenant isolation, role/scope enforcement, aggregate correctness and content redaction.",
+        "Document deployment wiring, access controls, limitations and alert/retention interactions."
+      ],
+      "evidence": [
+        "2026-11-25 product sequencing: schedule after VP-0040; operational visibility must use tenant-safe aggregates and never expose transcript/audio content."
       ],
       "blocked_reason": null
     }
