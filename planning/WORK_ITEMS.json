@@ -1023,14 +1023,17 @@
         "When embedding configuration or a matching indexed model version is absent, fail closed with a stable actionable error; do not silently substitute an unconfigured or remote provider.",
         "Preserve forced tenant RLS, authenticated source/time/speaker filters, model-version isolation, Persian normalization, deterministic RRF, bounded inputs/results and safe provenance in both API and MCP paths.",
         "Add unit, API, MCP and PostgreSQL/RLS integration tests with injected deterministic encoders; no model weights, external data egress or paid inference in CI.",
-        "Document operational provisioning, re-indexing/model migration, rollback and the fact that relevance quality remains unclaimed until human-judged Persian evaluation exists."
+        "Document operational provisioning, re-indexing/model migration, rollback and the fact that relevance quality remains unclaimed until human-judged Persian evaluation exists.",
+        "Do not trigger embedding inference automatically from ingestion; indexing is an explicit authenticated idempotent operation, preserving ingestion availability when retrieval is disabled."
       ],
       "evidence": [
         "2026-11-25 product sequencing: VP-0039 is complete; VP-0040 is next because hybrid retrieval is already implemented as Python ports/adapters but is not exposed through the authenticated Go API/MCP path.",
         "Existing design evidence: docs/architecture/hybrid-retrieval.md; src/voxpipe/retrieval/{ports.py,hybrid.py,postgres.py,local_embeddings.py}; docs/architecture/mcp-capabilities.md. No production embedding model is selected; local model files must be provisioned out of band.",
         "2026-11-25: implemented the Go API internal retrieval client and authenticated POST /v1/retrieval/hybrid-search (transcript:read) plus POST /v1/transcripts/{id}/index (transcript:index); static and OIDC scope allowlists updated.",
         "2026-11-25: added a private Python retrieval sidecar over the internal network, local-only pre-provisioned SentenceTransformer loading, 384-dim model/version metadata, batched idempotent transcript indexing (max 5000 segments, batches of 64), hybrid RRF search, and fail-closed RETRIEVAL_NOT_CONFIGURED behavior. Optional Compose profile is off by default and mounts model files read-only.",
-        "2026-11-25: added MCP 1.2.0 search_hybrid_transcripts and index_transcript tools, OpenAPI 1.2.0 request/response contracts, ADR-0040, and unit/API/MCP tests. Exact-head CI and security review pending."
+        "2026-11-25: added MCP 1.2.0 search_hybrid_transcripts and index_transcript tools, OpenAPI 1.2.0 request/response contracts, ADR-0040, and unit/API/MCP tests. Exact-head CI and security review pending.",
+        "2026-11-25: stacked hardening PR #145 merged into the VP-0040 feature branch as d0e9235 after exact-head CI run 45588526622 passed all six jobs. Added tenant/model-version-scoped index readiness under RLS and stable 503 RETRIEVAL_INDEX_NOT_READY; hybrid search no longer returns lexical-only hits as hybrid when no matching vectors exist.",
+        "2026-11-25 product decision: indexing is explicit through the authenticated transcript:index API/MCP operation, not automatic during transcript persistence. This keeps ingestion independent of optional model provisioning and prevents hidden embedding inference/compute. Model version must be sha256:<64 lowercase hex> and dimensions must be explicitly 384."
       ],
       "blocked_reason": null
     },

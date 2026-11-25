@@ -18,14 +18,15 @@ Embedding inference is a Python capability in the current repository. Moving mod
 4. Use only a pre-provisioned local model directory, mounted read-only. Model identifier, immutable version and the 384-dimensional contract must be explicit. No model is selected by default and runtime weight downloads are forbidden.
 5. Expose hybrid search under transcript:read and idempotent transcript indexing under a dedicated transcript:index scope.
 6. Reuse existing source-text SHA binding, model/version isolation, forced tenant RLS, Persian normalization and deterministic RRF.
-7. If the local model service is not configured, hybrid search/indexing fails closed with a stable RETRIEVAL_NOT_CONFIGURED response. There is no silent lexical-only or hosted-provider fallback on the hybrid endpoint.
+7. If the local model service is not configured, hybrid search/indexing fails closed with a stable RETRIEVAL_NOT_CONFIGURED response. If the authenticated tenant has no vectors for the configured model version, hybrid search fails with RETRIEVAL_INDEX_NOT_READY; it never presents lexical-only results as hybrid. There is no hosted-provider fallback.
+8. Transcript persistence does not automatically trigger embedding inference. Indexing is an explicit, idempotent operation through the authenticated API/MCP index command so retrieval remains optional and ingestion never incurs hidden model compute.
 
 ## Consequences
 
 - The public Go API remains free of Python ML dependencies.
 - Local quickstart remains small and does not build or activate the optional model image.
 - Operators must provision model files and an internal service secret out of band.
-- Indexing is synchronous and bounded to 5,000 segments per immutable revision; batches of 64 and idempotent upserts make retries safe after partial progress.
-- A separate model version creates a separate vector namespace and requires explicit re-indexing. Existing tenant-scoped cleanup removes obsolete versions.
+- Indexing is explicit, synchronous and bounded to 5,000 segments per immutable revision; batches of 64 and idempotent upserts make retries safe after partial progress. Ingestion does not implicitly invoke embedding inference.
+- Model versions are immutable SHA-256 artifact-manifest digests and the deployment explicitly declares the 384-dimensional contract. A separate model version creates a separate vector namespace and requires explicit re-indexing. Search stays unavailable for that tenant/version until indexing exists; existing tenant-scoped cleanup removes obsolete versions.
 - The sidecar shares the restricted application database role and relies on the same forced RLS tenant context; it is not exposed on a host port.
 - Model choice and Persian relevance quality remain evidence-gated and are not implied by API availability.
