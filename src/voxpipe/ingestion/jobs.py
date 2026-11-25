@@ -19,6 +19,10 @@ class JobLeaseLost(JobQueueError):
     code = "INGESTION_JOB_LEASE_LOST"
 
 
+class WorkerHeartbeatMissing(JobQueueError):
+    code = "INGESTION_WORKER_HEARTBEAT_MISSING"
+
+
 class PostgresIngestionJobQueue:
     """PostgreSQL queue with SKIP LOCKED claims and expiring worker leases.
 
@@ -461,3 +465,78 @@ class PostgresIngestionJobQueue:
                 float(row["completed_processing_seconds_avg"]), 3
             ),
         }
+
+    def register_worker(self, tenant_id: str, worker_id: str) -> None:
+        """Register one process for one explicitly authorized tenant."""
+        worker = str(UUID(worker_id))
+        with self._tenant_connection(tenant_id) as connection:
+            # Bound stale-row retention without a cross-tenant maintenance role.
+            connection.execute(
+                "DELETE FROM ingestion_worker_heartbeats WHERE tenant_id = %s "
+                "AND heartbeat_at < now() - interval '7 days'",
+                (tenant_id,),
+            )
+            connection.execute(
+                """
+                INSERT INTO ingestion_worker_heartbeats
+                    (tenant_id, worker_id, state, started_at, heartbeat_at, updated_at)
+                VALUES (%s, %s, 'idle', now(), now(), now())
+                ON CONFLICT (tenant_id, worker_id) DO UPDATE
+                SET state = 'idle', started_at = now(), heartbeat_at = now(),
+                    last_job_started_at = NULL, last_job_completed_at = NULL,
+                    stopped_at = NULL, updated_at = now()
+                """,
+                (tenant_id, worker),
+            )
+
+    def heartbeat_worker(self, tenant_id: str, worker_id: str) -> None:
+        worker = str(UUID(worker_id))
+        with self._tenant_connection(tenant_id) as connection:
+            row = connection.execute(
+                """
+                UPDATE ingestion_worker_heartbeats
+                SET heartbeat_at = now(), updated_at = now()
+                WHERE tenant_id = %s AND worker_id = %s AND state <> 'stopped'
+                RETURNING worker_id
+                """,
+                (tenant_id, worker),
+            ).fetchone()
+        if row is None:
+            raise WorkerHeartbeatMissing("worker heartbeat registration is absent")
+
+    def set_worker_state(self, tenant_id: str, worker_id: str, state: str) -> None:
+        if state not in {"idle", "busy"}:
+            raise ValueError("worker state must be idle or busy")
+        worker = str(UUID(worker_id))
+        with self._tenant_connection(tenant_id) as connection:
+            row = connection.execute(
+                """
+                UPDATE ingestion_worker_heartbeats
+                SET state = %s,
+                    last_job_started_at = CASE WHEN %s = 'busy' THEN now() ELSE last_job_started_at END,
+                    last_job_completed_at = CASE
+                        WHEN state = 'busy' AND %s = 'idle' THEN now()
+                        ELSE last_job_completed_at
+                    END,
+                    updated_at = now()
+                WHERE tenant_id = %s AND worker_id = %s AND state <> 'stopped'
+                RETURNING worker_id
+                """,
+                (state, state, state, tenant_id, worker),
+            ).fetchone()
+        if row is None:
+            raise WorkerHeartbeatMissing("worker heartbeat registration is absent")
+
+    def stop_worker(self, tenant_id: str, worker_id: str) -> None:
+        worker = str(UUID(worker_id))
+        with self._tenant_connection(tenant_id) as connection:
+            connection.execute(
+                """
+                UPDATE ingestion_worker_heartbeats
+                SET state = 'stopped', stopped_at = now(),
+                    heartbeat_at = now(), updated_at = now()
+                WHERE tenant_id = %s AND worker_id = %s AND state <> 'stopped'
+                """,
+                (tenant_id, worker),
+            )
+
