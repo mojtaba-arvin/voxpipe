@@ -11,7 +11,7 @@ from threading import Event, Lock, Thread
 from typing import Any
 from uuid import UUID
 
-from voxpipe.ingestion.jobs import JobLeaseLost, PostgresIngestionJobQueue
+from voxpipe.ingestion.jobs import JobLeaseLost, PostgresIngestionJobQueue, WorkerHeartbeatMissing
 from voxpipe.ingestion.service import IngestionFailed, IngestionInProgress, IngestionService
 
 
@@ -103,6 +103,25 @@ class IngestionJobWorker:
         self._retry_max_seconds = retry_max_seconds
         self.metrics = WorkerMetrics()
 
+    @property
+    def worker_id(self) -> str:
+        return self._worker_id
+
+    def register_worker(self, tenant_id: str) -> None:
+        self._queue.register_worker(tenant_id, self._worker_id)
+
+    def heartbeat_worker(self, tenant_id: str) -> None:
+        self._queue.heartbeat_worker(tenant_id, self._worker_id)
+
+    def stop_worker(self, tenant_id: str) -> None:
+        self._queue.stop_worker(tenant_id, self._worker_id)
+
+    def _set_worker_state(self, tenant_id: str, state: str) -> None:
+        try:
+            self._queue.set_worker_state(tenant_id, self._worker_id, state)
+        except Exception:
+            logging.getLogger("voxpipe.worker").warning("worker state update failed")
+
     def run_once(self, tenant_id: str) -> JobExecutionResult:
         try:
             tenant = str(UUID(tenant_id))
@@ -114,7 +133,13 @@ class IngestionJobWorker:
         )
         if job is None:
             return JobExecutionResult(None, "idle")
+        self._set_worker_state(tenant, "busy")
+        try:
+            return self._execute_claimed_job(tenant, job)
+        finally:
+            self._set_worker_state(tenant, "idle")
 
+    def _execute_claimed_job(self, tenant: str, job: dict[str, Any]) -> JobExecutionResult:
         started = time.monotonic()
         job_id = str(job["job_id"])
         session_id = str(job["session_id"])
@@ -230,6 +255,41 @@ class IngestionJobWorker:
                     return
 
 
+def _worker_heartbeat_loop(
+    worker: IngestionJobWorker,
+    tenant_ids: list[str],
+    registered: set[str],
+    stop_event: Event,
+    interval_seconds: float,
+    logger: logging.Logger,
+) -> None:
+    """Refresh process liveness independently of job execution and lease renewal."""
+    try:
+        while not stop_event.is_set():
+            for tenant_id in tenant_ids:
+                if stop_event.is_set():
+                    break
+                try:
+                    if tenant_id not in registered:
+                        worker.register_worker(tenant_id)
+                        registered.add(tenant_id)
+                    else:
+                        worker.heartbeat_worker(tenant_id)
+                except WorkerHeartbeatMissing:
+                    registered.discard(tenant_id)
+                except Exception:
+                    # Never log driver exception strings, DSNs, or tenant identifiers.
+                    logger.warning("worker liveness heartbeat update failed; retrying")
+            if stop_event.wait(interval_seconds):
+                break
+    finally:
+        for tenant_id in tuple(registered):
+            try:
+                worker.stop_worker(tenant_id)
+            except Exception:
+                logger.warning("worker shutdown heartbeat update failed")
+
+
 def run_forever(
     worker: IngestionJobWorker,
     tenant_ids: list[str],
@@ -237,37 +297,62 @@ def run_forever(
     *,
     poll_seconds: float = 1.0,
     max_backoff_seconds: float = 30.0,
+    heartbeat_interval_seconds: float = 15.0,
     logger: logging.Logger | None = None,
 ) -> None:
-    """Supervise tenant polling; recover from transient queue/database outages."""
-    if not tenant_ids or poll_seconds <= 0 or max_backoff_seconds <= 0:
-        raise ValueError("tenant allowlist and positive polling/backoff limits are required")
+    """Supervise tenant polling and emit independent process liveness heartbeats."""
+    if (
+        not tenant_ids
+        or poll_seconds <= 0
+        or max_backoff_seconds <= 0
+        or heartbeat_interval_seconds <= 0
+    ):
+        raise ValueError("tenant allowlist and positive polling, backoff, and heartbeat limits are required")
     log = logger or logging.getLogger("voxpipe.worker")
+    registered: set[str] = set()
+    if not stop_event.is_set():
+        for tenant_id in tenant_ids:
+            try:
+                worker.register_worker(tenant_id)
+                registered.add(tenant_id)
+            except Exception:
+                log.warning("worker registration failed; retrying in heartbeat loop")
+    heartbeat_thread = Thread(
+        target=_worker_heartbeat_loop,
+        args=(worker, tenant_ids, registered, stop_event, heartbeat_interval_seconds, log),
+        name=f"voxpipe-worker-liveness-{worker.worker_id}",
+        daemon=True,
+    )
+    heartbeat_thread.start()
     failure_streak = 0
-    while not stop_event.is_set():
-        did_work = False
-        try:
-            for tenant_id in tenant_ids:
-                if stop_event.is_set():
-                    break
-                result = worker.run_once(tenant_id)
-                if result.outcome != "idle":
-                    did_work = True
-                    log.info(
-                        "job execution job_id=%s outcome=%s error_code=%s",
-                        result.job_id,
-                        result.outcome,
-                        result.error_code or "-",
-                    )
-            failure_streak = 0
-        except Exception:
-            failure_streak += 1
-            ceiling = min(max_backoff_seconds, poll_seconds * (2 ** min(failure_streak - 1, 10)))
-            delay = random.uniform(ceiling * 0.8, ceiling)
-            # Driver exception strings may contain DSNs or connection metadata.
-            log.error("worker queue operation failed; retrying with bounded backoff")
-            stop_event.wait(delay)
-            continue
+    try:
+        while not stop_event.is_set():
+            did_work = False
+            try:
+                for tenant_id in tenant_ids:
+                    if stop_event.is_set():
+                        break
+                    result = worker.run_once(tenant_id)
+                    if result.outcome != "idle":
+                        did_work = True
+                        log.info(
+                            "job execution job_id=%s outcome=%s error_code=%s",
+                            result.job_id,
+                            result.outcome,
+                            result.error_code or "-",
+                        )
+                failure_streak = 0
+            except Exception:
+                failure_streak += 1
+                ceiling = min(max_backoff_seconds, poll_seconds * (2 ** min(failure_streak - 1, 10)))
+                delay = random.uniform(ceiling * 0.8, ceiling)
+                # Driver exception strings may contain DSNs or connection metadata.
+                log.error("worker queue operation failed; retrying with bounded backoff")
+                stop_event.wait(delay)
+                continue
 
-        if not did_work and not stop_event.is_set():
-            stop_event.wait(poll_seconds)
+            if not did_work and not stop_event.is_set():
+                stop_event.wait(poll_seconds)
+    finally:
+        stop_event.set()
+        heartbeat_thread.join(timeout=max(1.0, heartbeat_interval_seconds * 2))
