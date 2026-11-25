@@ -1206,6 +1206,428 @@
         "2026-11-25: post-merge main validation run 45641155682 passed all seven jobs on merge commit 0c61824b0c1bd6f2618c5d7e32f4310c10916df1. VP-0046 repository acceptance is complete. Production provider IAM correctness, durability, backup RPO/RTO, multi-region replication and customer-traffic capacity remain deployment-specific and are not claimed."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0047",
+      "title": "Add manually dispatched evaluation workflow skeleton (issue #164)",
+      "phase": 9,
+      "priority": 47,
+      "status": "done",
+      "depends_on": [
+        "VP-0046"
+      ],
+      "acceptance_criteria": [
+        "The evaluation workflow is workflow_dispatch-only and does not run model or external inference work on pull requests or pushes.",
+        "Independent extraction, retrieval and speech job IDs exist and are aggregated by a post-results job using always().",
+        "Optional issue disclosure comments use GITHUB_TOKEN and the GitHub REST API without requiring the gh CLI.",
+        "The comment helper is covered by a no-network unit test and the workflow is checked by actionlint."
+      ],
+      "evidence": [
+        "PR #187 merged as 9627feb21cf9fd3736d1feb1d5a09d7206fe36f0.",
+        "Exact-head CI run 45674932520 passed all seven jobs, including Actionlint and the issue-comment helper test.",
+        "Workflow dispatch remains manual; this skeleton does not imply evaluation completion."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0048",
+      "title": "Speed up CI installs and cache evaluation models (issue #165)",
+      "phase": 9,
+      "priority": 48,
+      "status": "ready",
+      "depends_on": [
+        "VP-0047"
+      ],
+      "acceptance_criteria": [
+        "Use pinned uv setup and cache for compatible Python CI installs.",
+        "Keep the existing unittest runner; do not add pytest-xdist or coverage without a measured need.",
+        "Use a static Hugging Face cache key only in jobs that download a model.",
+        "Record cold/warm install timings before claiming speedup."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0049",
+      "title": "Add CPU model smoke benchmark (issue #166)",
+      "phase": 9,
+      "priority": 49,
+      "status": "ready",
+      "depends_on": [
+        "VP-0047"
+      ],
+      "acceptance_criteria": [
+        "Run a short CPU-only model smoke benchmark without paid APIs or secrets.",
+        "Record model revision, hardware/runtime details, wall time and real-time factor.",
+        "Use the result as a CI feasibility gate, not a production-quality claim."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0050",
+      "title": "Define and validate CORPUS_PATH contract (issue #167)",
+      "phase": 9,
+      "priority": 50,
+      "status": "done",
+      "depends_on": [
+        "VP-0047"
+      ],
+      "acceptance_criteria": [
+        "Keep conversation and retrieval passage schemas distinct and independently validated.",
+        "Provide five synthetic Persian placeholder passages.",
+        "Load CORPUS_PATH when set and fall back to placeholder data when unset or empty.",
+        "Reject malformed JSONL, schema violations, duplicate IDs, empty corpora and oversized files.",
+        "Document source-kind and provenance boundaries."
+      ],
+      "evidence": [
+        "PR #188 merged as b6660d7c0a6970f81fba8b21a927bde58f76debf.",
+        "Exact-head CI run 45675967734 passed all seven jobs; Python/PostgreSQL validation included 511 passing tests.",
+        "The five-record placeholder is explicitly synthetic and does not claim natural-conversation coverage."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0051",
+      "title": "Generate deterministic synthetic Persian extraction conversations (issue #168)",
+      "phase": 9,
+      "priority": 51,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0050"
+      ],
+      "acceptance_criteria": [
+        "Generate 100–200 Persian sales/support conversations using a fixed seed.",
+        "Include synthetic customer name, placeholder phone, order ID, amount and date slots.",
+        "Create deterministic train/dev/test splits and record seed, counts and SHA-256 metadata.",
+        "Validate every generated conversation against the versioned conversation schema.",
+        "Never include real PII or medical content."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0052",
+      "title": "Create deterministic extraction silver labeler (issue #169)",
+      "phase": 9,
+      "priority": 52,
+      "status": "planned",
+      "depends_on": [
+        "VP-0051"
+      ],
+      "acceptance_criteria": [
+        "Normalize Persian and Arabic-Indic digits.",
+        "Extract date, amount, order ID and customer name using deterministic rules only.",
+        "Represent missing values as null and conflicting distinct values as ambiguous.",
+        "Validate output against the versioned silver-label schema.",
+        "Label all outputs as synthetic deterministic silver, never human gold."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0053",
+      "title": "Compute extraction precision, recall and F1 (issue #170)",
+      "phase": 9,
+      "priority": 53,
+      "status": "planned",
+      "depends_on": [
+        "VP-0052"
+      ],
+      "acceptance_criteria": [
+        "Compute exact-match per-field precision, recall and F1.",
+        "Compute overall micro and macro metrics with documented null/ambiguous behavior.",
+        "Validate output against a JSON Schema.",
+        "Include seed, split counts, dataset size and synthetic-reference disclosure."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0054",
+      "title": "Wire structured extraction evaluation job (issue #171)",
+      "phase": 9,
+      "priority": 54,
+      "status": "planned",
+      "depends_on": [
+        "VP-0051",
+        "VP-0052",
+        "VP-0053"
+      ],
+      "acceptance_criteria": [
+        "Run generation, deterministic labels and metrics in eval-32.",
+        "Upload utterances, metadata, silver labels and metrics as a GitHub artifact.",
+        "Post a disclosure comment to issue #32 using the shared REST helper.",
+        "State clearly that synthetic-template metrics are not human gold or production accuracy."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0055",
+      "title": "Generate deterministic retrieval queries from placeholder corpus (issue #172)",
+      "phase": 9,
+      "priority": 55,
+      "status": "ready",
+      "depends_on": [
+        "VP-0050"
+      ],
+      "acceptance_criteria": [
+        "Generate reproducible queries from the independent placeholder corpus.",
+        "Keep query IDs and source passage IDs stable across runs.",
+        "Use synthetic/template query data and mark it as silver."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0056",
+      "title": "Build heuristic retrieval qrels (issue #173)",
+      "phase": 9,
+      "priority": 56,
+      "status": "planned",
+      "depends_on": [
+        "VP-0055"
+      ],
+      "acceptance_criteria": [
+        "Generate deterministic heuristic relevance judgments for query/passage pairs.",
+        "Preserve explicit silver provenance and avoid calling heuristics human judgments.",
+        "Handle no-match and ambiguous query cases deterministically."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0057",
+      "title": "Compute retrieval metrics (issue #174)",
+      "phase": 9,
+      "priority": 57,
+      "status": "planned",
+      "depends_on": [
+        "VP-0056"
+      ],
+      "acceptance_criteria": [
+        "Compute Recall@5, MRR and nDCG@5 from query/qrels/run inputs.",
+        "Validate metric output and define empty-query behavior.",
+        "Report per-query and aggregate metrics with source-kind disclosure."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0058",
+      "title": "Wire retrieval silver evaluation job (issue #175)",
+      "phase": 9,
+      "priority": 58,
+      "status": "planned",
+      "depends_on": [
+        "VP-0050",
+        "VP-0055",
+        "VP-0056",
+        "VP-0057"
+      ],
+      "acceptance_criteria": [
+        "Run query generation, heuristic qrels and retrieval metrics in eval-48.",
+        "Consume CORPUS_PATH with placeholder fallback and no group-A artifact dependency.",
+        "Upload reproducible inputs, qrels and metrics as a GitHub artifact.",
+        "Disclose that heuristic qrels are not human relevance judgments."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0059",
+      "title": "Add licensed Common Voice Persian download job (issue #176)",
+      "phase": 9,
+      "priority": 59,
+      "status": "ready",
+      "depends_on": [
+        "VP-0047"
+      ],
+      "acceptance_criteria": [
+        "Pin the dataset version/revision and verify its published license/provenance.",
+        "Download only the bounded evaluation subset needed by CI.",
+        "Cache only immutable dataset revisions and avoid committing audio data.",
+        "Keep read-speech clearly distinguished from natural conversation."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0060",
+      "title": "Add Qwen3-ASR transcription job (issue #177)",
+      "phase": 9,
+      "priority": 60,
+      "status": "planned",
+      "depends_on": [
+        "VP-0049",
+        "VP-0059"
+      ],
+      "acceptance_criteria": [
+        "Use a pinned local model revision with no external inference API.",
+        "Measure CPU runtime/real-time factor and emit reproducible transcript artifacts.",
+        "Respect the smoke-benchmark gate and avoid production-quality claims."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0061",
+      "title": "Add WhisperX alignment and diarization job (issue #178)",
+      "phase": 9,
+      "priority": 61,
+      "status": "planned",
+      "depends_on": [
+        "VP-0060"
+      ],
+      "acceptance_criteria": [
+        "Pin WhisperX and model dependencies.",
+        "Produce word-level alignment and diarization artifacts on the approved read-speech subset.",
+        "Report limitations for overlap and natural conversation explicitly."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0062",
+      "title": "Add TTS and FFmpeg overlap synthesis job (issue #179)",
+      "phase": 9,
+      "priority": 62,
+      "status": "planned",
+      "depends_on": [
+        "VP-0051"
+      ],
+      "acceptance_criteria": [
+        "Generate reproducible synthetic speech and controlled overlap fixtures.",
+        "Record voice/model provenance and exact synthesis parameters.",
+        "Use the output only for pipeline/overlap plumbing, not as natural speech evidence."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0063",
+      "title": "Wire speech evaluation job (issue #180)",
+      "phase": 9,
+      "priority": 63,
+      "status": "planned",
+      "depends_on": [
+        "VP-0059",
+        "VP-0060",
+        "VP-0061",
+        "VP-0062"
+      ],
+      "acceptance_criteria": [
+        "Run licensed read-speech transcription/alignment and synthetic overlap checks in eval-47.",
+        "Upload audio-free summaries and required reproducibility metadata; keep raw audio artifact access bounded.",
+        "Disclose that read-speech and TTS do not establish natural conversational performance."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0064",
+      "title": "Aggregate all silver evaluation groups (issue #181)",
+      "phase": 9,
+      "priority": 64,
+      "status": "planned",
+      "depends_on": [
+        "VP-0054",
+        "VP-0058",
+        "VP-0063"
+      ],
+      "acceptance_criteria": [
+        "Aggregate group outcomes even when one or more jobs fail or are skipped.",
+        "Publish a single status summary with exact run provenance.",
+        "Never report skipped or missing evidence as a pass."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0065",
+      "title": "Recruit two independent Persian extraction annotators (issue #182)",
+      "phase": 10,
+      "priority": 65,
+      "status": "blocked",
+      "depends_on": [
+        "VP-0064"
+      ],
+      "acceptance_criteria": [
+        "Obtain two independent Persian annotators under an agreed annotation guide.",
+        "Record adjudication policy and dataset access controls.",
+        "Do not substitute synthetic templates or rule labels for human annotations."
+      ],
+      "evidence": [],
+      "blocked_reason": "Requires recruiting and coordinating two qualified human annotators. No participant pool, approved budget or annotation service is available through repository automation; labels must not be fabricated."
+    },
+    {
+      "id": "VP-0066",
+      "title": "Adjudicate extraction disagreements and compute kappa (issue #183)",
+      "phase": 10,
+      "priority": 66,
+      "status": "planned",
+      "depends_on": [
+        "VP-0065"
+      ],
+      "acceptance_criteria": [
+        "Adjudicate disagreements between the two independent annotators.",
+        "Compute and report Cohen's kappa with a documented label guide and sample size.",
+        "Retain provenance and privacy-safe audit information."
+      ],
+      "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0067",
+      "title": "Collect human retrieval relevance judgments (issue #184)",
+      "phase": 10,
+      "priority": 67,
+      "status": "blocked",
+      "depends_on": [
+        "VP-0064"
+      ],
+      "acceptance_criteria": [
+        "Obtain independent human relevance judgments for the selected Persian queries and passages.",
+        "Document assessor instructions, disagreement handling and dataset provenance.",
+        "Keep human judgments separate from heuristic qrels."
+      ],
+      "evidence": [],
+      "blocked_reason": "Requires qualified human relevance assessors and an approved corpus. Heuristic qrels cannot replace human judgments, and no external annotator pool or budget is available through repository automation."
+    },
+    {
+      "id": "VP-0068",
+      "title": "Acquire consented natural Persian conversation audio (issue #185)",
+      "phase": 10,
+      "priority": 68,
+      "status": "blocked",
+      "depends_on": [
+        "VP-0064"
+      ],
+      "acceptance_criteria": [
+        "Acquire real conversational recordings with explicit informed consent for the intended evaluation use.",
+        "Complete privacy/legal review, retention and access controls before processing.",
+        "Preserve speaker/overlap provenance without exposing participant identity."
+      ],
+      "evidence": [],
+      "blocked_reason": "Requires real participants, explicit informed consent, approved collection/storage terms and privacy/legal review. Synthetic TTS and read-speech are not substitutes for natural conversation."
+    },
+    {
+      "id": "VP-0069",
+      "title": "Validate natural-audio diarization and overlap (issue #186)",
+      "phase": 10,
+      "priority": 69,
+      "status": "planned",
+      "depends_on": [
+        "VP-0068"
+      ],
+      "acceptance_criteria": [
+        "Evaluate diarization and overlap handling on the approved consented natural-audio set.",
+        "Report speaker-attributed and overlap-specific metrics with uncertainty.",
+        "Do not claim natural conversational performance before the consented dataset and review exist."
+      ],
+      "evidence": [],
+      "blocked_reason": null
     }
   ]
 }

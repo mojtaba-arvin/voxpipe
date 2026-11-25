@@ -71,6 +71,15 @@ class EvaluationCorpusLoaderTests(unittest.TestCase):
             "language": "fa-IR",
             "source_kind": "synthetic_template",
             "split": "train",
+            "seed": 1,
+            "scenario": "order_confirmation",
+            "reference_slots": {
+                "customer_name": "مشتری نمونه 001",
+                "phone": "PHONE-PLACEHOLDER-001",
+                "order_id": "ORD-1001",
+                "amount": "120000",
+                "date": "1405/01/01",
+            },
             "utterances": [{"utterance_id": "u1", "speaker_id": "s1", "text": "سلام"}],
         }
         passage = {

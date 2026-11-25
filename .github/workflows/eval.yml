@@ -24,10 +24,64 @@ jobs:
   eval-32:
     name: Group A — structured extraction (silver)
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
-      - name: Evaluation implementation pending
-        run: echo "Group A implementation is tracked by issues 168 through 171."
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Install evaluation dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Generate deterministic synthetic conversations
+        run: python -m eval.issue32.templates --count 120 --seed 20261125
+      - name: Create deterministic silver labels
+        run: python -m eval.issue32.rules
+      - name: Compute and validate extraction metrics
+        run: python -m eval.issue32.metrics
+      - name: Upload extraction evaluation artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: extraction-silver-baseline
+          path: eval/artifacts/issue32/
+          if-no-files-found: error
+      - name: Disclose extraction silver baseline on issue 32
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: "32"
+        run: |
+          COMMENT_BODY="$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("eval/artifacts/issue32/metrics_32.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Automated extraction evaluation — silver baseline",
+              "",
+              f"- Conversations: {result['dataset_count']}",
+              f"- Seed: {result['seed']}",
+              f"- Split counts: {result['split_counts']}",
+              f"- Overall micro F1: {result['overall_micro']['f1']:.4f}",
+              f"- Overall macro F1: {result['overall_macro']['f1']:.4f}",
+              "",
+              "| Field | Precision | Recall | F1 |",
+              "|---|---:|---:|---:|",
+          ]
+          for field, metrics in result["fields"].items():
+              lines.append(f"| {field} | {metrics['precision']:.4f} | {metrics['recall']:.4f} | {metrics['f1']:.4f} |")
+          lines.extend([
+              "",
+              "This is a deterministic **silver** baseline using generated Persian templates and rule-based labels.",
+              "The reference slots are template-generated, not human-reviewed; this is not a human gold set, production accuracy claim, natural-conversation evaluation, or medical-readiness claim.",
+              "No real customer data or paid inference API is used.",
+          ])
+          print("\n".join(lines))
+          PY
+          )"
+          export COMMENT_BODY
+          bash scripts/comment_issue.sh
 
   eval-48:
     name: Group B — retrieval (silver)

@@ -110,7 +110,7 @@ VP-0034 is complete under this policy based on the existing CI recovery, concurr
 
 ## Repository milestone closure (2026-11-25)
 
-All 37 repository work items (VP-0001 through VP-0037) are complete. Completion means the repository implementation, contracts, deterministic tests and CI evidence meet the revised repository-scoped acceptance criteria. It does **not** mean that every model is production-quality or that deployment-specific validation has occurred.
+All 46 repository work items (VP-0001 through VP-0046) are complete. Completion means the repository implementation, contracts, deterministic tests and CI evidence meet the revised repository-scoped acceptance criteria. It does **not** mean that every model is production-quality or that deployment-specific validation has occurred.
 
 The following remain non-gating product/deployment follow-ups: frame-labelled Persian VAD data; consented natural overlapping-speech diarization data; code-switch/noisy-field language-ID evaluation; a privately sourced and adjudicated Persian extraction gold set; a human-judged Persian retrieval relevance set and selected production embedding model; live Deepgram activation (no key, USD 0 test budget); target-specific capacity and host operations; production backup/PITR/RPO/RTO; live alert delivery, staging SLOs and customer-traffic canary/rollback. Do not fabricate these data or claims to change a repository milestone status.
 
@@ -152,4 +152,30 @@ Completion is backed by exact-head CI and post-merge CI. It does not establish p
 
 **Phase 8 complete — VP-0042 through VP-0046:** VP-0046 (issue #157) is complete for repository scope. PR #158 (`0ee0756`) separates API staging and worker durable-object credentials and proves denied durable-object access (7/7 exact-head CI). PR #159 (`a22c7e6`) adds content-free dependency readiness, lifecycle safety validation and separate versioned-bucket recovery (7/7 exact-head CI and 7/7 post-merge main CI). PR #160 (`0c61824`) adds transient read and cleanup-retry fault injection (7/7 exact-head CI). Post-merge main run `45641155682` passed all seven jobs. The active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions. See [issue #157](https://github.com/mojtaba-arvin/voxpipe/issues/157) and [ADR-0046](decisions/ADR-0046-s3-deployment-recovery.md).
 
-**Next gated product work:** No further repository work item is currently unblocked after VP-0046. A production deployment rehearsal requires a selected cloud/provider target, account-owned bucket/KMS setup, reviewed IAM policies, approved spend, backup ownership and explicit RPO/RTO; none is selected here. Persian quality follow-ups remain separately gated by consented source material and qualified human assessors: [#32](https://github.com/mojtaba-arvin/voxpipe/issues/32), [#47](https://github.com/mojtaba-arvin/voxpipe/issues/47), and [#48](https://github.com/mojtaba-arvin/voxpipe/issues/48). Do not synthesize evidence or close these issues without the required human/data inputs.
+**Next product work:** Automated evaluation is now the next repository phase. Human gold and natural-conversation evidence remain separately gated; neither may be simulated to close the product follow-ups.
+
+## Phase 9 — Automated Evaluation Baselines (M1)
+
+**Goal:** Build reproducible, repository-controlled silver evaluation paths for extraction, retrieval and speech, with clear provenance and no paid inference dependency.
+
+- [x] Add the manual evaluation workflow skeleton, optional disclosure helper and always-run aggregation structure (VP-0047 / issue #164; PR #187 merged as `9627feb`; exact-head CI run `45674932520` passed all seven jobs).
+- [x] Define separate conversation/retrieval schemas and a bounded `CORPUS_PATH` loader with a five-record synthetic placeholder (VP-0050 / issue #167; PR #188 merged as `b6660d7`; exact-head CI run `45675967734` passed all seven jobs).
+- [ ] Speed up dependency installation and add static model caching only where needed (VP-0048 / issue #165); preserve the existing unittest runner unless measurement justifies a migration.
+- [ ] Measure CPU feasibility for the selected ASR model before enabling full model jobs (VP-0049 / issue #166).
+- [ ] Complete the deterministic extraction silver path: synthetic conversation generation, rule labels, exact-match micro/macro metrics and artifact disclosure (VP-0051–VP-0054 / issues #168–#171).
+- [ ] Complete the retrieval silver path: deterministic queries, heuristic qrels, Recall@5/MRR/nDCG@5 and artifact disclosure (VP-0055–VP-0058 / issues #172–#175).
+- [ ] Complete the speech silver path using licensed read-speech and synthetic overlap fixtures, with pinned local models and explicit runtime measurements (VP-0059–VP-0063 / issues #176–#180).
+- [ ] Aggregate all three group outcomes without treating skipped or missing evidence as success (VP-0064 / issue #181).
+
+**M1 interpretation boundary:** Silver labels, synthetic templates, heuristic qrels, Common Voice read-speech and TTS overlap fixtures are pipeline evidence only. They do not establish human-reviewed Persian extraction/retrieval quality, natural conversational performance, medical readiness or production accuracy. Keep the evaluation workflow manual until a deliberate evaluation run is requested; no paid inference APIs or real customer data are permitted.
+
+## Phase 10 — Human Gold Upgrade Path (M2)
+
+**Goal:** Replace silver proxies with qualified human judgments and consented natural conversation evidence.
+
+- [ ] Recruit two independent Persian annotators and adjudicate disagreements; report Cohen's kappa (VP-0065–VP-0066 / issues #182–#183).
+- [ ] Collect human relevance judgments for retrieval queries and passages (VP-0067 / issue #184).
+- [ ] Acquire real Persian conversational audio with explicit informed consent, approved privacy/legal terms and bounded retention/access (VP-0068 / issue #185).
+- [ ] Validate diarization and overlap on that consented natural-audio set (VP-0069 / issue #186).
+
+**M2 external blockers:** Recruiting annotators, securing participant consent, approving data handling and collecting human judgments require people and approvals outside repository automation. Do not fabricate those inputs, substitute synthetic/read speech, or close umbrella issues [#32](https://github.com/mojtaba-arvin/voxpipe/issues/32), [#47](https://github.com/mojtaba-arvin/voxpipe/issues/47), [#48](https://github.com/mojtaba-arvin/voxpipe/issues/48) until their actual evidence gates are met.
