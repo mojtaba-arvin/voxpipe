@@ -1383,7 +1383,7 @@
       "title": "Generate deterministic retrieval queries from placeholder corpus (issue #172)",
       "phase": 9,
       "priority": 55,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0050"
       ],
@@ -1392,7 +1392,11 @@
         "Keep query IDs and source passage IDs stable across runs.",
         "Use synthetic/template query data and mark it as silver."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #191 merged as 13ce9a4b00d466b9c713b2e616439efa1980c4a0.",
+        "Exact-head CI run 45681362570 passed all seven jobs; the Python suite passed 530 tests and repository validation confirmed 69 work items with no missing dependencies or cycles.",
+        "Query generation, qrels and metrics were exercised through the full CLI pipeline using the five-passage synthetic placeholder and an explicit injected-corpus test."
+      ],
       "blocked_reason": null
     },
     {
@@ -1400,7 +1404,7 @@
       "title": "Build heuristic retrieval qrels (issue #173)",
       "phase": 9,
       "priority": 56,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0055"
       ],
@@ -1409,7 +1413,11 @@
         "Preserve explicit silver provenance and avoid calling heuristics human judgments.",
         "Handle no-match and ambiguous query cases deterministically."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #191 merged as 13ce9a4b00d466b9c713b2e616439efa1980c4a0.",
+        "Exact-head CI run 45681362570 passed all seven jobs; the Python suite passed 530 tests and repository validation confirmed 69 work items with no missing dependencies or cycles.",
+        "Query generation, qrels and metrics were exercised through the full CLI pipeline using the five-passage synthetic placeholder and an explicit injected-corpus test."
+      ],
       "blocked_reason": null
     },
     {
@@ -1417,7 +1425,7 @@
       "title": "Compute retrieval metrics (issue #174)",
       "phase": 9,
       "priority": 57,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0056"
       ],
@@ -1426,7 +1434,11 @@
         "Validate metric output and define empty-query behavior.",
         "Report per-query and aggregate metrics with source-kind disclosure."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #191 merged as 13ce9a4b00d466b9c713b2e616439efa1980c4a0.",
+        "Exact-head CI run 45681362570 passed all seven jobs; the Python suite passed 530 tests and repository validation confirmed 69 work items with no missing dependencies or cycles.",
+        "Query generation, qrels and metrics were exercised through the full CLI pipeline using the five-passage synthetic placeholder and an explicit injected-corpus test."
+      ],
       "blocked_reason": null
     },
     {
@@ -1434,7 +1446,7 @@
       "title": "Wire retrieval silver evaluation job (issue #175)",
       "phase": 9,
       "priority": 58,
-      "status": "planned",
+      "status": "blocked",
       "depends_on": [
         "VP-0050",
         "VP-0055",
@@ -1447,8 +1459,11 @@
         "Upload reproducible inputs, qrels and metrics as a GitHub artifact.",
         "Disclose that heuristic qrels are not human relevance judgments."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #191 merged as 13ce9a4b00d466b9c713b2e616439efa1980c4a0; eval-48 selective workflow, CORPUS_PATH input, artifact upload and issue disclosure steps are in main.",
+        "Exact-head CI run 45681362570 passed all seven jobs, including Actionlint and the complete retrieval CLI test."
+      ],
+      "blocked_reason": "The connected GitHub integration exposes workflow-run inspection but no workflow_dispatch action; Browser control/handoff is unavailable in this chat mode. The eval-48 job, artifact upload and issue-comment side effect have not been exercised by an actual manual run. Keep issue #175 open; do not infer success from Actionlint or unit tests."
     },
     {
       "id": "VP-0059",

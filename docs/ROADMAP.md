@@ -164,7 +164,8 @@ Completion is backed by exact-head CI and post-merge CI. It does not establish p
 - [ ] Measure CPU feasibility for the selected ASR model before enabling full model jobs (VP-0049 / issue #166).
 - [x] Complete the deterministic extraction data/label/metric path: synthetic conversation generation, schema-validated rule labels and exact-match micro/macro metrics (VP-0051–VP-0053 / issues #168–#170; PR #189 merged as `4603bd1`; exact-head CI run `45678455375` passed).
 - [ ] Verify the manual `eval-32` dispatch, artifact upload and issue disclosure comment (VP-0054 / issue #171). The workflow is wired and Actionlint/CLI tests pass, but the connected GitHub tools do not expose a workflow-dispatch action; do not infer end-to-end success.
-- [ ] Complete the retrieval silver path: deterministic queries, heuristic qrels, Recall@5/MRR/nDCG@5 and artifact disclosure (VP-0055–VP-0058 / issues #172–#175).
+- [x] Complete deterministic retrieval query generation, heuristic qrels and test-split Recall@5/MRR/nDCG@5 metrics (VP-0055–VP-0057 / issues #172–#174; PR #191 merged as `13ce9a4`; exact-head CI run `45681362570` passed).
+- [ ] Verify the manual `eval-48` dispatch, artifact upload and issue disclosure comment (VP-0058 / issue #175). The job is wired and Actionlint/CLI tests pass, but the connected GitHub tools do not expose a workflow-dispatch action; do not infer end-to-end success.
 - [ ] Complete the speech silver path using licensed read-speech and synthetic overlap fixtures, with pinned local models and explicit runtime measurements (VP-0059–VP-0063 / issues #176–#180).
 - [ ] Aggregate all three group outcomes without treating skipped or missing evidence as success (VP-0064 / issue #181).
 
