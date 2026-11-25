@@ -36,6 +36,15 @@ on:
         required: false
         type: string
 
+  pull_request:
+    paths:
+      - "eval/issue47/synthetic_overlap.py"
+      - "eval/issue47/overlap_manifest.schema.json"
+      - "eval/issue47/overlap_annotation.schema.json"
+      - "requirements-eval-tts.txt"
+      - "tests/test_eval_synthetic_overlap.py"
+      - "eval/issue32/templates.py"
+
 permissions:
   contents: read
   issues: write
@@ -230,7 +239,7 @@ jobs:
 
   tts-overlap:
     name: Synthetic Persian TTS overlap fixtures
-    if: ${{ inputs.run_tts_overlap }}
+    if: ${{ github.event_name == 'pull_request' || inputs.run_tts_overlap }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -253,6 +262,7 @@ jobs:
             eval/artifacts/issue47/overlap_manifest.json
           if-no-files-found: error
       - name: Disclose synthetic overlap results on issue 179
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
