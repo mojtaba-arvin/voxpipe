@@ -61,7 +61,7 @@
       "const": "sherpa-onnx"
     },
     "tts_runtime_version": {
-      "const": "2.0.3"
+      "const": "1.13.8"
     },
     "tts_runtime_license": {
       "const": "Apache-2.0"
