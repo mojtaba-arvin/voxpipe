@@ -10,7 +10,6 @@ import tarfile
 import tempfile
 import urllib.request
 from array import array
-from collections import Counter
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Sequence
