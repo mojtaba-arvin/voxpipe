@@ -864,7 +864,7 @@
       "acceptance_criteria": [
         "Export bounded, tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
         "Validate the pinned Collector and Prometheus configuration and alert rules in GitHub Actions.",
-        "Run a disposable Collector/Prometheus integration smoke in GitHub Actions that proves synthetic success/failure telemetry is scraped and alert rules evaluate as expected.",
+        "Run a disposable Collector/Prometheus integration smoke in GitHub Actions that proves synthetic success/failure telemetry is scraped and alert rules fire under deterministic promtool rule tests.",
         "Prove exporter/collector outage isolation and bounded shutdown behavior with deterministic tests; do not require a separately deployed staging environment."
       ],
       "evidence": [
@@ -876,7 +876,8 @@
         "2026-11-24: PR #88 adds an opt-in OTLP/gRPC SDK bootstrap for the speech observer, bounded service resource attributes, explicit trace sampling, metric export interval, standard OTEL_EXPORTER_OTLP_* configuration, process-owned providers and idempotent shutdown. A dedicated CI smoke job installs the optional exporter dependencies and exercises SDK construction/shutdown. This is pending merge and does not establish a configured collector or production telemetry delivery.",
         "2026-11-24: PR #88 merged as 73c4a5ae11ef4d00af47b679bc09e580c9b5056c. Opt-in OTLP/gRPC SDK bootstrap, bounded resource/sampling/export settings, standard OTEL_EXPORTER_OTLP_* configuration, provider lifecycle and dedicated optional-dependency smoke CI are in main. Main push validation run 45367094454 passed. Collector delivery, dashboards, actionable alerts, synthetic checks and staging SLO verification remain unproven.",
         "2026-11-24: PR #97 merged as 04667e3f8d345cb199ff3bbe75daf8da6cf8e33f. Added a private-network OTLP Collector gateway, Prometheus scrape configuration, bounded speech failure/latency alerts, and deployment/runbook guidance. Exact-head PR validation run 45393226866 passed Python/PostgreSQL, Go/PostgreSQL and OpenTelemetry checks; post-merge main run 45393683255 passed all three checks. Alert thresholds remain starter triggers, not approved SLOs; no live collector/staging delivery is claimed.",
-        "2026-11-25: added a GitHub Actions disposable Collector/Prometheus stack smoke. It validates pinned Collector and Prometheus configuration, emits a synthetic content-free failure metric through the actual OTLP/gRPC SDK exporter, and asserts Prometheus scrapes the expected normalized metric and bounded labels. Exact-head CI evidence pending."
+        "2026-11-25: added a GitHub Actions disposable Collector/Prometheus stack smoke. It validates pinned Collector and Prometheus configuration, emits a synthetic content-free failure metric through the actual OTLP/gRPC SDK exporter, and asserts Prometheus scrapes the expected normalized metric and bounded labels. Exact-head CI evidence pending.",
+        "The same CI job runs promtool rule tests with synthetic counters to prove VoxPipeSpeechFailureRatioHigh fires after its configured 10-minute pending period; exact-head run pending."
       ],
       "blocked_reason": "Runtime SDK bootstrap, privacy-safe observer, starter Collector/Prometheus configuration and alert rules are merged. Remaining repository acceptance is an end-to-end disposable telemetry-stack CI test (config validation, scrape, alert evaluation and outage isolation). Live staging SLOs and notification delivery are deployment-specific and excluded from the repository milestone."
     },
