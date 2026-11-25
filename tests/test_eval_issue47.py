@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import unittest
+from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
@@ -26,8 +28,8 @@ class CpuSmokeReportTests(unittest.TestCase):
         self.assertEqual(report["device"], "cpu")
         self.assertFalse(report["timestamps_returned"])
         self.assertTrue(any("does not measure Persian WER" in item for item in report["warnings"]))
-        schema = __import__("json").loads(
-            (__import__("pathlib").Path(__file__).resolve().parents[1] / "eval" / "issue47" / "cpu_smoke.schema.json").read_text(encoding="utf-8")
+        schema = json.loads(
+            (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "cpu_smoke.schema.json").read_text(encoding="utf-8")
         )
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(report)
