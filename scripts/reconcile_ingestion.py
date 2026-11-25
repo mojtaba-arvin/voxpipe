@@ -29,7 +29,12 @@ def main() -> int:
         parser.error("VOXPIPE_DATABASE_DSN and VOXPIPE_STAGING_ROOT are required; local storage also requires VOXPIPE_OBJECT_STORE_ROOT")
 
     repository = PostgresIngestionRepository(dsn)
-    object_store, _storage_provider = build_object_store(\n        os.environ,\n        local_root=object_root or None,\n        local_root_env="VOXPIPE_OBJECT_STORE_ROOT",\n        max_object_size_bytes=512 * 1024 * 1024,\n    )
+    object_store, _storage_provider = build_object_store(
+        os.environ,
+        local_root=object_root or None,
+        local_root_env="VOXPIPE_OBJECT_STORE_ROOT",
+        max_object_size_bytes=512 * 1024 * 1024,
+    )
     reconciler = IngestionOrphanReconciler(
         repository=repository,
         object_store=object_store,
