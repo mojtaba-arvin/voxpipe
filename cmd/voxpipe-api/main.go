@@ -30,7 +30,7 @@ func main() {
 	dsn := strings.TrimSpace(os.Getenv("VOXPIPE_DATABASE_DSN"))
 	auth, err := httpapi.NewAuthenticatorFromEnv()
 	if err != nil { log.Fatalf("configure authentication: %v", err) }
-	stagingRoot := envOr("VOXPIPE_STAGING_ROOT", "./var/staging")
+	storageBackend := envOr("VOXPIPE_STORAGE_BACKEND", "local")
 	maxUpload, err := envInt64("VOXPIPE_MAX_UPLOAD_BYTES", 512*1024*1024)
 	if err != nil { log.Fatalf("configure upload limit: %v", err) }
 	sessionTTLSeconds, err := envInt64("VOXPIPE_SESSION_TTL_SECONDS", 86400)
@@ -53,8 +53,17 @@ func main() {
 	store, err := httpapi.NewPostgresStore(ctx, dsn)
 	if err != nil { log.Fatalf("connect database: %v", err) }
 	defer store.Close()
-	stager, err := httpapi.NewLocalStager(stagingRoot)
-	if err != nil { log.Fatalf("configure private staging: %v", err) }
+	var stager httpapi.Stager
+	switch storageBackend {
+	case "local":
+		stagingRoot := envOr("VOXPIPE_STAGING_ROOT", "./var/staging")
+		stager, err = httpapi.NewLocalStager(stagingRoot)
+	case "s3_compatible":
+		stager, err = httpapi.NewS3StagerFromEnv(ctx, maxUpload)
+	default:
+		err = fmt.Errorf("VOXPIPE_STORAGE_BACKEND must be local or s3_compatible")
+	}
+	if err != nil { log.Fatalf("configure upload staging: %v", err) }
 	api, err := httpapi.NewServer(store, auth, stager, maxUpload, time.Duration(sessionTTLSeconds)*time.Second, maxAttempts)
 	if err != nil { log.Fatalf("configure HTTP API: %v", err) }
 	retrievalClient, err := httpapi.NewLocalRetrievalClientFromEnv()
