@@ -192,11 +192,11 @@ class S3CompatibleObjectStoreTests(unittest.TestCase):
             self.client,
             bucket="voxpipe-test",
             server_side_encryption="aws:kms",
-            kms_key_id="alias/voxpipe",
+            kms_key_id="key-id-123",
         )
         info = store.put("tenant-a/kms.wav", io.BytesIO(b"encrypted"))
         self.assertEqual(store.head(info.key).sha256, info.sha256)
-        self.assertEqual(self.client.last_put["SSEKMSKeyId"], "alias/voxpipe")
+        self.assertEqual(self.client.last_put["SSEKMSKeyId"], "key-id-123")
 
     def test_provider_error_is_sanitized(self) -> None:
         class BrokenClient(FakeS3Client):
