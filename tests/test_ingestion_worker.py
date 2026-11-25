@@ -99,6 +99,9 @@ class StopAfterWait:
         self.waited = True
         return True
 
+    def set(self) -> None:
+        self.waited = True
+
 
 class IdleQueue(FakeQueue):
     def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict | None:
