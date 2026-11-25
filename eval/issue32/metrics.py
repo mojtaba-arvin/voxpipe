@@ -14,6 +14,8 @@ DEFAULT_INPUT = ROOT / "eval" / "artifacts" / "issue32" / "utterances.jsonl"
 DEFAULT_LABELS = ROOT / "eval" / "artifacts" / "issue32" / "silver_labels.jsonl"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue32" / "metrics_32.json"
 SCHEMA_PATH = ROOT / "eval" / "issue32" / "metrics.schema.json"
+CONVERSATION_SCHEMA_PATH = ROOT / "eval" / "schemas" / "conversation.schema.json"
+LABELS_SCHEMA_PATH = ROOT / "eval" / "issue32" / "labels.schema.json"
 FIELDS = ("date", "amount", "order_id", "customer_name")
 
 
@@ -55,6 +57,23 @@ def compute_metrics(
         raise ValueError("cannot score an empty dataset")
     if any(item.get("source_kind") != "synthetic_template" for item in conversations):
         raise ValueError("this evaluator accepts synthetic_template records only")
+
+    conversation_schema = json.loads(CONVERSATION_SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(conversation_schema)
+    conversation_validator = Draft202012Validator(conversation_schema)
+    for item in conversations:
+        errors = list(conversation_validator.iter_errors(item))
+        if errors:
+            raise ValueError(f"invalid conversation input: {errors[0].message}")
+
+    label_schema = json.loads(LABELS_SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(label_schema)
+    label_validator = Draft202012Validator(label_schema)
+    for item in predictions:
+        errors = list(label_validator.iter_errors(item))
+        if errors:
+            raise ValueError(f"invalid silver label input: {errors[0].message}")
+
     expected_seed = conversations[0].get("seed")
     if any(item.get("seed") != expected_seed for item in conversations):
         raise ValueError("all conversations must use the same recorded seed")
@@ -84,12 +103,12 @@ def compute_metrics(
         if prediction.get("label_kind") != "deterministic_rule_silver":
             raise ValueError(f"{identifier}: prediction is not a deterministic silver label")
         split_counts[source.get("split", "unknown")] += 1
-        expected_fields = source.get("reference_slots", {})
-        predicted_fields = prediction.get("fields", {})
+        expected_fields = source["reference_slots"]
+        predicted_fields = prediction["fields"]
         for field in FIELDS:
-            expected = expected_fields.get(field)
-            candidate = predicted_fields.get(field, {})
-            actual = candidate.get("value") if candidate.get("status") == "matched" else None
+            expected = expected_fields[field]
+            candidate = predicted_fields[field]
+            actual = candidate["value"] if candidate["status"] == "matched" else None
             field_counts = counts[field]
             if expected is None:
                 if actual is not None:
