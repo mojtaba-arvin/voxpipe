@@ -97,6 +97,7 @@ class PostgresProviderCircuitBreaker:
                 row = connection.execute(
                     "DELETE FROM provider_circuit_breakers "
                     "WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s "
+                    "AND probe_expires_at > now() "
                     "RETURNING provider",
                     (permit.provider, permit.probe_token),
                 ).fetchone()
@@ -151,7 +152,7 @@ class PostgresProviderCircuitBreaker:
                 "UPDATE provider_circuit_breakers "
                 "SET probe_token=NULL, probe_expires_at=NULL, updated_at=now() "
                 "WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s "
-                "RETURNING provider",
+                "AND probe_expires_at > now() RETURNING provider",
                 (permit.provider, permit.probe_token),
             ).fetchone()
         return row is not None
