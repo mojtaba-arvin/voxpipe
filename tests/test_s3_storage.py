@@ -209,6 +209,29 @@ class S3CompatibleObjectStoreTests(unittest.TestCase):
         self.assertNotIn("secret provider response", str(caught.exception))
         self.assertNotIn("provider detail", str(caught.exception))
 
+    def test_transient_object_read_outage_is_retryable_and_sanitized(self) -> None:
+        class UnavailableReadClient(FakeS3Client):
+            def get_object(self, **kwargs):
+                raise FakeClientError("SlowDown", 503)
+
+        client = UnavailableReadClient()
+        store = S3CompatibleObjectStore(client, bucket="voxpipe-test")
+        with self.assertRaises(StorageIOError) as caught:
+            store.open("tenant-a/audio.wav")
+        self.assertNotIn("secret provider response", str(caught.exception))
+        self.assertNotIn("provider detail", str(caught.exception))
+
+        client.omit_checksum = True
+        client.objects["tenant-a/audio.wav"] = {
+            "body": b"audio",
+            "metadata": {},
+            "checksum": base64.b64encode(hashlib.sha256(b"audio").digest()).decode("ascii"),
+            "encryption": "AES256",
+            "kms_key": None,
+        }
+        with self.assertRaises(StorageIOError):
+            store.head("tenant-a/audio.wav")
+
     def test_missing_object_maps_to_not_found(self) -> None:
         with self.assertRaises(ObjectNotFoundError):
             self.store.open("tenant-a/missing.wav")

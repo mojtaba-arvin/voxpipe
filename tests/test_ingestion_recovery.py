@@ -329,6 +329,61 @@ class IngestionRecoveryTests(unittest.TestCase):
         durable_key = result.asset["storage"]["object_key"]
         self.assertEqual(self.object_store.head(durable_key).sha256, result.asset["integrity"]["digest"])
 
+    def test_reconciler_retries_s3_staging_cleanup_after_transient_outage(self) -> None:
+        result = self.service.ingest(self.request())
+        session = dict(result.session)
+        staging_key = f"staging/v1/{session['tenant_id']}/{session['session_id']}/source"
+        self.object_store.put(staging_key, io.BytesIO(self.path.read_bytes()))
+        session["staging_reference"] = staging_key
+        session["staging_backend"] = "s3_compatible"
+        self.repository.update_session(
+            session["tenant_id"], session["session_id"], "completed", session
+        )
+
+        class FailOnceDeleteStore:
+            def __init__(self, delegate) -> None:
+                self.delegate = delegate
+                self.failed = False
+
+            def delete(self, key: str) -> bool:
+                if key == staging_key and not self.failed:
+                    self.failed = True
+                    raise OSError("simulated object-store cleanup outage")
+                return self.delegate.delete(key)
+
+            def __getattr__(self, name: str):
+                return getattr(self.delegate, name)
+
+        faulting_store = FailOnceDeleteStore(self.object_store)
+        reconciler = IngestionOrphanReconciler(
+            repository=self.repository,
+            object_store=faulting_store,
+            staging_root=None,
+            storage_provider="s3_compatible",
+        )
+
+        first = reconciler.run(tenant_id=session["tenant_id"])
+        self.assertEqual(first.errors, 1)
+        self.assertFalse(first.items[0].staging_deleted)
+        self.assertNotIn("staging_cleanup_completed_at", self.repository.get_session(
+            session["tenant_id"], session["session_id"]
+        ))
+        self.assertEqual(self.object_store.head(staging_key).size_bytes, len(self.path.read_bytes()))
+
+        second = reconciler.run(tenant_id=session["tenant_id"])
+        self.assertEqual(second.errors, 0)
+        self.assertTrue(second.items[0].staging_deleted)
+        with self.assertRaises(ObjectNotFoundError):
+            self.object_store.head(staging_key)
+        self.assertIn("staging_cleanup_completed_at", self.repository.get_session(
+            session["tenant_id"], session["session_id"]
+        ))
+        durable_key = result.asset["storage"]["object_key"]
+        self.assertEqual(
+            self.object_store.head(durable_key).sha256,
+            result.asset["integrity"]["digest"],
+        )
+
     def test_reconciler_removes_completed_staging_but_retains_asset(self) -> None:
         result = self.service.ingest(self.request())
         self.assertTrue(self.path.exists())
