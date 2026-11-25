@@ -29,6 +29,7 @@ type memoryStore struct {
 	lastTranscriptLimit int
 	lastTranscriptOffset int
 	operationalSummary map[string]any
+	readyErr error
 }
 
 func newMemoryStore() *memoryStore {
@@ -38,6 +39,8 @@ func newMemoryStore() *memoryStore {
 		jobs: make(map[string]map[string]any),
 	}
 }
+func (m *memoryStore) Ready(_ context.Context) error { return m.readyErr }
+
 func cloneMap(input map[string]any) map[string]any {
 	data, _ := json.Marshal(input)
 	var result map[string]any
@@ -625,4 +628,25 @@ func TestOperationalSummaryRequiresDedicatedScopeAndReturnsOnlyAggregates(t *tes
 	if err != nil { t.Fatal(err) }
 	denied := request(limited.Handler(), http.MethodGet, "/v1/operations/ingestion/summary", "read-only-without-operations", nil)
 	if denied.Code != http.StatusForbidden { t.Fatalf("ordinary tenant scope must not access operations: %d", denied.Code) }
+}
+
+func TestHealthEndpointsSeparateLivenessAndReadiness(t *testing.T) {
+	server, store, _, _ := testServer(t)
+	handler := server.Handler()
+	live := request(handler, http.MethodGet, "/health/live", "", nil)
+	if live.Code != http.StatusOK || decodeResponse(t, live)["status"] != "ok" {
+		t.Fatalf("liveness should succeed without authentication or database access: %d %s", live.Code, live.Body.String())
+	}
+	ready := request(handler, http.MethodGet, "/health/ready", "", nil)
+	if ready.Code != http.StatusOK || decodeResponse(t, ready)["status"] != "ready" {
+		t.Fatalf("ready database should return ready: %d %s", ready.Code, ready.Body.String())
+	}
+	store.readyErr = errors.New("postgres://private-password@db.internal")
+	liveDuringOutage := request(handler, http.MethodGet, "/health/live", "", nil)
+	if liveDuringOutage.Code != http.StatusOK { t.Fatalf("database outage must not fail liveness: %d", liveDuringOutage.Code) }
+	notReady := request(handler, http.MethodGet, "/health/ready", "", nil)
+	if notReady.Code != http.StatusServiceUnavailable { t.Fatalf("database outage must fail readiness: %d %s", notReady.Code, notReady.Body.String()) }
+	if strings.Contains(notReady.Body.String(), "private-password") || strings.Contains(notReady.Body.String(), "db.internal") {
+		t.Fatal("readiness response leaked dependency details")
+	}
 }
