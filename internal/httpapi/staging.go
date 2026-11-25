@@ -38,6 +38,10 @@ func (r contextReader) Read(buffer []byte) (int, error) {
 	return r.reader.Read(buffer)
 }
 
+type StagerReadiness interface {
+	Ready(context.Context) error
+}
+
 type LocalStager struct {
 	root string
 }
@@ -61,6 +65,20 @@ func NewLocalStager(root string) (*LocalStager, error) {
 		return nil, fmt.Errorf("secure staging root: %w", err)
 	}
 	return &LocalStager{root: absolute}, nil
+}
+
+func (s *LocalStager) Ready(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	info, err := os.Lstat(s.root)
+	if err != nil {
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("local staging root is not a real directory")
+	}
+	return nil
 }
 
 func (s *LocalStager) Backend() string { return "local" }
