@@ -112,7 +112,7 @@ func (s *LocalStager) Write(
 	}
 
 	digest := sha256.New()
-	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(contextReader{ctx: ctx, reader: source}, maxSize+1))
+	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(contextReader{ctx: ctx, reader: source}, expectedSize+1))
 	if copyErr != nil {
 		temporary.Close()
 		return 0, "", fmt.Errorf("stream upload: %w", copyErr)
