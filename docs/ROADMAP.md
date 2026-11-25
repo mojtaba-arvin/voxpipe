@@ -120,8 +120,8 @@ The following remain non-gating product/deployment follow-ups: frame-labelled Pe
 **Goal:** Turn the repository's API and worker capabilities into a practical workflow that a developer or operator can use without writing a bespoke integration.
 
 - [x] Deliver a first-party CLI for batch audio ingestion, durable job status, and transcript search (VP-0038; streamed uploads, incremental SHA-256, existing authenticated API boundaries, bounded polling, and five-job CI validation in run 45576085075).
-- [ ] Add a guided local quickstart that proves API + worker + PostgreSQL + sample audio flow end-to-end without hosted-provider credentials or paid services (VP-0039; implementation and disposable CI proof in progress).
-- [ ] Expose hybrid retrieval through a versioned authenticated API/MCP contract only after deployment-time embedding configuration, model/version isolation, and safe no-model behavior are defined.
-- [ ] Add a lightweight operational view for ingestion/job failures and queue health, using tenant-safe aggregates rather than transcript content.
+- [x] Add a guided local quickstart that proves API + worker + PostgreSQL + sample audio flow end-to-end without hosted-provider credentials or paid services (VP-0039; PR #142 merged as c9a9122; exact-head CI run 45581360168 passed all six jobs, including the full Docker Compose sample-ingestion flow).
+- [ ] Expose hybrid retrieval through a versioned authenticated API/MCP contract (VP-0040; next priority). Define a local-only embedding/indexing lifecycle, explicit model/version isolation, and fail-closed behavior when no model is configured; no default production model or hosted egress.
+- [ ] Add a lightweight operational view for ingestion/job failures and queue health (VP-0041), using tenant-safe aggregates rather than transcript or audio content.
 
 **Product boundary:** These are additive product-experience milestones, not a reason to reopen completed repository implementation items. Do not select a production embedding model, enable remote data egress, or claim real Persian quality without the corresponding evidence and approvals.

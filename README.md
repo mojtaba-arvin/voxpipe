@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is complete and VP-0039 (guided local quickstart) is in progress. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) and VP-0039 (guided local quickstart) are complete. VP-0040 (hybrid retrieval API/MCP) is the next product milestone. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
