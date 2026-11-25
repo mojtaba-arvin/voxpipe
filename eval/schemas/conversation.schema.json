@@ -9,7 +9,8 @@
     "language",
     "source_kind",
     "split",
-    "utterances"
+    "utterances",
+    "scenario"
   ],
   "properties": {
     "conversation_id": {
@@ -125,6 +126,14 @@
           "maxLength": 40
         }
       }
+    },
+    "scenario": {
+      "enum": [
+        "order_confirmation",
+        "address_change",
+        "refund",
+        "callback"
+      ]
     }
   },
   "allOf": [
