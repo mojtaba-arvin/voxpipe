@@ -16,6 +16,10 @@ from voxpipe.speech.circuit_breaker import CircuitPermit
 class PostgresProviderCircuitBreaker:
     """Shared provider breaker with transactionally fenced half-open probes."""
 
+    # A crashed half-open worker must not strand a provider indefinitely.
+    # Keep this longer than the configured hard timeout of any admitted request.
+    PROBE_LEASE_SECONDS = 300
+
     def __init__(
         self, dsn: str, *, failure_threshold: int = 3, cooldown_seconds: float = 30.0,
     ) -> None:
@@ -51,26 +55,37 @@ class PostgresProviderCircuitBreaker:
                 (name,),
             )
             row = connection.execute(
-                "SELECT opened_at, probe_token FROM provider_circuit_breakers "
+                "SELECT opened_at, probe_token, probe_expires_at FROM provider_circuit_breakers "
                 "WHERE provider=%s FOR UPDATE",
                 (name,),
             ).fetchone()
             if row is None:
                 raise RuntimeError("provider circuit row disappeared during acquisition")
-            opened_at, probe_token = row
+            opened_at, probe_token, probe_expires_at = row
             if opened_at is None:
                 return CircuitPermit(name)
             eligible = connection.execute(
                 "SELECT %s::timestamptz + (%s * interval '1 second') <= now()",
                 (opened_at, self.cooldown_seconds),
             ).fetchone()[0]
-            if not eligible or probe_token is not None:
+            if not eligible:
                 return None
+            if probe_token is not None and probe_expires_at is not None:
+                active = connection.execute(
+                    "SELECT %s::timestamptz > now()", (probe_expires_at,),
+                ).fetchone()[0]
+                if active:
+                    return None
             token = secrets.token_urlsafe(24)
             connection.execute(
-                "UPDATE provider_circuit_breakers SET probe_token=%s, updated_at=now() "
-                "WHERE provider=%s AND probe_token IS NULL",
-                (token, name),
+                """
+                UPDATE provider_circuit_breakers
+                SET probe_token=%s,
+                    probe_expires_at=now() + (%s * interval '1 second'),
+                    updated_at=now()
+                WHERE provider=%s
+                """,
+                (token, self.PROBE_LEASE_SECONDS, name),
             )
             return CircuitPermit(name, token)
 
@@ -82,6 +97,7 @@ class PostgresProviderCircuitBreaker:
                 row = connection.execute(
                     "DELETE FROM provider_circuit_breakers "
                     "WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s "
+                    "AND probe_expires_at > now() "
                     "RETURNING provider",
                     (permit.provider, permit.probe_token),
                 ).fetchone()
@@ -102,8 +118,9 @@ class PostgresProviderCircuitBreaker:
                     """
                     UPDATE provider_circuit_breakers
                     SET consecutive_failures=GREATEST(consecutive_failures + 1, %s),
-                        opened_at=now(), probe_token=NULL, updated_at=now()
+                        opened_at=now(), probe_token=NULL, probe_expires_at=NULL, updated_at=now()
                     WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s
+                      AND probe_expires_at > now()
                     RETURNING provider
                     """,
                     (self.failure_threshold, permit.provider, permit.probe_token),
@@ -133,9 +150,10 @@ class PostgresProviderCircuitBreaker:
             return False
         with self._connection() as connection:
             row = connection.execute(
-                "UPDATE provider_circuit_breakers SET probe_token=NULL, updated_at=now() "
+                "UPDATE provider_circuit_breakers "
+                "SET probe_token=NULL, probe_expires_at=NULL, updated_at=now() "
                 "WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s "
-                "RETURNING provider",
+                "AND probe_expires_at > now() RETURNING provider",
                 (permit.provider, permit.probe_token),
             ).fetchone()
         return row is not None
@@ -147,7 +165,7 @@ class PostgresProviderCircuitBreaker:
                 SELECT provider FROM provider_circuit_breakers
                 WHERE opened_at IS NOT NULL
                   AND (opened_at + (%s * interval '1 second') > now()
-                       OR probe_token IS NOT NULL)
+                       OR (probe_token IS NOT NULL AND probe_expires_at > now()))
                 ORDER BY provider
                 """,
                 (self.cooldown_seconds,),
@@ -157,14 +175,15 @@ class PostgresProviderCircuitBreaker:
     def snapshot(self) -> dict[str, dict[str, int | str | bool | None]]:
         with self._connection() as connection:
             rows = connection.execute(
-                "SELECT provider, consecutive_failures, opened_at, probe_token "
+                "SELECT provider, consecutive_failures, opened_at, "
+                "(probe_token IS NOT NULL AND probe_expires_at > now()) "
                 "FROM provider_circuit_breakers ORDER BY provider"
             ).fetchall()
         return {
             provider: {
                 "consecutive_failures": failures,
                 "opened_at": opened_at.isoformat() if opened_at is not None else None,
-                "probe_in_flight": probe_token is not None,
+                "probe_in_flight": probe_in_flight,
             }
-            for provider, failures, opened_at, probe_token in rows
+            for provider, failures, opened_at, probe_in_flight in rows
         }

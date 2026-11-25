@@ -492,7 +492,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         self.assertEqual(self.initial_versions, (1,))
-        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 8, 9, 10))
+        self.assertEqual(self.upgrade_versions, (2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
         self.assertEqual(self.noop_versions, ())
         with psycopg.connect(self.admin_dsn) as connection:
             for table in ("ingestion_sessions", "audio_assets", "ingestion_jobs", "ingestion_upload_leases", "ingestion_audit_events"):
@@ -501,6 +501,21 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
                     (table,),
                 ).fetchone()
                 self.assertEqual(row, (True, True))
+            column = connection.execute(
+                """
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name='provider_circuit_breakers'
+                  AND column_name='probe_expires_at'
+                """
+            ).fetchone()
+            self.assertEqual(column, ("timestamp with time zone",))
+            constraint = connection.execute(
+                """
+                SELECT 1 FROM pg_constraint
+                WHERE conname='ck_provider_breaker_probe_expiry_pair'
+                """
+            ).fetchone()
+            self.assertIsNotNone(constraint)
 
     def test_insert_idempotency_and_tenant_isolation(self) -> None:
         session = self.session()

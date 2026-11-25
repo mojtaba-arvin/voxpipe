@@ -20,9 +20,17 @@ The worker owns the guarded port for its process lifetime.
 The process-local backend is retained as the compatibility default. It is now
 used by the supervised worker unless explicitly overridden. To share provider
 availability across workers, set `VOXPIPE_CIRCUIT_BREAKER_BACKEND=postgres` and
-provide `VOXPIPE_DATABASE_DSN` with the dedicated application-role database DSN. The PostgreSQL adapter uses the
-existing migration 0010 table and requires its documented grants before traffic
-is admitted.
+provide `VOXPIPE_DATABASE_DSN` with the dedicated application-role database DSN.
+Apply migrations 0010 and 0011 before enabling the backend. Grant the dedicated
+application role only the operations the adapter needs:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON provider_circuit_breakers TO voxpipe_app;
+```
+
+This table contains system-wide provider availability metadata, not tenant
+payloads; do not add request, tenant, audio, transcript, or credential fields.
 
 ## Failure policy
 
@@ -34,6 +42,14 @@ provider adapter is not invoked without an admission permit. This prioritizes
 avoiding uncoordinated duplicate provider traffic over availability during a
 coordination-store outage. Recovery is automatic on a later request after the
 database is healthy; no local shadow state is created.
+
+A PostgreSQL half-open probe owns a five-minute lease. If its worker exits
+without reporting success/failure or releasing the probe, another worker may
+acquire a fresh fenced probe after that lease expires. Configure every provider
+request's hard timeout below this lease; the old permit cannot clear or reopen
+a circuit after a replacement probe has been issued. Migration `0011` adds the
+expiry column and preserves any in-flight probe for at most five minutes during
+upgrade.
 
 The factory does not enable hosted inference, alter the router allowlist, add
 implicit retries, or claim production activation. The default remains local

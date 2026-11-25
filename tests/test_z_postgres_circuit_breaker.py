@@ -80,6 +80,39 @@ class PostgresProviderCircuitBreakerTests(unittest.TestCase):
         self.assertFalse(breaker.record_success(probe))
         self.assertTrue(breaker.try_acquire("speech-provider-b").is_probe)
 
+    def test_expired_probe_lease_can_be_reclaimed_and_old_token_is_fenced(self) -> None:
+        breaker = PostgresProviderCircuitBreaker(APP_DSN, failure_threshold=1, cooldown_seconds=1)
+        first_permit = breaker.try_acquire("speech-provider-expired-probe")
+        self.assertTrue(breaker.record_failure(first_permit))
+        time.sleep(1.1)
+
+        crashed_worker_probe = breaker.try_acquire("speech-provider-expired-probe")
+        self.assertIsNotNone(crashed_worker_probe)
+        self.assertTrue(crashed_worker_probe.is_probe)
+
+        # Simulate the probe owner process dying after acquisition.
+        import psycopg
+        with psycopg.connect(ADMIN_DSN) as connection:
+            connection.execute(
+                """
+                UPDATE provider_circuit_breakers
+                SET probe_expires_at=now() - interval '1 second'
+                WHERE provider=%s
+                """,
+                ("speech-provider-expired-probe",),
+            )
+
+        self.assertNotIn("speech-provider-expired-probe", breaker.open_providers())
+        self.assertFalse(breaker.record_success(crashed_worker_probe))
+        self.assertFalse(breaker.record_failure(crashed_worker_probe))
+        replacement_probe = breaker.try_acquire("speech-provider-expired-probe")
+        self.assertIsNotNone(replacement_probe)
+        self.assertTrue(replacement_probe.is_probe)
+        self.assertNotEqual(crashed_worker_probe.probe_token, replacement_probe.probe_token)
+        self.assertFalse(breaker.record_success(crashed_worker_probe))
+        self.assertTrue(breaker.record_success(replacement_probe))
+        self.assertEqual(breaker.open_providers(), frozenset())
+
     def test_stale_closed_permit_cannot_clear_an_open_circuit(self) -> None:
         breaker = PostgresProviderCircuitBreaker(APP_DSN, failure_threshold=1, cooldown_seconds=1)
         stale = breaker.try_acquire("speech-provider-c")
