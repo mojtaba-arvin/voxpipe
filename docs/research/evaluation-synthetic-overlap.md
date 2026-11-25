@@ -12,7 +12,7 @@ Run `python -m eval.issue47.synthetic_overlap` in the isolated `requirements-eva
 
 ## Fixture generation
 
-The generator reuses 50 records from the existing deterministic Group A conversation generator. It synthesizes the customer and agent utterances locally, offsets the second PCM stream, mixes them with peak limiting, and records the exact sample-aligned overlap interval. Every annotation contains only the conversation ID, scenario, role labels, voice-model names and timing; it does not copy transcript text.
+The generator reuses 50 records from the existing deterministic Group A conversation generator. It synthesizes the customer and agent utterances locally, offsets the second PCM stream, adds a 250 ms leading pause, deterministic Gaussian background noise at 30 dB SNR, mixes them with peak limiting, and records the exact sample-aligned overlap interval. Every annotation contains only the conversation ID, scenario, role labels, voice-model names and timing; it does not copy transcript text.
 
 ## Persistence and interpretation
 
