@@ -28,10 +28,19 @@ class SyntheticOverlapTests(unittest.TestCase):
             calculate_overlap_window(1.0, 0.1)
 
     def test_mix_samples_offsets_second_stream_and_limits_peak(self) -> None:
-        mixed, delay_samples = mix_samples([0.8] * 8, [0.8] * 8, 4, 0.5)
+        mixed, leading_samples, delay_samples = mix_samples(
+            [0.8] * 8, [0.8] * 8, 4, 0.5,
+            leading_silence_seconds=0.5, noise_snr_db=None,
+        )
+        self.assertEqual(leading_samples, 2)
         self.assertEqual(delay_samples, 2)
-        self.assertEqual(len(mixed), 10)
+        self.assertEqual(len(mixed), 12)
         self.assertAlmostEqual(max(mixed), 0.98, places=5)
+
+    def test_noise_injection_is_seeded(self) -> None:
+        first = mix_samples([0.2] * 8, [0.1] * 8, 4, 0.5, noise_seed=42)[0]
+        second = mix_samples([0.2] * 8, [0.1] * 8, 4, 0.5, noise_seed=42)[0]
+        self.assertEqual(list(first), list(second))
 
     def test_annotations_contain_roles_and_ground_truth_overlap_only(self) -> None:
         conversation = {
