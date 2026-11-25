@@ -51,7 +51,7 @@ def build_report(
         raise ValueError("model load, inference and audio durations must be positive")
     if model_download_seconds < 0 or model_size_bytes <= 0:
         raise ValueError("model download duration and model size must be valid")
-    if cpu_count < 1 or not detected_language.strip() or not transcript.strip():
+    if cpu_count < 1 or torch_num_threads < 1 or not detected_language.strip() or not transcript.strip():
         raise ValueError("CPU count, detected language and transcript must be non-empty")
     result = {
         "schema_version": 1,
