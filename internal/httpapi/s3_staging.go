@@ -227,9 +227,12 @@ func (s *S3Stager) Ready(ctx context.Context) error {
 		}
 		return nil
 	}
-	if !errors.Is(err, ErrStagingNotFound) {
-		return fmt.Errorf("S3 staging readiness probe failed")
+	if errors.Is(err, ErrUploadIntegrity) {
+		return ErrUploadIntegrity
 	}
+	// A missing object may be reported as AccessDenied when the identity has
+	// no bucket-list permission. Conditional Write distinguishes that case
+	// without granting broader ListBucket access.
 	if _, _, err := s.Write(ctx, probeTenantID, probeSessionID, bytes.NewReader(probe), int64(len(probe)), s.maxSize, expected); err != nil {
 		return fmt.Errorf("S3 staging readiness probe failed")
 	}
