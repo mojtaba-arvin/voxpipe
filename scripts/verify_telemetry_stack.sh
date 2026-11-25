@@ -22,15 +22,15 @@ docker run --rm \
   otel/opentelemetry-collector-contrib:0.139.0 \
   validate --config=/etc/otelcol-contrib/config.yaml
 
-docker run --rm \
+docker run --rm --entrypoint=promtool \
   -v "$ROOT/ops/observability:/etc/prometheus:ro" \
   prom/prometheus:v3.7.0 \
-  promtool check config /etc/prometheus/prometheus.yml
+  check config /etc/prometheus/prometheus.yml
 
-docker run --rm \
+docker run --rm --entrypoint=promtool \
   -v "$ROOT/ops/observability:/etc/prometheus:ro" \
   prom/prometheus:v3.7.0 \
-  promtool check rules /etc/prometheus/rules/voxpipe-speech.yml
+  check rules /etc/prometheus/rules/voxpipe-speech.yml
 
 # Use a faster scrape interval only in the disposable CI copy.
 sed 's/scrape_interval: 15s/scrape_interval: 2s/g; s/evaluation_interval: 15s/evaluation_interval: 2s/g' \
