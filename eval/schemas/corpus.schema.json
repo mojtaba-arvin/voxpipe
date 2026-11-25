@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:corpus:v1",
+  "title": "VoxPipe retrieval evaluation passage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "passage_id",
+    "text",
+    "language",
+    "source_kind",
+    "split"
+  ],
+  "properties": {
+    "passage_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "language": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 35
+    },
+    "source_kind": {
+      "enum": [
+        "synthetic_template",
+        "read_speech",
+        "consented_natural"
+      ]
+    },
+    "split": {
+      "enum": [
+        "train",
+        "dev",
+        "test"
+      ]
+    },
+    "source_conversation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "source_utterance_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "uniqueItems": true
+    }
+  }
+}

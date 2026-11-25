@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:conversation:v1",
+  "title": "VoxPipe evaluation conversation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "conversation_id",
+    "language",
+    "source_kind",
+    "split",
+    "utterances"
+  ],
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "language": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 35
+    },
+    "source_kind": {
+      "enum": [
+        "synthetic_template",
+        "read_speech",
+        "consented_natural"
+      ]
+    },
+    "split": {
+      "enum": [
+        "train",
+        "dev",
+        "test"
+      ]
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "utterances": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "utterance_id",
+          "speaker_id",
+          "text"
+        ],
+        "properties": {
+          "utterance_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "speaker_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}
