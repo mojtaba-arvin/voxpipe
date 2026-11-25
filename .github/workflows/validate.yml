@@ -231,6 +231,8 @@ jobs:
           VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: AES256
           VOXPIPE_S3_ADDRESSING_STYLE: path
         run: python -m unittest discover -s tests -p 'test_s3_storage_integration.py' -v
+      - name: Build the optional S3-enabled ingestion worker image
+        run: docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3:ci .
       - name: Stop disposable Silo
         if: always()
         run: docker rm -f voxpipe-silo || true
