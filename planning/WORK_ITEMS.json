@@ -1292,7 +1292,7 @@
       "title": "Generate deterministic synthetic Persian extraction conversations (issue #168)",
       "phase": 9,
       "priority": 51,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0050"
       ],
@@ -1303,7 +1303,11 @@
         "Validate every generated conversation against the versioned conversation schema.",
         "Never include real PII or medical content."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #189 merged as 4603bd1763844106a3298da7f8e5b22f1a5c504f.",
+        "Exact-head CI run 45678455375 passed all seven jobs; the Python suite covered deterministic generation, label extraction, metrics schemas and the full CLI pipeline.",
+        "All reference slots and phone values are synthetic placeholders; no human gold or natural-conversation claim is made."
+      ],
       "blocked_reason": null
     },
     {
@@ -1311,7 +1315,7 @@
       "title": "Create deterministic extraction silver labeler (issue #169)",
       "phase": 9,
       "priority": 52,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0051"
       ],
@@ -1322,7 +1326,11 @@
         "Validate output against the versioned silver-label schema.",
         "Label all outputs as synthetic deterministic silver, never human gold."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #189 merged as 4603bd1763844106a3298da7f8e5b22f1a5c504f.",
+        "Exact-head CI run 45678455375 passed all seven jobs; the Python suite covered deterministic generation, label extraction, metrics schemas and the full CLI pipeline.",
+        "All reference slots and phone values are synthetic placeholders; no human gold or natural-conversation claim is made."
+      ],
       "blocked_reason": null
     },
     {
@@ -1330,7 +1338,7 @@
       "title": "Compute extraction precision, recall and F1 (issue #170)",
       "phase": 9,
       "priority": 53,
-      "status": "planned",
+      "status": "done",
       "depends_on": [
         "VP-0052"
       ],
@@ -1340,7 +1348,11 @@
         "Validate output against a JSON Schema.",
         "Include seed, split counts, dataset size and synthetic-reference disclosure."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #189 merged as 4603bd1763844106a3298da7f8e5b22f1a5c504f.",
+        "Exact-head CI run 45678455375 passed all seven jobs; the Python suite covered deterministic generation, label extraction, metrics schemas and the full CLI pipeline.",
+        "All reference slots and phone values are synthetic placeholders; no human gold or natural-conversation claim is made."
+      ],
       "blocked_reason": null
     },
     {
@@ -1348,7 +1360,7 @@
       "title": "Wire structured extraction evaluation job (issue #171)",
       "phase": 9,
       "priority": 54,
-      "status": "planned",
+      "status": "blocked",
       "depends_on": [
         "VP-0051",
         "VP-0052",
@@ -1360,8 +1372,11 @@
         "Post a disclosure comment to issue #32 using the shared REST helper.",
         "State clearly that synthetic-template metrics are not human gold or production accuracy."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #189 merged as 4603bd1763844106a3298da7f8e5b22f1a5c504f; eval-32 job wiring and Actionlint validation are in main.",
+        "Exact-head CI run 45678455375 passed all seven jobs, including the CLI pipeline test."
+      ],
+      "blocked_reason": "The connected GitHub integration exposes workflow-run inspection but no workflow_dispatch action; Browser control/handoff is unavailable in this chat mode. The eval-32 workflow, artifact upload and disclosure comment have not been exercised by an actual manual run. Keep issue #171 open; do not claim the manual workflow succeeded or ask the user to run it."
     },
     {
       "id": "VP-0055",
