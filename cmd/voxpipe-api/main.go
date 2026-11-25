@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +20,10 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		if err := checkReadiness(); err != nil { os.Exit(1) }
+		return
+	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -95,4 +101,28 @@ func envInt(name string, fallback int) (int, error) {
 	value := strings.TrimSpace(os.Getenv(name))
 	if value == "" { return fallback, nil }
 	return strconv.Atoi(value)
+}
+
+// checkReadiness probes only loopback and never contacts a configured external endpoint.
+func checkReadiness() error {
+	address := envOr("VOXPIPE_LISTEN_ADDR", ":8080")
+	_, port, err := net.SplitHostPort(address)
+	if err != nil { return fmt.Errorf("invalid VOXPIPE_LISTEN_ADDR") }
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 { return fmt.Errorf("invalid VOXPIPE_LISTEN_ADDR port") }
+	return checkReadinessURL("http://127.0.0.1:" + strconv.Itoa(portNumber) + "/health/ready")
+}
+
+func checkReadinessURL(target string) error {
+	req, err := http.NewRequest(http.MethodGet, target, nil)
+	if err != nil { return err }
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	response, err := client.Do(req)
+	if err != nil { return err }
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK { return fmt.Errorf("readiness returned %s", response.Status) }
+	return nil
 }
