@@ -284,3 +284,14 @@ func nullIfEmpty(value string) any {
 	if value == "" { return nil }
 	return value
 }
+
+func TestPostgresStoreReadinessChecksCoreSchema(t *testing.T) {
+	dsn := os.Getenv("VOXPIPE_TEST_POSTGRES_APP_DSN")
+	if dsn == "" { t.Skip("PostgreSQL application DSN is not configured") }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	store, err := NewPostgresStore(ctx, dsn)
+	if err != nil { t.Fatal(err) }
+	defer store.Close()
+	if err := store.Ready(ctx); err != nil { t.Fatalf("migrated PostgreSQL application role should be ready: %v", err) }
+}
