@@ -77,6 +77,83 @@
           }
         }
       }
+    },
+    "reference_slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "customer_name",
+        "phone",
+        "order_id",
+        "amount",
+        "date"
+      ],
+      "properties": {
+        "customer_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "phone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "order_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "amount": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        }
+      }
+    },
+    "scenario": {
+      "enum": [
+        "order_confirmation",
+        "address_change",
+        "refund",
+        "callback"
+      ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "source_kind": {
+            "const": "synthetic_template"
+          }
+        },
+        "required": [
+          "source_kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "seed",
+          "reference_slots",
+          "scenario"
+        ]
+      }
+    }
+  ]
 }
