@@ -63,6 +63,17 @@ def compute_metrics(
         if errors:
             raise ValueError(f"query failed schema validation: {errors[0].message}")
 
+    for value, schema_path, label in (
+        (qrels, QRELS_SCHEMA, "qrels"),
+        (run, RUN_SCHEMA, "run"),
+    ):
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+        errors = list(Draft202012Validator(schema).iter_errors(value))
+        if errors:
+            raise ValueError(f"{label} input failed schema validation: {errors[0].message}")
+    if len({query["seed"] for query in queries}) != 1:
+        raise ValueError("all queries must use the same seed")
     if qrels["seed"] != run["seed"] or qrels["seed"] != queries[0]["seed"]:
         raise ValueError("query, qrels and run seeds must match")
     query_by_id = {item["query_id"]: item for item in queries}
