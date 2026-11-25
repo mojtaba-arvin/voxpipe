@@ -30,15 +30,25 @@ def sample_audio() -> bytes:
     return output.getvalue()
 
 
-def api_request(method: str, path: str, token: str, body: bytes | None = None, content_type: str = "application/json") -> dict:
+def api_request(
+    method: str,
+    path: str,
+    token: str,
+    body: bytes | None = None,
+    content_type: str = "application/json",
+    idempotency_key: str | None = None,
+) -> dict:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": content_type,
+    }
+    if idempotency_key is not None:
+        headers["Idempotency-Key"] = idempotency_key
     request = urllib.request.Request(
         os.environ["VOXPIPE_API_URL"].rstrip("/") + path,
         data=body,
         method=method,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": content_type,
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
@@ -64,6 +74,7 @@ def main() -> int:
             "expected_sha256": digest,
             "source": {"kind": "file_upload", "declared_by": "vp0045-deployment-e2e"},
         }).encode("utf-8"),
+        idempotency_key="vp0045-s3-deployment-e2e-2026",
     )
     if "staging_backend" in created or "staging_reference" in created:
         raise RuntimeError("public API leaked private staging metadata")
