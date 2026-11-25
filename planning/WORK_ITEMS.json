@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-24",
+  "updated_at": "2026-11-25",
   "items": [
     {
       "id": "VP-0001",
@@ -824,13 +824,13 @@
       "title": "Implement durable workflow orchestration",
       "phase": 6,
       "priority": 34,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Run ingestion, transcription, enrichment and indexing as versioned durable workflows.",
-        "Persist step state, idempotency keys, retries, timeouts, cancellation and human approval gates.",
-        "Prove restart recovery and duplicate-delivery safety with failure injection.",
-        "Select orchestration engine through an ADR and measured operational PoC."
+        "Run ingestion and transcription as versioned durable workflows with persisted run/step state, idempotency keys, bounded retries, lease fencing, cancellation and human approval pause/resume.",
+        "Prove restart/reclaim recovery, duplicate-delivery safety and concurrent claim uniqueness with deterministic PostgreSQL 16 integration tests in GitHub Actions.",
+        "Prove backup/restore of workflow and breaker state into a disposable PostgreSQL database, including forced-RLS tenant isolation, in GitHub Actions.",
+        "Record the PostgreSQL-native workflow engine decision and alternatives in an ADR; use CI correctness/concurrency evidence rather than hardware-dependent throughput comparisons."
       ],
       "evidence": [
         "2026-11-23: added PostgreSQL 16 tenant-RLS workflow run/step journal with ordered versioned steps, idempotent creation, bounded retries, lease expiry/reclaim, stale-worker fencing, cancellation, human approval pause/resume, reference-only bounded payload validation and asset-deletion cascade. Added explicit WorkflowHandlerRegistry, cooperative fenced heartbeat and graceful worker loop; added repository and worker tests.",
@@ -848,9 +848,11 @@
         "2026-11-24: PR #123 merged as 81cf586dac8d7088a3d44ad4f75d00fe605cb448. Added scripts/benchmark_workflows.py with bounded synthetic no-op workflow generation, configurable worker/workload settings, queue-wait and claim-to-complete p50/p95/p99, throughput, duplicate/error reporting and explicit disposable-database guard. Added five helper unit tests and docs/operations/workflow-benchmarking.md. Exact-head PR validation run 45468566992 passed all four jobs; Python/PostgreSQL ran 433 tests, Go/PostgreSQL passed, OpenTelemetry smoke passed and PostgreSQL backup/restore passed. No actual throughput benchmark has been run yet; the harness is not capacity evidence.",
         "2026-11-24: PR #125 merged as 6fb42206e445f53807ec3fc45f4c7ad534ca1d00. Added an end-to-end PostgreSQL 16 integration test for the benchmark runner: four independent workers drained 24 synthetic workflows with 24 unique claims, all workflows completed, zero errors, and populated throughput/latency metrics. Exact-head CI run 45469567887 passed all four jobs; Python/PostgreSQL ran 434 tests, Go/PostgreSQL passed, OpenTelemetry smoke passed, and PostgreSQL backup/restore passed. The test uses the disposable CI database and is skipped when the admin test DSN is absent.",
         "2026-11-25: added scripts/benchmark_workflow_matrix.py to automate one warm-up plus repeated measurements across configurable worker counts, report median/range throughput and p95 latency summaries, and capture PostgreSQL/host metadata. It requires an explicit --confirm-disposable acknowledgement and caps the total synthetic workflow budget. This is an execution harness only; no target-like capacity run or throughput claim is made.",
-        "2026-11-25: PR #129 merged as ec4a4eff23a7e2fc98e0b797ffde936f27aabc62. Exact updated-branch CI run 45556538955 passed all four jobs: Python/PostgreSQL 442 tests, Go API/PostgreSQL, OpenTelemetry runtime smoke, and PostgreSQL backup/restore. Matrix tests cover worker-count parsing, disposable-database acknowledgement, total workload cap, warm-up/repetition sequencing, median summaries and early stop on incomplete runs. No real target-like capacity measurement is claimed."
+        "2026-11-25: PR #129 merged as ec4a4eff23a7e2fc98e0b797ffde936f27aabc62. Exact updated-branch CI run 45556538955 passed all four jobs: Python/PostgreSQL 442 tests, Go API/PostgreSQL, OpenTelemetry runtime smoke, and PostgreSQL backup/restore. Matrix tests cover worker-count parsing, disposable-database acknowledgement, total workload cap, warm-up/repetition sequencing, median summaries and early stop on incomplete runs. No real target-like capacity measurement is claimed.",
+        "2026-11-25 scope decision: VP-0034 is accepted on reproducible CI correctness and recovery evidence. Target-host throughput benchmarking, systemd host restart/shutdown, production backup scheduling/encryption/retention/PITR and RPO/RTO are explicitly excluded from this repository milestone; they are deployment-specific operations and must not block completion or be assigned as user-run tasks.",
+        "2026-11-25: existing GitHub Actions PostgreSQL 16 integration gates prove cross-instance lease expiry/reclaim and stale-worker fencing, replay-safe transcript reuse, 16 concurrent unique claims, repeated 8-worker contention across 64 workflows, worker graceful-stop behavior, and custom-format backup/restore with NOBYPASSRLS tenant visibility checks. Exact workflow evidence is recorded in the preceding entries and CI history."
       ],
-      "blocked_reason": "The PostgreSQL-native journal, worker and provider-neutral STT workflow are merged, including replay-safe immutable transcript reuse. CI proves disposable PostgreSQL restore/RLS behavior, 16-worker synchronized claim uniqueness and repeated contention across 8 workers/64 workflows. PR #123 adds the synthetic journal benchmark harness; PR #125 verifies it end-to-end against disposable PostgreSQL with 4 workers/24 workflows. PR #129 adds a repeatable warm-up/repetition matrix runner and exact-head CI evidence (442 Python tests, four jobs green). These are functional/concurrency tests and a measurement harness, not target-capacity evidence. Remaining: execute the matrix against a target-like disposable PostgreSQL host and record measured throughput/latencies, complete target-host systemd restart/shutdown drills, establish production backup encryption/retention/PITR and RTO/RPO, complete provider timeout/reconciliation, and perform measured DBOS/Temporal comparison."
+      "blocked_reason": null
     },
     {
       "id": "VP-0035",
@@ -860,10 +862,10 @@
       "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
-        "Define SLOs for upload acceptance, queue age, processing success, transcription latency and deletion completion.",
-        "Export tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
-        "Add actionable alerts, runbooks and synthetic checks for critical paths.",
-        "Test alert rules and verify dashboards against staging workload."
+        "Export bounded, tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
+        "Validate the pinned Collector and Prometheus configuration and alert rules in GitHub Actions.",
+        "Run a disposable Collector/Prometheus integration smoke in GitHub Actions that proves synthetic success/failure telemetry is scraped and alert rules evaluate as expected.",
+        "Prove exporter/collector outage isolation and bounded shutdown behavior with deterministic tests; do not require a separately deployed staging environment."
       ],
       "evidence": [
         "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels.",
@@ -875,7 +877,7 @@
         "2026-11-24: PR #88 merged as 73c4a5ae11ef4d00af47b679bc09e580c9b5056c. Opt-in OTLP/gRPC SDK bootstrap, bounded resource/sampling/export settings, standard OTEL_EXPORTER_OTLP_* configuration, provider lifecycle and dedicated optional-dependency smoke CI are in main. Main push validation run 45367094454 passed. Collector delivery, dashboards, actionable alerts, synthetic checks and staging SLO verification remain unproven.",
         "2026-11-24: PR #97 merged as 04667e3f8d345cb199ff3bbe75daf8da6cf8e33f. Added a private-network OTLP Collector gateway, Prometheus scrape configuration, bounded speech failure/latency alerts, and deployment/runbook guidance. Exact-head PR validation run 45393226866 passed Python/PostgreSQL, Go/PostgreSQL and OpenTelemetry checks; post-merge main run 45393683255 passed all three checks. Alert thresholds remain starter triggers, not approved SLOs; no live collector/staging delivery is claimed."
       ],
-      "blocked_reason": "Runtime SDK bootstrap and CI smoke are merged. Operational acceptance still requires a real authenticated TLS collector, exporter failure/queue/flush verification, dashboards, actionable alerts, synthetic checks, staging workload and SLO verification; shared distributed circuit state remains a separate production blocker."
+      "blocked_reason": "Runtime SDK bootstrap, privacy-safe observer, starter Collector/Prometheus configuration and alert rules are merged. Remaining repository acceptance is an end-to-end disposable telemetry-stack CI test (config validation, scrape, alert evaluation and outage isolation). Live staging SLOs and notification delivery are deployment-specific and excluded from the repository milestone."
     },
     {
       "id": "VP-0036",
@@ -885,10 +887,10 @@
       "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
-        "Build immutable release artifacts with SBOM, dependency provenance and signed/checksummed model manifests.",
-        "Run migration compatibility and smoke tests before promotion.",
-        "Support canary health gates and rollback without corrupting durable job/schema state.",
-        "Verify restore and rollback procedures in a production-like environment."
+        "Build immutable Linux release artifacts with CycloneDX SBOM, dependency inventories, release manifest, SHA-256 checksums and GitHub artifact provenance.",
+        "Run the release-candidate workflow from main in GitHub Actions and verify its artifact attestation and downloadable outputs.",
+        "Run migration compatibility, Python/Go integration and smoke validation before artifact publication.",
+        "Exercise canary promotion, health-gate rejection and rollback state transitions in an isolated CI deployment simulation without modifying production data."
       ],
       "evidence": [
         "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted.",
@@ -896,7 +898,7 @@
         "2026-11-24: preparing a pinned actions/attest v4.2.2 GitHub artifact provenance step for all release-candidate outputs, including binaries, source archive, SBOM, manifest and checksum file. This is not counted as complete until exact-head CI and a real release workflow run confirm successful attestation.",
         "2026-11-24: PR #82 merged as commit ce0c815af44052ab2ae108e0e925fdad5b520ecb. The workflow pins actions/attest v4.2.2 by immutable commit and attests all files in dist/ (binaries, source archive, SBOM, manifest, inventories and checksums); least additional permissions are id-token:write and attestations:write. Exact-head PR CI run 45332518545 passed both Python/PostgreSQL and Go/PostgreSQL. Actual tag/manual release workflow execution is still required to prove the attestation service path."
       ],
-      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest and SHA-256 checksums are merged. GitHub artifact provenance generation is implemented in merged PR #82 and its exact-head Python/PostgreSQL and Go/PostgreSQL CI passed. The provenance control is not yet operationally verified by an actual release-candidate workflow run. Production deployment configuration, migration compatibility rehearsal, canary health gates, rollback and restore verification remain open."
+      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest, checksums and GitHub artifact attestation are implemented. Remaining repository acceptance is an actual workflow_dispatch run with attestation verification and a deterministic canary/rollback simulation in CI. Real production deployment, customer traffic canary and production restore drills are explicitly outside the repository milestone."
     },
     {
       "id": "VP-0037",
@@ -906,10 +908,10 @@
       "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
-        "Automate only allowlisted dependency, security and regression remediation tasks.",
-        "Require independent CI/security gates and human approval for high-impact changes.",
-        "Enforce spending, permissions, branch-protection and blast-radius limits.",
-        "Audit every action and test safe stop/rollback behavior."
+        "Automate only allowlisted dependency, security and regression checks through PR-based GitHub Actions workflows.",
+        "Enforce high-impact changes through protected-branch required checks and human review; never auto-approve or auto-merge them.",
+        "Keep workflow permissions least-privilege, avoid exposing secrets to untrusted code, and document spend and blast-radius limits.",
+        "Test safe-stop and rollback/revert behavior with deterministic repository/CI tests and an auditable PR trail."
       ],
       "evidence": [
         "2026-11-22: added grouped weekly Dependabot updates for Go, Python and GitHub Actions; added scheduled/PR-triggered pip-audit and govulncheck workflows with pinned tool versions and read-only permissions; documented no-auto-merge, human approval for high-impact changes, PR-only remediation, free-tier/no-paid-inference and rollback-by-revert policy.",
@@ -924,7 +926,7 @@
         "2026-11-24: PR #86 is the single current mainline candidate for the coupled fsspec 2026.9.0 and huggingface_hub 2.4.0 floors across benchmark/SpeechBrain/VAD sets. Dependency audit demonstrated that fsspec 2026.9.0 does not resolve with the previous huggingface_hub<1 constraint. Original Dependabot PRs #59 and #62 were closed as superseded; PR #86 exact-head runtime and security checks are pending.",
         "2026-11-24: PR #86 merged as a6d11279ace1bb590ac20f2d1b0afb8444cc3398. Updated fsspec>=2026.9.0,<2027 and compatible huggingface_hub>=2.4.0,<3 constraints across optional benchmark/LID/VAD requirement sets; pinned benchmark set now uses datasets==5.2.0, fsspec==2026.9.0 and huggingface-hub==2.4.0. Exact-head Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry smoke, Python dependency audit, Go vulnerability audit and FLEURS calibration all passed (FLEURS run 45367567174)."
       ],
-      "blocked_reason": "Dependency/security automation and the coupled dependency-floor refresh are merged. Remaining acceptance gates are demonstrated human-approval orchestration for high-impact changes, explicit permission/spend/blast-radius controls across future autonomous workflows, and tested safe-stop/rollback. A general autonomous coding agent is intentionally out of scope."
+      "blocked_reason": "Dependency/security automation and PR-only remediation are merged. Remaining repository acceptance is verification of protected-branch review/check requirements and deterministic safe-stop/rollback tests. Production deployment controls and any paid/third-party autonomous agent remain out of scope."
     }
   ]
 }

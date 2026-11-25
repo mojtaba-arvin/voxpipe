@@ -86,12 +86,12 @@ This roadmap is an executable sequence of phase gates, not a promise of dates. S
 
 The first PostgreSQL-native workflow journal is a bounded sequential proof of concept that complements the ingestion queue; it is not yet the final orchestration-engine selection. See [durable workflow architecture](architecture/durable-workflows.md) and [ADR-0034](decisions/ADR-0034-postgres-native-workflows.md).
 
-- [ ] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler are merged in PRs #64/#73; PR #75 adds persisted-transcript replay safety. PR #101 adds the tenant-scoped systemd runtime/entrypoint and PR #108 adds bounded in-process backoff for transient repository/lease failures. CI covers 16-worker burst uniqueness and repeated 8-worker contention across 64 workflows. PR #123 adds the synthetic journal benchmark harness and PR #129 adds a repeatable 1/4/8/16-worker matrix runner with warm-up, repetitions, host/PostgreSQL metadata and median/p95 summaries (442 Python tests; all four CI jobs passed). These are harness/functional proofs, not target-capacity results. Measured throughput/capacity, target-host supervisor restart/shutdown, production backup objectives and DBOS/Temporal comparison remain).
+- [x] Implement durable workflow orchestration (VP-0034; PostgreSQL 16 tenant-RLS journal, bounded retries, lease fencing, cancellation, approval pause/resume, worker and STT handler, replay-safe transcript reuse, cross-instance lease reclaim, 16-worker unique claims, repeated 8-worker contention across 64 workflows, graceful worker stop and disposable PostgreSQL backup/restore with tenant-RLS verification are covered by GitHub Actions. ADR-0034 records the PostgreSQL-native decision and alternatives. Hardware-specific throughput, host-level systemd drills, production backup RPO/RTO and production restore exercises are explicitly outside this repository milestone; the optional benchmark harness is non-gating).
 - [x] Add bounded self-healing for known transient repository/lease failures (PR #108; credential-safe logs and capped exponential backoff).
 - Detect regressions and open evidence-rich remediation tasks.
-- [ ] Add production alerting and SLOs (VP-0035; tenant-safe worker aggregates, content-free STT lifecycle events and an injected OpenTelemetry bridge are implemented; exporter/resource configuration, dashboards, actionable alerts, synthetic checks and staging SLO verification remain).
-- [ ] Implement release, canary and rollback automation (VP-0036).
-- [ ] Add bounded autonomous maintenance workflows (VP-0037).
+- [ ] Add production alerting and SLOs (VP-0035; tenant-safe worker aggregates, content-free STT lifecycle events, OTLP SDK bootstrap, private-network Collector/Prometheus configuration and starter alert rules are implemented. Remaining repository gate is a disposable end-to-end telemetry-stack CI test for config validation, scrape, alert evaluation and outage isolation; live notification delivery and staging SLO measurement are deployment-specific and non-gating).
+- [ ] Implement release, canary and rollback automation (VP-0036; build/SBOM/checksum/provenance workflow is implemented. Remaining CI gates are an actual workflow_dispatch artifact-attestation run and an isolated canary/rollback simulation; production traffic rollout is out of scope).
+- [ ] Add bounded autonomous maintenance workflows (VP-0037; dependency/security automation is PR-only. Remaining gates are protected-branch review/check verification and deterministic safe-stop/rollback tests; no auto-approval or general autonomous coding agent).
 - Automate dependency/security updates and compatibility checks.
 
 **Exit gate:** Routine maintenance and recovery can be performed autonomously within explicit blast-radius and spending limits.
@@ -99,3 +99,10 @@ The first PostgreSQL-native workflow journal is a bounded sequential proof of co
 ## Cross-phase quality gates
 
 Security, privacy, accessibility, observability, reliability, cost controls, and documentation are continuous requirements—not deferred features.
+
+
+## CI-only milestone policy (2026-11-25)
+
+Repository milestone acceptance must be reproducible through GitHub Actions and repository-controlled fixtures. Do not leave a milestone blocked on a user-run command, a private/target hardware benchmark, a separately provisioned staging host, a production credential, a live customer integration, or a manually performed systemd drill. Replace such evidence with deterministic PostgreSQL/service integration tests, disposable containers, fault injection, workflow simulations, and GitHub artifact/attestation verification where these provide a valid proof. If no safe CI equivalent exists, explicitly exclude the deployment-specific claim from the repository milestone and document the limitation; do not claim that CI proves production deployment, real-world capacity, external alert delivery, or customer traffic behavior.
+
+VP-0034 is complete under this policy based on the existing CI recovery, concurrency, graceful-stop and backup/restore proofs. Its hardware throughput matrix remains optional diagnostic tooling and is not a required task. VP-0035 through VP-0037 remain open only for repository-verifiable CI work described in the work ledger.

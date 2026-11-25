@@ -72,8 +72,7 @@ are retained in the disposable database.
 - `complete=false`, any error, or a duplicate claim invalidates the run.
 - Results apply only to the recorded hardware, database and workload.
 
-The benchmark does not replace a target-host systemd restart/shutdown drill,
-production backup objectives, or a representative speech-processing load test.
+The benchmark is optional diagnostic tooling only. Its output is not a repository milestone gate, must not be treated as target-host capacity evidence, and must never require a maintainer to run it to complete VP-0034. It does not establish production backup objectives or representative speech-processing capacity.
 
 
 The benchmark runner is also exercised end-to-end by a PostgreSQL 16 integration test using four independent workers and 24 synthetic workflows. The test asserts a complete drain, unique claims, zero errors and populated measurements; it is skipped when the disposable PostgreSQL test DSN is not configured.
