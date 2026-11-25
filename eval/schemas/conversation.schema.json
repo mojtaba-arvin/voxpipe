@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://voxpipe.dev/schemas/evaluation/conversation.schema.json",
+  "$id": "urn:voxpipe:evaluation:conversation:v1",
   "title": "VoxPipe evaluation conversation",
   "type": "object",
   "additionalProperties": false,
