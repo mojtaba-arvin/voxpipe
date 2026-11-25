@@ -227,17 +227,16 @@ def run_synthesis(
                 raise ValueError(f"{record['conversation_id']}: unexpected TTS sample rates")
             customer_duration = len(customer_samples) / customer_rate
             agent_duration = len(agent_samples) / agent_rate
-            delay, _, overlap_duration = calculate_overlap_window(customer_duration, agent_duration)
+            delay, _, _ = calculate_overlap_window(customer_duration, agent_duration)
             mixed, delay_samples = mix_samples(customer_samples, agent_samples, customer_rate, delay)
             actual_delay = delay_samples / customer_rate
             mix_path = audio_dir / f"{record['conversation_id']}.wav"
             sf.write(mix_path, np.asarray(mixed, dtype=np.float32), customer_rate, subtype="PCM_16")
             if not mix_path.is_file() or mix_path.stat().st_size <= 44:
                 raise RuntimeError(f"{record['conversation_id']}: mixed WAV was not written")
-            annotations.append(
-                build_annotation(record, customer_duration, agent_duration, customer_rate, actual_delay)
-            )
-            overlap_seconds.append(overlap_duration)
+            annotation = build_annotation(record, customer_duration, agent_duration, customer_rate, actual_delay)
+            annotations.append(annotation)
+            overlap_seconds.append(annotation["overlap"]["duration_seconds"])
             mixed_audio_seconds += len(mixed) / customer_rate
 
         annotations_payload = "".join(
