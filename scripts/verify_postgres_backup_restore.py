@@ -103,6 +103,7 @@ def main() -> None:
 
     tenant_id, other_tenant_id = str(uuid4()), str(uuid4())
     workflow_id, step_id = str(uuid4()), str(uuid4())
+    worker_id = str(uuid4())
     provider = f"backup-restore-ci-{uuid4()}"
 
     with psycopg.connect(admin_dsn) as connection:
@@ -121,6 +122,12 @@ def main() -> None:
         connection.execute(
             "INSERT INTO provider_circuit_breakers (provider, consecutive_failures) VALUES (%s, 2)",
             (provider,),
+        )
+        connection.execute(
+            "INSERT INTO ingestion_worker_heartbeats "
+            "(tenant_id, worker_id, state, started_at, heartbeat_at, last_job_started_at) "
+            "VALUES (%s, %s, 'busy', now() - interval '2 minutes', now() - interval '1 minute', now() - interval '1 minute')",
+            (tenant_id, worker_id),
         )
 
     restore_dsn = urlunsplit((
@@ -170,16 +177,27 @@ def main() -> None:
                 "SELECT consecutive_failures FROM provider_circuit_breakers WHERE provider = %s",
                 (provider,),
             ).fetchone()
+            worker_state = connection.execute(
+                "SELECT state, last_job_started_at FROM ingestion_worker_heartbeats "
+                "WHERE tenant_id = %s AND worker_id = %s",
+                (tenant_id, worker_id),
+            ).fetchone()
             rls = connection.execute(
                 "SELECT relrowsecurity, relforcerowsecurity "
                 "FROM pg_class WHERE oid = 'public.workflow_runs'::regclass"
+            ).fetchone()
+            worker_rls = connection.execute(
+                "SELECT relrowsecurity, relforcerowsecurity "
+                "FROM pg_class WHERE oid = 'public.ingestion_worker_heartbeats'::regclass"
             ).fetchone()
 
         if run_state != ("pending",) or step_state != ("backup.restore.probe", "pending"):
             raise AssertionError("workflow journal rows did not survive restore")
         if breaker_state != (2,):
             raise AssertionError("provider breaker state did not survive restore")
-        if rls != (True, True):
+        if worker_state is None or worker_state[0] != "busy" or worker_state[1] is None:
+            raise AssertionError("worker heartbeat state did not survive restore")
+        if rls != (True, True) or worker_rls != (True, True):
             raise AssertionError("forced row-level security did not survive restore")
 
         with psycopg.connect(restore_app_dsn) as connection:
@@ -187,12 +205,18 @@ def main() -> None:
             visible = connection.execute(
                 "SELECT count(*) FROM workflow_runs WHERE workflow_id = %s", (workflow_id,)
             ).fetchone()[0]
+            visible_worker = connection.execute(
+                "SELECT count(*) FROM ingestion_worker_heartbeats WHERE worker_id = %s", (worker_id,)
+            ).fetchone()[0]
             connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (other_tenant_id,))
             hidden = connection.execute(
                 "SELECT count(*) FROM workflow_runs WHERE workflow_id = %s", (workflow_id,)
             ).fetchone()[0]
-            if visible != 1 or hidden != 0:
-                raise AssertionError("restored workflow rows violate tenant RLS isolation")
+            hidden_worker = connection.execute(
+                "SELECT count(*) FROM ingestion_worker_heartbeats WHERE worker_id = %s", (worker_id,)
+            ).fetchone()[0]
+            if visible != 1 or hidden != 0 or visible_worker != 1 or hidden_worker != 0:
+                raise AssertionError("restored workflow/worker rows violate tenant RLS isolation")
 
         print(
             "PostgreSQL backup/restore rehearsal passed: workflow run/step, provider breaker, "
