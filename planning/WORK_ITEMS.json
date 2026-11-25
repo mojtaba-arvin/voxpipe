@@ -1043,7 +1043,7 @@
       "title": "Add a privacy-safe operational view for ingestion and queue health",
       "phase": 7,
       "priority": 41,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0039"
       ],
@@ -1059,7 +1059,8 @@
       "evidence": [
         "2026-11-25 product sequencing: schedule after VP-0040; operational visibility must use tenant-safe aggregates and never expose transcript/audio content.",
         "2026-11-25: started an independent implementation branch after VP-0039. The operational view is deliberately tenant-scoped (no global tenant enumeration), requires a dedicated operations:read capability, limits queries to 1–168 hours, and returns only aggregate counts/freshness/queue ages; raw errors and media/transcript data are excluded. API + CLI health command, RLS integration coverage and query indexes are being implemented.",
-        "2026-11-25: implemented aggregate-only tenant operations API + CLI health view on PR #144. Dedicated operations:read, forced-RLS integration coverage, bounded window, queue/retry/dead-letter metrics, privacy redaction and supporting indexes are present. Previous exact-head CI run 45586846025 passed all six jobs; rebase onto VP-0040 main is in progress and must pass CI again before merge."
+        "2026-11-25: implemented aggregate-only tenant operations API + CLI health view on PR #144. Dedicated operations:read, forced-RLS integration coverage, bounded window, queue/retry/dead-letter metrics, privacy redaction and supporting indexes are present. Previous exact-head CI run 45586846025 passed all six jobs; rebase onto VP-0040 main is in progress and must pass CI again before merge.",
+        "2026-11-25: PR #144 squash-merged to main as f3538756946ec064ca3b5ebbf691390ee42170eb. Exact-head CI run 45590134481 passed all six jobs and post-merge main CI run 45590454724 passed all six jobs. Tenant-scoped operations API and CLI health view, dedicated operations:read scope, forced-RLS integration coverage, bounded seven-day window, aggregate-only output, queue/retry/dead-letter metrics, redaction and retention boundaries are verified on main."
       ],
       "blocked_reason": null
     }

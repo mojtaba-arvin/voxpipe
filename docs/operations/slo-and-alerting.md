@@ -46,3 +46,6 @@ Tune thresholds to measured baseline and paging fatigue; avoid alerting on indiv
 ## Remaining implementation
 
 A metrics exporter, tracing backend, alert manager, dashboard, synthetic checks and staging load validation are not yet configured in this repository. Do not claim the SLOs are active until those components and alert tests exist.
+
+
+The tenant-scoped `/v1/operations/ingestion/summary` API and CLI `health` command are point-in-time operator views, not a Prometheus exporter or alert-delivery mechanism. They do not replace aggregate alert rules, Alertmanager configuration, or staging SLO validation.
