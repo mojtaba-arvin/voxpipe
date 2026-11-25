@@ -1083,7 +1083,31 @@
       ],
       "evidence": [
         "Implementation is on feat/vp-0042-health-readiness; awaiting exact-head GitHub Actions validation before completion.",
-        "2026-11-25: PR #148 exact-head CI run 45606622379 passed all six jobs on edf3758ed8ae2a9775deef3a05ea23a2421f369d. Python/PostgreSQL validation passed 474 tests; Go API/PostgreSQL readiness tests passed; Docker Compose quickstart confirmed API Healthy before worker startup and completed the sample ingestion. No external provider or paid inference was enabled."
+        "2026-11-25: PR #148 exact-head CI run 45606622379 passed all six jobs on edf3758ed8ae2a9775deef3a05ea23a2421f369d. Python/PostgreSQL validation passed 474 tests; Go API/PostgreSQL readiness tests passed; Docker Compose quickstart confirmed API Healthy before worker startup and completed the sample ingestion. No external provider or paid inference was enabled.",
+        "2026-11-25: post-merge main CI run 45608132259 completed successfully on merge commit c05503216f6b961c7322688e600bff4def88d366; all six required jobs passed."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0043",
+      "title": "Add tenant-scoped worker liveness and progress aggregates",
+      "phase": 8,
+      "priority": 43,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0042",
+        "VP-0041"
+      ],
+      "acceptance_criteria": [
+        "Each worker process registers one row per explicitly authorized tenant and refreshes a process heartbeat every 15 seconds independently of job execution and job-lease renewal.",
+        "Worker state distinguishes idle, busy and gracefully stopped; job start/completion timestamps make long-running work observable without claiming semantic model progress.",
+        "Heartbeat storage uses forced tenant RLS and least-privilege application grants; cross-tenant worker IDs and rows remain inaccessible.",
+        "The operations API exposes only aggregate active, stale, idle, busy, stale-busy and oldest-busy metrics, with 45-second staleness and no worker or tenant identifiers.",
+        "Unit and PostgreSQL integration tests cover idle heartbeat refresh, busy/idle transitions, graceful stop, stale classification, RLS isolation and privacy redaction.",
+        "Operations and API contract documentation explain the difference between process liveness, job-lease health and semantic processing progress."
+      ],
+      "evidence": [
+        "Implementation is in progress on feat/vp-0043-worker-heartbeats; exact-head CI and post-merge CI are required before completion."
       ],
       "blocked_reason": null
     }
