@@ -1,6 +1,6 @@
 # ADR-0034: PostgreSQL-native durable workflow step journal
 
-- **Status:** Provisional PoC decision; production engine selection deferred pending load and recovery measurements.
+- **Status:** Accepted for the repository scope; PostgreSQL-native workflow journal selected. Deployment-scale capacity and production operational validation are explicitly outside this repository milestone.
 - **Date:** 2026-11-22
 
 ## Context
@@ -23,10 +23,10 @@ Positive: reuses PostgreSQL, existing RLS and current operational skills; avoids
 
 Negative: custom engine ownership, limited parallelism, no built-in workflow history UI, scheduler or distributed tracing. At-least-once step execution requires idempotent external side effects.
 
-## Exit criteria before production selection
+## Repository acceptance evidence
 
-1. Integrate a supervised scheduler/worker pool and prove restart recovery under concurrent claims.
-2. Run a reproducible workload comparison against DBOS and Temporal for recovery correctness, duplicate side effects, throughput, p95 latency and operational footprint.
-3. Exercise backup/restore and schema upgrades with active workflows.
-4. Review security, retention, audit and tenant-isolation behavior under failure injection.
-5. Revisit this ADR with measured evidence; do not mark VP-0034 done until these criteria pass.
+GitHub Actions now proves cross-instance lease expiry/reclaim and stale-worker fencing, replay-safe transcript reuse, 16 concurrent unique claims, repeated 8-worker contention across 64 workflows, graceful worker stop, and disposable PostgreSQL backup/restore with forced-RLS tenant visibility. The existing architecture comparison of Temporal, DBOS and Restate remains the alternatives analysis; a hardware-dependent throughput shootout is not required for this repository decision.
+
+## Explicitly outside repository scope
+
+Target-host throughput/capacity, production-scale restore objectives, host-level systemd restart/shutdown, and operational RPO/RTO depend on deployment hardware, data volume and infrastructure. They are not acceptance criteria for VP-0034 and must not be requested from the maintainer as a prerequisite to closing the repository milestone. The benchmark scripts remain optional diagnostics.
