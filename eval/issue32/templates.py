@@ -130,10 +130,7 @@ def generate_conversations(count: int = 120, seed: int = 20261125) -> list[dict[
 
     validator = _validator()
     for record in records:
-        # scenario is generator metadata, not part of the canonical conversation contract.
-        scenario = record.pop("scenario")
         errors = list(validator.iter_errors(record))
-        record["scenario"] = scenario
         if errors:
             raise ValueError(f"generated record {record['conversation_id']} failed schema validation: {errors[0].message}")
     return records
