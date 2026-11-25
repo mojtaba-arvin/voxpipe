@@ -178,10 +178,15 @@ export VOXPIPE_API_TOKEN='...'
 PYTHONPATH=src python scripts/voxpipe_cli.py ingest ./meeting.wav --wait
 PYTHONPATH=src python scripts/voxpipe_cli.py status SESSION_UUID
 PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --language fa
-PYTHONPATH=src python scripts/voxpipe_cli.py health --window-hours 24
 ```
 
 See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The `health` command requires the separate `operations:read` scope and returns aggregate-only tenant queue/processing metrics. The API token must have the capability required by each command; use HTTPS outside loopback.
+
+For operational aggregates, provision a separate least-privilege operator token with `operations:read` and run:
+
+```bash
+PYTHONPATH=src python scripts/voxpipe_cli.py health --window-hours 24
+```
 
 ## Guided local quickstart
 

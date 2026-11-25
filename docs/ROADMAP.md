@@ -122,6 +122,17 @@ The following remain non-gating product/deployment follow-ups: frame-labelled Pe
 - [x] Deliver a first-party CLI for batch audio ingestion, durable job status, and transcript search (VP-0038; streamed uploads, incremental SHA-256, existing authenticated API boundaries, bounded polling, and five-job CI validation in run 45576085075).
 - [x] Add a guided local quickstart that proves API + worker + PostgreSQL + sample audio flow end-to-end without hosted-provider credentials or paid services (VP-0039; PR #142 merged as c9a9122; exact-head CI run 45581360168 passed all six jobs, including the full Docker Compose sample-ingestion flow).
 - [x] Expose hybrid retrieval through a versioned authenticated API/MCP contract (VP-0040; PR #146 merged as `97df157`; exact-head CI run `45589072997` and post-merge main CI run `45589337613` passed all six jobs). The private local sidecar, explicit idempotent revision indexing, transcript:read/transcript:index scopes, immutable SHA-256 model version, explicit 384-dimension contract, and fail-closed readiness behavior are in `main`.
-- [ ] Implementing VP-0041: tenant-scoped operational summary API and first-party CLI health view with a dedicated `operations:read` scope, bounded seven-day window, queue age/retry/dead-letter metrics and aggregate-only output. It has no cross-tenant administrator surface; merge after the VP-0040 baseline is verified.
+- [x] Deliver a tenant-scoped operational summary API and first-party CLI health view (VP-0041; PR #144 merged as `f353875`; exact-head CI run `45590134481` and post-merge main CI run `45590454724` passed all six jobs). Requires dedicated `operations:read`, bounds activity windows to seven days, exposes queue age/retry/dead-letter aggregates only, preserves tenant RLS, and does not create metrics snapshots or extend retention.
 
 **Product boundary:** These are additive product-experience milestones, not a reason to reopen completed repository implementation items. Do not select a production embedding model, enable remote data egress, or claim real Persian quality without the corresponding evidence and approvals.
+
+
+## Phase 7 closure (2026-11-25)
+
+VP-0038 through VP-0041 are complete for repository scope:
+- VP-0038 first-party CLI: PR #141, merge commit `e79d797`.
+- VP-0039 guided local quickstart: PR #142, merge commit `c9a9122`.
+- VP-0040 authenticated hybrid retrieval API/MCP: PR #146, merge commit `97df157`.
+- VP-0041 tenant-scoped operational summary API/CLI: PR #144, merge commit `f353875`.
+
+Completion is backed by exact-head CI and post-merge CI. It does not establish production deployment readiness, external alert delivery, a production STT provider, or human-validated Persian quality. The remaining external evidence gates are issues #32 (adjudicated Persian extraction gold set), #47 (consented natural-conversation speech corpus), and #48 (human-judged retrieval relevance). Do not fabricate evidence or close those issues without the required consented data and human adjudication.
