@@ -117,15 +117,14 @@ class S3CompatibleObjectStore:
                 # A timeout can occur after the provider committed the object.
                 # Reconcile by content before surfacing an ambiguous write.
                 try:
-                    return self._existing_or_conflict(key, size_bytes, checksum)
+                    existing = self.head(key)
                 except ObjectNotFoundError:
                     raise StorageIOError("object could not be stored by the S3-compatible provider") from None
-                except ObjectConflictError:
-                    raise
-                except (StorageIOError, StorageIntegrityError):
-                    raise
-                except Exception:
-                    raise StorageIOError("object could not be stored by the S3-compatible provider") from None
+                if existing.size_bytes == size_bytes and hmac.compare_digest(existing.sha256, checksum):
+                    return existing
+                if not overwrite:
+                    raise ObjectConflictError("object key already exists with different content") from None
+                raise StorageIOError("object overwrite could not be confirmed by the S3-compatible provider") from None
 
         info = self.head(key)
         if info.size_bytes != size_bytes or not hmac.compare_digest(info.sha256, checksum):
@@ -136,6 +135,7 @@ class S3CompatibleObjectStore:
         validate_object_key(key)
         try:
             response = self._client.get_object(Bucket=self._bucket, Key=key)
+            self._verify_encryption(response)
             return response["Body"]
         except Exception as exc:
             self._raise_provider_error(exc, "object could not be opened")
