@@ -220,7 +220,7 @@ def main() -> None:
 
         print(
             "PostgreSQL backup/restore rehearsal passed: workflow run/step, provider breaker, "
-            "forced RLS metadata and tenant-scoped visibility survived restore."
+            "worker heartbeat, forced RLS metadata and tenant-scoped visibility survived restore."
         )
     finally:
         with psycopg.connect(admin_dsn, autocommit=True) as connection:
