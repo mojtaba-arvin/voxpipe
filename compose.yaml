@@ -1,0 +1,84 @@
+name: voxpipe
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run python scripts/dev_quickstart.py up first}
+      POSTGRES_DB: voxpipe_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d voxpipe_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["python", "scripts/bootstrap_local_postgres.py"]
+    environment:
+      VOXPIPE_ADMIN_DATABASE_DSN: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/voxpipe_dev
+      VOXPIPE_LOCAL_APP_PASSWORD: ${APP_DB_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  storage-init:
+    image: busybox:1.37
+    command: ["sh", "-c", "mkdir -p /staging /objects && chown -R 10001:10001 /staging /objects && chmod 0700 /staging /objects"]
+    volumes:
+      - staging_data:/staging
+      - objects_data:/objects
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      VOXPIPE_LISTEN_ADDR: ":8080"
+      VOXPIPE_DATABASE_DSN: postgresql://voxpipe_app:${APP_DB_PASSWORD}@postgres:5432/voxpipe_dev
+      VOXPIPE_AUTH_MODE: static
+      VOXPIPE_API_TOKEN_HASHES: ${API_TOKEN_HASHES}
+      VOXPIPE_STAGING_ROOT: /var/lib/voxpipe/staging
+      VOXPIPE_MAX_UPLOAD_BYTES: "104857600"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - staging_data:/var/lib/voxpipe/staging
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      VOXPIPE_DATABASE_DSN: postgresql://voxpipe_app:${APP_DB_PASSWORD}@postgres:5432/voxpipe_dev
+      VOXPIPE_STAGING_ROOT: /var/lib/voxpipe/staging
+      VOXPIPE_OBJECT_ROOT: /var/lib/voxpipe/objects
+      VOXPIPE_TENANT_IDS: ${TENANT_ID}
+      VOXPIPE_MAX_UPLOAD_BYTES: "104857600"
+    volumes:
+      - staging_data:/var/lib/voxpipe/staging
+      - objects_data:/var/lib/voxpipe/objects
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  staging_data:
+  objects_data:

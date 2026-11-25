@@ -1,0 +1,16 @@
+FROM golang:1.26.11-bookworm AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/voxpipe-api ./cmd/voxpipe-api
+
+FROM debian:bookworm-slim
+RUN groupadd --gid 10001 voxpipe && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin voxpipe \
+    && mkdir -p /var/lib/voxpipe/staging \
+    && chown -R 10001:10001 /var/lib/voxpipe
+COPY --from=build /out/voxpipe-api /usr/local/bin/voxpipe-api
+USER 10001:10001
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/voxpipe-api"]

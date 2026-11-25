@@ -980,6 +980,30 @@
         "2026-11-25: CI caught and drove two fixes before acceptance: the initial script filename shadowed the voxpipe Python package, and a literal escaped newline broke the upload-timeout parser. The entrypoint was renamed to voxpipe_cli.py and syntax corrected; no acceptance criteria or security controls were weakened."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0039",
+      "title": "Deliver a guided local API, worker and PostgreSQL quickstart",
+      "phase": 7,
+      "priority": 39,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0038"
+      ],
+      "acceptance_criteria": [
+        "A single documented host command builds and starts PostgreSQL 16, the Go API and Python ingestion worker using Docker Compose, with migrations applied before application services start.",
+        "The local API is bound only to loopback, PostgreSQL is not host-published, and API/worker use a dedicated NOSUPERUSER NOBYPASSRLS application role with tenant RLS enforced.",
+        "Generate local-only credentials and a tenant-scoped token without committing secrets or passing raw tokens in process arguments; hosted providers and paid inference remain disabled.",
+        "Generate a deterministic valid audio fixture and prove create/upload/finalize, media inspection, object persistence and durable job completion end-to-end.",
+        "Document that the sample fixture proves ingestion only, not speech recognition; document stop/data persistence and local-vs-production boundaries.",
+        "Run unit tests for local secret generation and sample fixture plus a disposable GitHub Actions end-to-end stack test; do not mark done until the exact PR head passes."
+      ],
+      "evidence": [
+        "2026-11-25: product gap confirmed: API/worker/PostgreSQL required manual migration, role and shared-filesystem setup; no first-party compose stack existed.",
+        "2026-11-25: added Go API and Python worker container definitions, PostgreSQL/pgvector Compose topology, local-only database bootstrap with explicit voxpipe_dev and superuser guards, generated 0600 .env credentials and digest-only API auth, and a deterministic two-second WAV tone.",
+        "2026-11-25: documented ingestion-only semantics: the current durable worker validates and stores audio; this quickstart does not claim STT or transcript generation. Added unit coverage and a dedicated disposable GitHub Actions end-to-end job; exact-head verification pending."
+      ],
+      "blocked_reason": null
     }
   ]
 }

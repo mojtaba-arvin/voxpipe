@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is complete. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is complete and VP-0039 (guided local quickstart) is in progress. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
@@ -48,6 +48,9 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 ├── .codex/config.toml
 ├── AGENTS.md
 ├── Makefile
+├── Dockerfile.api
+├── Dockerfile.worker
+├── compose.yaml
 ├── README.md
 ├── LICENSE
 ├── go.mod
@@ -96,6 +99,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── prepare_test_database.py
 │   ├── reconcile_ingestion.py
 │   ├── run_ingestion_worker.py
+│   ├── bootstrap_local_postgres.py
+│   ├── dev_quickstart.py
 │   ├── validate_repo.py
 │   └── voxpipe_cli.py
 ├── src/voxpipe/
@@ -176,6 +181,18 @@ PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --langua
 ```
 
 See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The API token must have the capability required by each command; use HTTPS outside loopback.
+
+## Guided local quickstart
+
+With Docker Compose v2 and Python 3.11+, run:
+
+```bash
+python3 scripts/dev_quickstart.py up
+```
+
+This builds and starts PostgreSQL 16, the Go API and Python worker, applies migrations, creates a random local tenant/token and ingests a generated WAV tone through the CLI. The API binds to loopback only; PostgreSQL is not exposed to the host. The tone verifies ingestion and media validation only—it is not speech and does not produce a transcript. No hosted provider or model download is used.
+
+Stop containers while preserving local data with `python3 scripts/dev_quickstart.py down`. See [the full quickstart and its security boundaries](docs/architecture/local-quickstart.md).
 
 ## Development workflow
 
