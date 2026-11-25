@@ -69,8 +69,16 @@ def build_object_store(
 
     if endpoint_url:
         parsed = urlparse(endpoint_url)
-        if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password:
-            raise ValueError("VOXPIPE_S3_ENDPOINT_URL must be an HTTP(S) origin without embedded credentials")
+        if (
+            parsed.scheme not in {"https", "http"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("VOXPIPE_S3_ENDPOINT_URL must be an HTTP(S) origin without paths or embedded credentials")
         local_hosts = {"localhost", "127.0.0.1", "::1"}
         if parsed.scheme != "https" and parsed.hostname not in local_hosts:
             raise ValueError("VOXPIPE_S3_ENDPOINT_URL must use HTTPS outside loopback development endpoints")
