@@ -69,6 +69,10 @@ Python worker (same database, staging, and object paths):
 
 The worker tenant list is an explicit allowlist supplied by a trusted scheduler/control plane. Neither the API nor worker uses a cross-tenant database scan under the application role.
 
+## Health probes
+
+The unauthenticated, content-free `GET /health/live` and `GET /health/ready` probes are documented in [API health checks and local orchestration](../operations/health-checks.md). Liveness is process-only; readiness verifies PostgreSQL connectivity and the core ingestion schema with a bounded timeout. Neither endpoint proves worker progress or production SLOs.
+
 ## Configuration
 
 | Variable | Default | Meaning |
