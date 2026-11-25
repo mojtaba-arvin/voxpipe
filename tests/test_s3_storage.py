@@ -71,7 +71,7 @@ class FakeS3Client:
         item = self.objects.get(Key)
         if item is None:
             raise FakeClientError("NoSuchKey", 404)
-        return {"Body": io.BytesIO(item["body"])}
+        return {\n            "Body": io.BytesIO(item["body"]),\n            "ServerSideEncryption": item["encryption"],\n            **({"SSEKMSKeyId": item["kms_key"]} if item["kms_key"] else {}),\n        }
 
     def delete_object(self, *, Bucket: str, Key: str) -> dict:
         self.objects.pop(Key, None)
