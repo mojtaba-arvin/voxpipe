@@ -4,6 +4,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import re
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -45,7 +46,7 @@ def _validate_search(payload: dict) -> dict:
         raise ValueError("revision must be a positive integer")
     if "language" in payload and (
         not isinstance(payload["language"], str)
-        or not 2 <= len(payload["language"]) <= 35
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{1,34}", payload["language"])
     ):
         raise ValueError("language filter is invalid")
     for name, minimum in (("start_ms", 0), ("end_ms", 1)):
@@ -150,11 +151,17 @@ class RetrievalHandler(BaseHTTPRequestHandler):
 def main() -> int:
     RetrievalHandler.runtime = build_runtime()
     RetrievalHandler.internal_token = os.environ.get("VOXPIPE_RETRIEVAL_INTERNAL_TOKEN", "").strip()
-    server = ThreadingHTTPServer(
-        os.environ.get("VOXPIPE_RETRIEVAL_LISTEN_ADDR", "0.0.0.0:8090").rsplit(":", 1)[0]
-        if False else ("0.0.0.0", 8090),
-        RetrievalHandler,
-    )
+    address = os.environ.get("VOXPIPE_RETRIEVAL_LISTEN_ADDR", ":8090")
+    host, separator, raw_port = address.rpartition(":")
+    if not separator:
+        raise SystemExit("VOXPIPE_RETRIEVAL_LISTEN_ADDR must use host:port form")
+    try:
+        port = int(raw_port)
+    except ValueError:
+        raise SystemExit("retrieval listen port must be an integer") from None
+    if not 1 <= port <= 65535:
+        raise SystemExit("retrieval listen port is outside the valid range")
+    server = ThreadingHTTPServer((host or "0.0.0.0", port), RetrievalHandler)
     print("Local retrieval service ready; model configured=" + str(RetrievalHandler.runtime is not None))
     server.serve_forever()
     return 0
