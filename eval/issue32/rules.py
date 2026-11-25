@@ -4,18 +4,30 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
+
+from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT = ROOT / "eval" / "artifacts" / "issue32" / "utterances.jsonl"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue32" / "silver_labels.jsonl"
+CONVERSATION_SCHEMA = ROOT / "eval" / "schemas" / "conversation.schema.json"
+LABELS_SCHEMA = ROOT / "eval" / "issue32" / "labels.schema.json"
 DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 DATE_RE = re.compile(r"(?<!\d)(14\d{2})/(0?[1-9]|1[0-2])/(0?[1-9]|[12]\d|3[01])(?!\d)")
 AMOUNT_RE = re.compile(r"(?:مبلغ(?:\s+سفارش)?|بازپرداخت)\s*([\d,٬]+)\s*تومان")
 ORDER_RE = re.compile(r"\bORD-\d{4}\b")
 NAME_RE = re.compile(r"مشتری نمونه\s+\d{3}")
+
+
+@lru_cache(maxsize=2)
+def _validator(schema_path: Path) -> Draft202012Validator:
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
 
 
 def normalize_digits(text: str) -> str:
@@ -41,6 +53,12 @@ def _normalize_amount(value: str) -> str:
 
 
 def label_conversation(record: dict[str, Any]) -> dict[str, Any]:
+    if record.get("source_kind") != "synthetic_template":
+        raise ValueError("rule-based silver labels are restricted to synthetic_template records")
+    errors = list(_validator(CONVERSATION_SCHEMA).iter_errors(record))
+    if errors:
+        raise ValueError(f"invalid conversation record: {errors[0].message}")
+
     text = normalize_digits("\n".join(item["text"] for item in record["utterances"]))
     fields = {
         "date": _extract_one(DATE_RE, text),
@@ -48,12 +66,16 @@ def label_conversation(record: dict[str, Any]) -> dict[str, Any]:
         "order_id": _extract_one(ORDER_RE, text),
         "customer_name": _extract_one(NAME_RE, text),
     }
-    return {
+    result = {
         "conversation_id": record["conversation_id"],
         "source_kind": record["source_kind"],
         "label_kind": "deterministic_rule_silver",
         "fields": fields,
     }
+    errors = list(_validator(LABELS_SCHEMA).iter_errors(result))
+    if errors:
+        raise ValueError(f"generated labels failed schema validation: {errors[0].message}")
+    return result
 
 
 def read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
