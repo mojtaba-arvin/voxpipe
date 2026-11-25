@@ -169,9 +169,9 @@ The CLI covers the core developer workflow without a custom API client:
 ```bash
 export VOXPIPE_API_URL=http://127.0.0.1:8080
 export VOXPIPE_API_TOKEN='...'
-PYTHONPATH=src python scripts/voxpipe.py ingest ./meeting.wav --wait
-PYTHONPATH=src python scripts/voxpipe.py status SESSION_UUID
-PYTHONPATH=src python scripts/voxpipe.py search 'جلسه فروش' --language fa
+PYTHONPATH=src python scripts/voxpipe_cli.py ingest ./meeting.wav --wait
+PYTHONPATH=src python scripts/voxpipe_cli.py status SESSION_UUID
+PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --language fa
 ```
 
 See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The API token must have the capability required by each command; use HTTPS outside loopback.
