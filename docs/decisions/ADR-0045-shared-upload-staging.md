@@ -1,6 +1,6 @@
 # ADR-0045: Shared object-based upload staging
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-25
 - **Decision owners:** VoxPipe architecture
 
@@ -38,9 +38,15 @@ VP-0045 removes this remaining shared-volume dependency without changing the gui
 
 - Fake Go and Python client tests cover contract serialization, tenant key derivation, checksum mismatch, conditional conflicts, interrupted upload, ambiguous commit, retry, and cleanup.
 - CI uses a disposable S3-compatible service with no live cloud credentials or external provider.
-- The adapter interoperability test runs Go and Python in independent processes against one disposable Silo bucket without sharing a staging filesystem. A separate deployment E2E must still run the Go API and Python queue worker in separate containers with no shared staging volume; one process uploads and enqueues, the other claims, reads, verifies, persists, and cleans up.
+- The adapter interoperability test runs Go and Python in independent processes against one disposable Silo bucket without sharing a staging filesystem. PR #156 adds and passes the separate-container deployment E2E: Go API and Python queue worker run in independent containers with no shared staging/object volume; the public API uploads and enqueues a generated WAV, the worker claims and persists it, tenant-scoped reconciliation removes the staging object, and a final check verifies the durable object and SHA-256 remain.
 - Tests prove retryable jobs retain source objects and terminal jobs clean them up without deleting objects referenced by live jobs.
 - Existing local staging, guided quickstart, tenant RLS, backup/restore and VP-0044 S3 integration tests remain green.
+
+## Implementation and verification
+
+- Core implementation: PR #155, merge commit `ccbe90c5dc68d3f671801a4e07431203ee3a17c6`; exact-head CI run `45624282856` passed all seven jobs and dependency audit run `45624282950` passed both audits.
+- Separate-container deployment proof: PR #156, exact-head CI run `45625810038` passed all seven jobs. The S3 job ran the Go API and Python worker in separate containers without shared staging or object filesystem mounts, processed a generated 32,044-byte WAV, reconciled the terminal session from the worker container, and verified staging deletion plus durable-object retention.
+- The E2E uses disposable PGSTY Silo and ephemeral credentials; no production cloud account, live customer data or paid service is involved.
 
 ## Consequences and limits
 
