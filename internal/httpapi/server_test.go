@@ -669,6 +669,12 @@ func TestHealthDependenciesDistinguishesDatabaseAndObjectStorage(t *testing.T) {
 	if strings.Contains(response.Body.String(), "private S3") || strings.Contains(response.Body.String(), "credential") {
 		t.Fatal("dependency readiness leaked provider details")
 	}
+	if ready := request(handler, http.MethodGet, "/health/ready", "", nil); ready.Code != http.StatusServiceUnavailable {
+		t.Fatalf("object storage outage must fail the orchestrator readiness probe: %d", ready.Code)
+	}
+	if live := request(handler, http.MethodGet, "/health/live", "", nil); live.Code != http.StatusOK {
+		t.Fatalf("object storage outage must not fail liveness: %d", live.Code)
+	}
 
 	store.readyErr = errors.New("private database connection details")
 	databaseOutage := request(handler, http.MethodGet, "/health/dependencies", "", nil)
