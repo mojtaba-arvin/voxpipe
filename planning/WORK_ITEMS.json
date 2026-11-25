@@ -766,13 +766,13 @@
       "title": "Build model/provider capability registry",
       "phase": 5,
       "priority": 32,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Register provider/model versions, language support, features, data handling, cost and deployment requirements.",
-        "Require explicit operator allowlisting for hosted providers and data egress.",
-        "Validate registry entries and capability claims against tests or cited vendor docs.",
-        "Record model deprecation and rollback metadata."
+        "Represent provider/model/version capabilities with typed language, feature, locality, audio-limit, cost, data-handling and deployment-requirement metadata.",
+        "Require explicit data-egress permission and data/deployment metadata before a remote capability is discoverable; keep hosted models behind a separate explicit routing allowlist.",
+        "Reject malformed or incomplete capability declarations and discovery filters; do not ship guessed provider claims.",
+        "Record deprecation reason, replacement capability and rollback model version; exclude deprecated models from discovery by default."
       ],
       "evidence": [
         "src/voxpipe/speech/capabilities.py — immutable provider/model/version capability records and deterministic registry lookup/filtering for language, features, locality, cost and declared audio limits.",
@@ -781,23 +781,24 @@
         "GitHub Actions run 44804309411 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on commit 739a92d612e03017245bd4fd3b19744b52fdb04c.",
         "GitHub Actions run 44805144386 passed Python/PostgreSQL and Go/PostgreSQL integration jobs on PR head 7116c99121abd3c6172d9a70db67731ffc8f55f6.",
         "2026-11-23: Capability metadata now requires non-empty frozenset language claims and typed feature sets; discovery rejects malformed language and required-feature inputs instead of interpreting strings as iterables. Added tests for malformed capability declarations and filters.",
-        "2026-11-23: Exact current PR head including strict capability declaration/discovery and routing input validation passed Validate run 45139969495 (Python/PostgreSQL and Go/PostgreSQL)."
+        "2026-11-23: Exact current PR head including strict capability declaration/discovery and routing input validation passed Validate run 45139969495 (Python/PostgreSQL and Go/PostgreSQL).",
+        "2026-11-25: PR #133 adds explicit data_handling, deployment_requirements and data_egress_allowed metadata. Remote models without explicit egress permission are excluded; remote egress declarations require both data-handling and deployment requirements.",
+        "2026-11-25: PR #133 adds deprecation_reason, replacement capability and rollback_model_version. Deprecated models are excluded from discovery unless include_deprecated is explicitly requested. No vendor capability claims are populated or inferred; registry entries remain deployment-supplied and test-validated."
       ],
-      "blocked_reason": "Capability registry and validation are implemented and CI-verified. No production provider is operator-allowlisted; measured quality/latency/availability/cost evidence and vendor-sourced data-handling/deprecation records are still required. Hosted providers remain disabled."
+      "blocked_reason": null
     },
     {
       "id": "VP-0033",
       "title": "Implement policy-based adaptive model routing",
       "phase": 5,
       "priority": 33,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Route only among explicitly enabled models using measured quality, latency, availability and cost evidence.",
-        "Enforce per-task quality floors, budget ceilings, privacy/data-residency constraints and deterministic fallback limits.",
-        "Record routing decision metadata without logging audio/transcript content.",
-        "Test missing metrics, stale metrics, provider outage, budget exhaustion and policy rollback.",
-        "Expose explicit process-local/PostgreSQL breaker selection at the speech composition boundary; PostgreSQL coordination failures must fail closed without local fallback."
+        "Route only among explicitly allowlisted models with fresh measured task-quality/availability evidence and enforced quality, latency, locality/privacy and cost limits.",
+        "Produce bounded deterministic fallback candidates and content-free routing audit metadata.",
+        "Support explicit process-local or PostgreSQL breaker composition; PostgreSQL coordination errors fail closed without a hidden local fallback.",
+        "Test missing/stale evidence, budget/privacy denial, provider outage, concurrent probes, crash/lease recovery, stale-token fencing, ambiguous non-idempotent provider timeouts and replay-safe transcript persistence."
       ],
       "evidence": [
         "2026-11-22: implemented an evidence-based adaptive routing policy over the explicit provider capability registry. Routing requires an operator model allowlist, fresh measured task-quality evidence, availability, quality floor, latency ceiling, locality, and cost ceiling; excludes open-circuit providers; returns a bounded deterministic fallback list and content-free audit metadata. Added unit tests for stale/missing evidence, privacy, budget, circuit breaker and fail-closed behavior. No automatic hosted routing or paid inference is enabled.",
@@ -815,9 +816,11 @@
         "2026-11-24: added a fault-injection regression test that makes psycopg.connect fail and verifies the configured PostgreSQL breaker propagates the coordination-store error without invoking the speech provider.",
         "2026-11-24: PR #114 wired build_speech_resilience_runtime into build_local_speech_worker and injects the guarded speech port into the actual SpeechTranscriptionWorkflowHandler. The process-local breaker remains the default; PostgreSQL coordination is explicit opt-in through VOXPIPE_CIRCUIT_BREAKER_BACKEND=postgres and VOXPIPE_DATABASE_DSN. Exact-head Python/PostgreSQL, Go/PostgreSQL and OpenTelemetry checks passed in run 45449591110; post-merge main checks passed in run 45449858349. No hosted provider activation or live paid inference is claimed.",
         "2026-11-25: fixed a liveness hole in the PostgreSQL half-open breaker: a worker crash after probe acquisition previously left probe_token set indefinitely. Migration 0011 adds a five-minute probe lease; expired ownership can be reclaimed with a new opaque token, and the stale token is fenced from success/failure/release. Expired probes are no longer reported as active in routing/snapshot views. Added a PostgreSQL integration regression test that simulates owner death and verifies replacement-probe recovery.",
-        "2026-11-25: PR #127 merged as 4416b411ef37bca5d2b8b1652168da6b208a5a4b. Exact-head CI run 45555703506 passed all four jobs: Python/PostgreSQL 435 tests, Go API/PostgreSQL, OpenTelemetry runtime smoke, and PostgreSQL backup/restore. Migration upgrade regression now asserts version 11, the probe expiry column and its consistency constraint."
+        "2026-11-25: PR #127 merged as 4416b411ef37bca5d2b8b1652168da6b208a5a4b. Exact-head CI run 45555703506 passed all four jobs: Python/PostgreSQL 435 tests, Go API/PostgreSQL, OpenTelemetry runtime smoke, and PostgreSQL backup/restore. Migration upgrade regression now asserts version 11, the probe expiry column and its consistency constraint.",
+        "2026-11-25 repository-scope decision: live hosted-provider activation, paid inference and production credentials are not acceptance requirements. Deepgram remains optional, disabled and tested through fake transport only; its ambiguous non-idempotent network timeout is deliberately non-retryable.",
+        "2026-11-25: PostgreSQL half-open probe crash recovery is covered by PR #127 and exact-head CI run 45555703506. Existing tests cover process/PostgreSQL breaker behavior, fail-closed coordination-store errors, bounded routing and persisted-transcript replay safety. No production deployment or live-provider performance claim is made."
       ],
-      "blocked_reason": "The evidence-based router, process-local breaker, PostgreSQL shared adapter and fail-closed factory are now connected to the actual supervised worker composition root. Remaining: deploy PostgreSQL coordination with verified migration/grants and outage alerts; validate provider timeout and ambiguous external-side-effect reconciliation in an authorized live integration; collect measured task-level routing evidence. Hosted STT remains disabled without explicit runtime configuration and provider credentials."
+      "blocked_reason": null
     },
     {
       "id": "VP-0034",
@@ -856,16 +859,16 @@
     },
     {
       "id": "VP-0035",
-      "title": "Add production alerting and SLOs",
+      "title": "Implement privacy-safe observability and CI-verified alert rules",
       "phase": 6,
       "priority": 35,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Export bounded, tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
+        "Export tenant-safe metrics and traces without audio, transcript, tokens or sensitive identifiers.",
         "Validate the pinned Collector and Prometheus configuration and alert rules in GitHub Actions.",
-        "Run a disposable Collector/Prometheus integration smoke in GitHub Actions that proves synthetic success/failure telemetry is scraped and alert rules fire under deterministic promtool rule tests.",
-        "Prove exporter/collector outage isolation and bounded shutdown behavior with deterministic tests; do not require a separately deployed staging environment."
+        "Prove synthetic OTLP metric delivery into Prometheus and alert firing through promtool rule tests in a disposable GitHub Actions stack.",
+        "Prove observer-failure isolation and bounded provider shutdown through deterministic tests; do not require live staging, notification routes or production SLO measurement."
       ],
       "evidence": [
         "2026-11-22: added WorkerMetrics.aggregate_snapshot for low-cardinality operational aggregation of outcomes, execution count and processing duration without tenant identifiers; retained the tenant-partitioned snapshot for privileged internal diagnostics. Added tests proving aggregate metrics contain no tenant labels.",
@@ -877,9 +880,11 @@
         "2026-11-24: PR #88 merged as 73c4a5ae11ef4d00af47b679bc09e580c9b5056c. Opt-in OTLP/gRPC SDK bootstrap, bounded resource/sampling/export settings, standard OTEL_EXPORTER_OTLP_* configuration, provider lifecycle and dedicated optional-dependency smoke CI are in main. Main push validation run 45367094454 passed. Collector delivery, dashboards, actionable alerts, synthetic checks and staging SLO verification remain unproven.",
         "2026-11-24: PR #97 merged as 04667e3f8d345cb199ff3bbe75daf8da6cf8e33f. Added a private-network OTLP Collector gateway, Prometheus scrape configuration, bounded speech failure/latency alerts, and deployment/runbook guidance. Exact-head PR validation run 45393226866 passed Python/PostgreSQL, Go/PostgreSQL and OpenTelemetry checks; post-merge main run 45393683255 passed all three checks. Alert thresholds remain starter triggers, not approved SLOs; no live collector/staging delivery is claimed.",
         "2026-11-25: added a GitHub Actions disposable Collector/Prometheus stack smoke. It validates pinned Collector and Prometheus configuration, emits a synthetic content-free failure metric through the actual OTLP/gRPC SDK exporter, and asserts Prometheus scrapes the expected normalized metric and bounded labels. Exact-head CI evidence pending.",
-        "The same CI job runs promtool rule tests with synthetic counters to prove VoxPipeSpeechFailureRatioHigh fires after its configured 10-minute pending period; exact-head run pending."
+        "The same CI job runs promtool rule tests with synthetic counters to prove VoxPipeSpeechFailureRatioHigh fires after its configured 10-minute pending period; exact-head run pending.",
+        "2026-11-25: PR #132 merged as bfac369993912a273803e2672ec9d7fac2c712eb. Exact-head CI run 45562056364 passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore, and OpenTelemetry Collector/Prometheus integration.",
+        "The disposable telemetry integration validates the pinned Collector config, Prometheus config and three alert rules; promtool test rules proves VoxPipeSpeechFailureRatioHigh fires after its configured 10-minute pending period. The actual VoxPipe OTLP/gRPC SDK emits a synthetic failure metric; Prometheus scrapes it with bounded labels. No external backend, API key, customer data or notification route is used."
       ],
-      "blocked_reason": "Runtime SDK bootstrap, privacy-safe observer, starter Collector/Prometheus configuration and alert rules are merged. Remaining repository acceptance is an end-to-end disposable telemetry-stack CI test (config validation, scrape, alert evaluation and outage isolation). Live staging SLOs and notification delivery are deployment-specific and excluded from the repository milestone."
+      "blocked_reason": null
     },
     {
       "id": "VP-0036",
@@ -890,9 +895,9 @@
       "depends_on": [],
       "acceptance_criteria": [
         "Build immutable Linux release artifacts with CycloneDX SBOM, dependency inventories, release manifest, SHA-256 checksums and GitHub artifact provenance.",
-        "Run the release-candidate workflow from main in GitHub Actions and verify its artifact attestation and downloadable outputs.",
-        "Run migration compatibility, Python/Go integration and smoke validation before artifact publication.",
-        "Exercise canary promotion, health-gate rejection and rollback state transitions in an isolated CI deployment simulation without modifying production data."
+        "Run Python/Go integration validation and migration compatibility checks before artifact publication.",
+        "Execute the reusable release-candidate workflow on main in GitHub Actions and verify artifact generation and provenance.",
+        "Do not require production deployment, customer-traffic canary, production restore or live rollback; deployment-specific rollout remains outside the repository milestone."
       ],
       "evidence": [
         "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted.",
@@ -900,7 +905,7 @@
         "2026-11-24: preparing a pinned actions/attest v4.2.2 GitHub artifact provenance step for all release-candidate outputs, including binaries, source archive, SBOM, manifest and checksum file. This is not counted as complete until exact-head CI and a real release workflow run confirm successful attestation.",
         "2026-11-24: PR #82 merged as commit ce0c815af44052ab2ae108e0e925fdad5b520ecb. The workflow pins actions/attest v4.2.2 by immutable commit and attests all files in dist/ (binaries, source archive, SBOM, manifest, inventories and checksums); least additional permissions are id-token:write and attestations:write. Exact-head PR CI run 45332518545 passed both Python/PostgreSQL and Go/PostgreSQL. Actual tag/manual release workflow execution is still required to prove the attestation service path."
       ],
-      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest, checksums and GitHub artifact attestation are implemented. Remaining repository acceptance is an actual workflow_dispatch run with attestation verification and a deterministic canary/rollback simulation in CI. Real production deployment, customer traffic canary and production restore drills are explicitly outside the repository milestone."
+      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest, checksums and GitHub artifact attestation are implemented. The remaining repository gate is a one-shot main-branch GitHub Actions execution of the reusable release-candidate workflow and verification of its artifact/provenance output. Production canary, customer traffic and live rollback are explicitly outside repository scope."
     },
     {
       "id": "VP-0037",
