@@ -1108,9 +1108,10 @@
       ],
       "evidence": [
         "2026-11-25: PR #149 (feat/ops: tenant-scoped worker heartbeats) squash-merged to main as eee1bf36502a04f241271bff1d822e2ee0722a17. Exact-head GitHub Actions run 45612304573 passed all six jobs, including 478 Python/PostgreSQL tests, Go/PostgreSQL, guided quickstart E2E, OpenTelemetry runtime/Collector and PostgreSQL backup/restore.",
-        "2026-11-25: implementation on main includes migration 0013 with forced tenant RLS, independent 15-second process heartbeat, idle/busy/stopped state, 45-second stale classification, tenant-safe operations aggregates and redaction. Post-merge push-triggered main CI still requires verification before this item can be marked done."
+        "2026-11-25: implementation on main includes migration 0013 with forced tenant RLS, independent 15-second process heartbeat, idle/busy/stopped state, 45-second stale classification, tenant-safe operations aggregates and redaction. Post-merge push-triggered main CI still requires verification before this item can be marked done.",
+        "2026-11-25: main merge commit eee1bf36502a04f241271bff1d822e2ee0722a17 passed exact-head PR validation run 45612304573 (6/6 jobs). Post-merge push-triggered CI remains unverified via the connected GitHub run-list action."
       ],
-      "blocked_reason": "Post-merge main CI for eee1bf36502a04f241271bff1d822e2ee0722a17 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify the push-triggered main run with `gh run list --commit eee1bf36502a04f241271bff1d822e2ee0722a17 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0043 done until all six jobs are successful."
+      "blocked_reason": "Post-merge main CI for eee1bf36502a04f241271bff1d822e2ee0722a17 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify with `gh run list --repo mojtaba-arvin/voxpipe --commit eee1bf36502a04f241271bff1d822e2ee0722a17 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0043 done until successful."
     },
     {
       "id": "VP-0044",
@@ -1132,9 +1133,36 @@
         "Document deployment configuration, key isolation, encryption, lifecycle/retention responsibilities, and the remaining shared-staging requirement. Do not claim shared object storage alone enables multi-node API/worker deployment."
       ],
       "evidence": [
-        "2026-11-25: created issue #150 and ADR-0044. Implementation is in progress on feat/vp-0044-s3-object-storage-main: S3 adapter, fail-closed backend factory, worker/workflow/reconciliation composition, optional worker-image SDK build, fake-client tests and disposable MinIO integration CI job.",
-        "Product decision: keep local filesystem as the default and do not select a cloud account, bucket, region, endpoint or secret. Keep the current 512 MiB limit on single-request PutObject; multipart remains out of scope.",
-        "Important boundary: this milestone shares persistent object bytes only. The Go upload API and ingestion worker still require a shared private VOXPIPE_STAGING_ROOT. A separate staging protocol or shared volume is still required before full multi-node API/worker deployment."
+        "2026-11-25: PR #152 squash-merged to main as ee19b92e41cc6598b354296bf0a74dee03a15b90. Exact-head validation run 45615557588 passed all seven jobs, including 502 Python/PostgreSQL tests, Go/PostgreSQL, guided quickstart, OpenTelemetry runtime/Collector, PostgreSQL backup/restore, Silo S3 integration, and S3-enabled worker image build. Dependency audit run 45615557541 passed both Python and Go audits.",
+        "2026-11-25: issue #150 closed by PR #152. The adapter is optional; local filesystem remains the default. S3 object bytes are shared, but VOXPIPE_STAGING_ROOT remains a shared private filesystem dependency; this milestone alone does not establish multi-node API/worker readiness.",
+        "Product decision: keep the current 512 MiB limit on single-request PutObject; multipart remains out of scope. No production cloud account, bucket, region, endpoint or secret was selected."
+      ],
+      "blocked_reason": "Post-merge main CI for ee19b92e41cc6598b354296bf0a74dee03a15b90 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify with `gh run list --repo mojtaba-arvin/voxpipe --commit ee19b92e41cc6598b354296bf0a74dee03a15b90 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0044 done until successful."
+    },
+    {
+      "id": "VP-0045",
+      "title": "Replace shared POSIX upload staging with a shared object protocol",
+      "phase": 8,
+      "priority": 45,
+      "status": "in_progress",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Define a versioned provider-neutral cross-language staging contract for Go API and Python worker with tenant-scoped opaque keys, immutable writes, content length, SHA-256, state transitions and cleanup ownership.",
+        "Keep local filesystem staging as the default for the guided local quickstart and single-node development.",
+        "Add opt-in S3-compatible staging to the Go upload API using the same bucket, endpoint, region, encryption and key layout as the Python runtime; do not expose storage URLs or signed URLs publicly.",
+        "Stream upload request bodies directly to staging with bounded memory, size limits, bounded timeouts/retries, conditional create, SHA-256 verification and explicit server-side encryption.",
+        "Change the Python ingestion worker to consume a staging object key/stream rather than an API-local file path; verify tenant, byte count and SHA-256 before creating the durable audio object.",
+        "Commit the durable object before deleting the staging object; retain staging objects while jobs are live or retryable and make cleanup idempotent and race-safe.",
+        "Define retention and reconciliation for abandoned uploads, expired sessions, failed jobs and completed jobs; never delete objects still referenced by live/retryable jobs.",
+        "Prove separate Go API and Python worker containers can upload, claim, process and clean up objects without a shared staging volume.",
+        "Add disposable S3-compatible CI with no live cloud credentials, external provider, paid resources or customer data.",
+        "Document migration, rollback, least-privilege permissions, lifecycle, observability and recovery; preserve the local quickstart."
+      ],
+      "evidence": [
+        "2026-11-25: created issue #153. Product priority follows VP-0044 because the shared object adapter is now available; design/implementation work is beginning.",
+        "Architecture boundary: VP-0044 shares persistent audio objects only. Go API and Python ingestion worker still require a shared private VOXPIPE_STAGING_ROOT; VP-0045 removes that remaining shared-volume dependency.",
+        "No hard dependency is declared in the ledger because design can proceed while post-merge CI evidence for VP-0044 is finalized; implementation must target the merged ObjectStoragePort/S3 contract.",
+        "Design proposal recorded in docs/decisions/ADR-0045-shared-upload-staging.md: versioned staging/v1 tenant/session/upload key contract, Go API streaming to S3, Python worker checksum verification, retry-safe retention and cleanup; local staging remains default."
       ],
       "blocked_reason": null
     }

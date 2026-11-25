@@ -8,20 +8,20 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository status:** VP-0001–VP-0042 are complete for repository scope. VP-0043 (tenant-scoped worker liveness/progress aggregates) is merged; exact-head CI passed all six jobs, with post-merge main CI verification still pending. VP-0044 (shared S3-compatible object storage) is in progress behind the existing storage port; local filesystem storage remains the default. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository status:** VP-0001–VP-0042 are complete for repository scope. VP-0043 (tenant-scoped worker liveness/progress aggregates) and VP-0044 (optional shared S3-compatible object storage) are merged; their exact-head CI passed, while post-merge main CI verification remains pending. VP-0045 (shared object-based upload staging between Go API and Python worker) is in progress. Local filesystem storage and staging remain the defaults for the guided quickstart. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
 **Product maturity:** VoxPipe includes tenant-scoped ingestion and transcript persistence, durable PostgreSQL-backed jobs/workflows, local Faster-Whisper STT, optional disabled-by-default Deepgram integration, VAD and diarization adapters, calibrated language identification, evidence-validated structured extraction, lexical and pgvector hybrid retrieval, adaptive provider routing, privacy-safe telemetry, and release/governance automation. These are repository implementation claims backed by tests; they are not a blanket production-readiness claim.
 
-**Explicit limitations:** FLEURS VAD labels are utterance-envelope proxies, diarization data is controlled read speech rather than natural overlapping conversation, LID has no code-switch/noisy-field evaluation, extraction has no human-reviewed Persian gold set, and retrieval has no human-judged Persian relevance score or selected production embedding model. Deepgram remains disabled pending an API key and separately approved spend (current test budget: USD 0). Production capacity, staging SLOs, live notification delivery, customer-traffic canaries, production backup/PITR and RPO/RTO are not established. Local filesystem storage remains the default single-node option. An optional S3-compatible adapter is under implementation for shared persistent object bytes; upload staging still requires a shared private filesystem, so this adapter alone does not establish multi-node API/worker readiness.
+**Explicit limitations:** FLEURS VAD labels are utterance-envelope proxies, diarization data is controlled read speech rather than natural overlapping conversation, LID has no code-switch/noisy-field evaluation, extraction has no human-reviewed Persian gold set, and retrieval has no human-judged Persian relevance score or selected production embedding model. Deepgram remains disabled pending an API key and separately approved spend (current test budget: USD 0). Production capacity, staging SLOs, live notification delivery, customer-traffic canaries, production backup/PITR and RPO/RTO are not established. Local filesystem storage remains the default single-node option. The optional S3-compatible adapter is merged for shared persistent object bytes; upload staging still requires a shared private filesystem, so this adapter alone does not establish multi-node API/worker readiness.
 
 **Default branch:** `main`
 
 
 ## Object storage configuration
 
-The guided local stack uses the local filesystem adapter and needs no cloud credentials. A shared S3-compatible backend is opt-in and remains under implementation:
+The guided local stack uses the local filesystem adapter and needs no cloud credentials. A shared S3-compatible backend is merged but opt-in:
 
 - Install its optional SDK with `pip install -r requirements-s3.txt`.
 - Set `VOXPIPE_STORAGE_BACKEND=s3_compatible`, `VOXPIPE_S3_BUCKET`, `VOXPIPE_S3_REGION`, and an explicit `VOXPIPE_S3_SERVER_SIDE_ENCRYPTION=AES256` or `aws:kms`.
@@ -29,6 +29,10 @@ The guided local stack uses the local filesystem adapter and needs no cloud cred
 - Use `VOXPIPE_S3_ENDPOINT_URL` for an S3-compatible endpoint; non-loopback endpoints require HTTPS.
 
 For the ingestion worker image, include the optional SDK with `docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3 .`; the default image and local Compose quickstart do not install or use boto3. See [the object-storage boundary and deployment limits](docs/architecture/storage.md). S3 object storage does not replace the private upload-staging filesystem; do not claim full multi-node deployment until staging is shared or its protocol is replaced.
+
+## Next operational milestone
+
+VP-0045 removes the remaining shared POSIX upload-staging dependency between the Go API and Python ingestion worker. It introduces a versioned shared staging-object contract, keeps local staging as the quickstart default, and proves API/worker separation with disposable S3-compatible CI. See [issue #153](https://github.com/mojtaba-arvin/voxpipe/issues/153) and [ADR-0045](docs/decisions/ADR-0045-shared-upload-staging.md).
 
 ## Design principles
 
