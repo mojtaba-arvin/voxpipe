@@ -28,7 +28,7 @@ Do not count invalid media, explicit cancellation, customer approval waits or po
 - **Queue age:** page when oldest eligible pending job exceeds 5 minutes for 5 consecutive minutes.
 - **Dead letters:** page on any sustained increase in dead-letter jobs; include only bounded error codes.
 - **Retry storm:** warn when retry-scheduled outcomes exceed 5% of claims over 15 minutes.
-- **Worker liveness:** page when no worker heartbeat is observed for 3 expected polling intervals while eligible queue depth is non-zero.
+- **Worker liveness:** use the tenant-scoped operations summary's aggregate `workers.active`, `workers.stale`, `workers.busy`, and `workers.stale_busy` counts. A stale threshold is 45 seconds (three 15-second heartbeats); correlate stale workers with eligible queue depth and expired leases before paging.
 - **Deletion deadline:** page when any deletion workflow approaches 12 hours without verified completion; escalate at 24 hours.
 - **Processing failure:** warn when eligible processing failure ratio breaches the agreed error budget over 15 minutes.
 
@@ -45,7 +45,7 @@ Tune thresholds to measured baseline and paging fatigue; avoid alerting on indiv
 
 ## Remaining implementation
 
-A metrics exporter, tracing backend, alert manager, dashboard, synthetic checks and staging load validation are not yet configured in this repository. Do not claim the SLOs are active until those components and alert tests exist.
+The worker heartbeat table and aggregate operations view are implemented, but a metrics exporter, tracing backend, alert manager, dashboard, synthetic checks and staging load validation are not yet configured in this repository. The worker-liveness signal is therefore queryable by operators but does not yet page automatically. Do not claim the SLOs are active until those components and alert tests exist.
 
 
 The tenant-scoped `/v1/operations/ingestion/summary` API and CLI `health` command are point-in-time operator views, not a Prometheus exporter or alert-delivery mechanism. They do not replace aggregate alert rules, Alertmanager configuration, or staging SLO validation.
