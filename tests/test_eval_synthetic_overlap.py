@@ -43,6 +43,13 @@ class SyntheticOverlapTests(unittest.TestCase):
         second = mix_samples([0.2] * 8, [0.1] * 8, 4, 0.5, noise_seed=42)[0]
         self.assertEqual(list(first), list(second))
 
+
+    def test_manifest_schema_is_valid(self) -> None:
+        schema = json.loads(
+            (ROOT / "eval" / "issue47" / "overlap_manifest.schema.json").read_text(encoding="utf-8")
+        )
+        Draft202012Validator.check_schema(schema)
+
     def test_annotations_contain_roles_and_ground_truth_overlap_only(self) -> None:
         conversation = {
             "conversation_id": "conversation-0001",
