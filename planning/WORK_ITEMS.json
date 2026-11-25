@@ -1252,7 +1252,7 @@
       "title": "Add CPU model smoke benchmark (issue #166)",
       "phase": 9,
       "priority": 49,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0047"
       ],

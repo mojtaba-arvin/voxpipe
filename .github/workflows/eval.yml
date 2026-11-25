@@ -168,13 +168,59 @@ jobs:
           bash scripts/comment_issue.sh
 
   eval-47:
-    name: Group C — speech (silver)
+    name: Group C — Qwen3-ASR CPU feasibility smoke
     if: ${{ inputs.run_eval_47 }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
-      - name: Evaluation implementation pending
-        run: echo "Group C implementation is tracked by issues 176 through 180."
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Install CPU-only ASR dependencies
+        run: python -m pip install --disable-pip-version-check --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
+      - name: Run pinned Qwen3-ASR CPU smoke
+        run: python -m eval.issue47.cpu_smoke
+      - name: Upload CPU smoke metadata only
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: qwen3-asr-cpu-smoke
+          path: eval/artifacts/issue47/cpu_smoke.json
+          if-no-files-found: error
+      - name: Disclose CPU feasibility results on issue 166
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: "166"
+        run: |
+          COMMENT_BODY="$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("eval/artifacts/issue47/cpu_smoke.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Qwen3-ASR CPU feasibility smoke",
+              "",
+              f"- Model revision: {result['model_revision']}",
+              f"- Model size: {result['model_size_bytes']} bytes",
+              f"- Download time: {result['model_download_seconds']:.2f}s",
+              f"- Load time: {result['model_load_seconds']:.2f}s",
+              f"- Audio duration: {result['audio_duration_seconds']:.2f}s",
+              f"- Inference time: {result['inference_seconds']:.2f}s",
+              f"- Real-time factor: {result['real_time_factor']:.4f}",
+              f"- CPU cores / Torch threads: {result['cpu_count']} / {result['torch_num_threads']}",
+              "",
+              "This uses the publisher's English sample to measure CPU feasibility only. It is not Persian WER or production-quality evidence; no transcript text, audio or timestamps are uploaded.",
+          ]
+          print("\n".join(lines))
+          PY
+          )"
+          export COMMENT_BODY
+          bash scripts/comment_issue.sh
 
   post-results:
     name: Aggregate evaluation outcomes
