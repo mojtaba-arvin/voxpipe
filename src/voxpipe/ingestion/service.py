@@ -87,7 +87,7 @@ class IngestionService:
     def __init__(
         self,
         *,
-        staging_root: str | Path,
+        staging_root: str | Path | None,
         repository: IngestionRepositoryPort,
         object_store: ObjectStoragePort,
         media_inspector: FFprobeMediaInspector | None = None,
@@ -105,11 +105,15 @@ class IngestionService:
         if session_ttl.total_seconds() <= 0 or lease_ttl.total_seconds() <= 0:
             raise ValueError("session_ttl and lease_ttl must be greater than zero")
 
-        self._staging_root = Path(staging_root).expanduser()
-        self._staging_root.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self._staging_root = self._staging_root.resolve(strict=True)
-        if not self._staging_root.is_dir():
-            raise ValueError("staging_root must be a directory")
+        self._staging_root: Path | None = None
+        if staging_root is not None:
+            self._staging_root = Path(staging_root).expanduser()
+            self._staging_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            self._staging_root = self._staging_root.resolve(strict=True)
+            if not self._staging_root.is_dir():
+                raise ValueError("staging_root must be a directory")
+        elif storage_provider == "local":
+            raise ValueError("staging_root is required for local storage")
 
         self._repository = repository
         self._object_store = object_store
@@ -144,6 +148,7 @@ class IngestionService:
             "idempotency_key": idempotency_key,
             "asset_id": str(uuid4()),
             "staging_reference": staging_reference,
+            "staging_backend": "local",
             "upload": {
                 "expected_size_bytes": size_bytes,
                 "received_size_bytes": size_bytes,
