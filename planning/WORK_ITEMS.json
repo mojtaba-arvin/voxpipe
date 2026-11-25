@@ -1383,7 +1383,7 @@
       "title": "Generate deterministic retrieval queries from placeholder corpus (issue #172)",
       "phase": 9,
       "priority": 55,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0050"
       ],

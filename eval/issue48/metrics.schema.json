@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue48:metrics:v1",
+  "title": "VoxPipe retrieval silver metrics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_kind",
+    "qrels_kind",
+    "ranking_method",
+    "seed",
+    "query_count",
+    "test_query_count",
+    "corpus_count",
+    "split_counts",
+    "split_ratios",
+    "jaccard_threshold",
+    "relevance_policy",
+    "recall_at_5",
+    "mrr",
+    "ndcg_at_5",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source_kind": {
+      "enum": [
+        "synthetic_template",
+        "mixed_or_external",
+        "read_speech",
+        "consented_natural"
+      ]
+    },
+    "qrels_kind": {
+      "const": "heuristic_lexical_silver"
+    },
+    "ranking_method": {
+      "const": "deterministic_jaccard_lexical_baseline"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "query_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "test_query_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "corpus_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "split_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "split_ratios": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "jaccard_threshold": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "relevance_policy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recall_at_5": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "mrr": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "ndcg_at_5": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
