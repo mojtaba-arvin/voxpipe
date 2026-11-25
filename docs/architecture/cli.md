@@ -18,10 +18,10 @@ The bearer token must be kept out of shell history, source control, and command-
 Run from a repository checkout:
 
 ```sh
-PYTHONPATH=src python scripts/voxpipe.py ingest ./meeting.wav
-PYTHONPATH=src python scripts/voxpipe.py ingest ./meeting.wav --wait
-PYTHONPATH=src python scripts/voxpipe.py status SESSION_UUID
-PYTHONPATH=src python scripts/voxpipe.py search 'جلسه فروش' --language fa
+PYTHONPATH=src python scripts/voxpipe_cli.py ingest ./meeting.wav
+PYTHONPATH=src python scripts/voxpipe_cli.py ingest ./meeting.wav --wait
+PYTHONPATH=src python scripts/voxpipe_cli.py status SESSION_UUID
+PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --language fa
 ```
 
 Ingestion incrementally computes file size and SHA-256, creates an idempotent session, streams the file to private staging, and finalizes a durable job. The command prints the session/job identifiers. With `--wait`, it polls until completion or a bounded timeout. A wait timeout does not cancel the durable job; inspect it later with `status`.
