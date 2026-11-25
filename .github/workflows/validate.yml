@@ -270,6 +270,56 @@ jobs:
         run: python scripts/verify_s3_staging_interop.py
       - name: Build the optional S3-enabled ingestion worker image
         run: docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3:ci .
+      - name: Stop adapter-level Silo before isolated deployment E2E
+        run: docker rm -f voxpipe-silo || true
+      - name: Prepare ephemeral S3 deployment credentials
+        run: python scripts/prepare_s3_e2e_env.py
+      - name: Validate isolated deployment Compose configuration
+        run: docker compose -f compose.s3-e2e.yaml config --quiet
+      - name: Start Go API and Python worker without shared staging storage
+        run: docker compose -f compose.s3-e2e.yaml up --build --detach --wait --wait-timeout 180
+      - name: Upload and process generated audio through Go API and Python queue worker
+        id: s3-deployment-e2e
+        env:
+          PYTHONPATH: src
+          VOXPIPE_API_URL: http://127.0.0.1:8080
+          VOXPIPE_API_TOKEN: ${{ env.VOXPIPE_API_TOKEN }}
+          TENANT_ID: ${{ env.TENANT_ID }}
+        run: |
+          python scripts/verify_s3_staging_deployment.py > /tmp/voxpipe-s3-deployment-e2e.json
+          cat /tmp/voxpipe-s3-deployment-e2e.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          with open("/tmp/voxpipe-s3-deployment-e2e.json", encoding="utf-8") as stream:
+              result = json.load(stream)
+          for key in ("session_id", "asset_id", "expected_sha256"):
+              print(f"{key}={result[key]}")
+          PY
+      - name: Reconcile completed staging from the isolated worker container
+        run: docker compose -f compose.s3-e2e.yaml exec -T worker python scripts/reconcile_ingestion.py --tenant-id "$TENANT_ID" --limit 100
+      - name: Verify staging removal and durable object retention
+        env:
+          PYTHONPATH: src
+          VOXPIPE_STORAGE_BACKEND: s3_compatible
+          VOXPIPE_S3_BUCKET: ${{ env.VOXPIPE_S3_BUCKET }}
+          VOXPIPE_S3_REGION: ${{ env.VOXPIPE_S3_REGION }}
+          VOXPIPE_S3_ENDPOINT_URL: ${{ env.VOXPIPE_S3_ENDPOINT_URL }}
+          VOXPIPE_S3_ACCESS_KEY_ID: ${{ env.VOXPIPE_S3_ACCESS_KEY_ID }}
+          VOXPIPE_S3_SECRET_ACCESS_KEY: ${{ env.VOXPIPE_S3_SECRET_ACCESS_KEY }}
+          VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: ${{ env.VOXPIPE_S3_SERVER_SIDE_ENCRYPTION }}
+          VOXPIPE_S3_ADDRESSING_STYLE: ${{ env.VOXPIPE_S3_ADDRESSING_STYLE }}
+          VOXPIPE_S3_MAX_ATTEMPTS: ${{ env.VOXPIPE_S3_MAX_ATTEMPTS }}
+          VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS: ${{ env.VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS }}
+          VOXPIPE_S3_READ_TIMEOUT_SECONDS: ${{ env.VOXPIPE_S3_READ_TIMEOUT_SECONDS }}
+        run: |
+          python scripts/verify_s3_staging_cleanup.py \\
+            --tenant-id "$TENANT_ID" \\
+            --session-id "${{ steps.s3-deployment-e2e.outputs.session_id }}" \\
+            --asset-id "${{ steps.s3-deployment-e2e.outputs.asset_id }}" \\
+            --expected-sha256 "${{ steps.s3-deployment-e2e.outputs.expected_sha256 }}"
+      - name: Stop isolated S3 deployment stack
+        if: always()
+        run: docker compose -f compose.s3-e2e.yaml down --volumes --remove-orphans || true
       - name: Stop disposable Silo
         if: always()
         run: docker rm -f voxpipe-silo || true
