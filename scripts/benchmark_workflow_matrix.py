@@ -15,7 +15,10 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from benchmark_workflows import run_benchmark
+try:
+    from scripts.benchmark_workflows import run_benchmark
+except ModuleNotFoundError:
+    from benchmark_workflows import run_benchmark
 
 
 def parse_worker_counts(raw: str) -> tuple[int, ...]:
