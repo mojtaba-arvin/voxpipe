@@ -64,7 +64,7 @@ Document:
 - PR #158 merged as `0ee0756fc67fea611eb59a62e43f2eca9381ff7c`; exact-head CI run `45629633269` passed all seven jobs. The Go API uses a staging-only credential pair or its own workload identity, the Python worker uses separate durable-object credentials, and disposable Silo policies prove the API identity cannot read, write or delete durable tenant objects.
 - PR #159 merged as `a22c7e65acf64bb12d235db180b2d5d5c5da4ad6`; exact-head CI run `45633115543` passed all seven jobs. It adds separate database/object-storage readiness, lifecycle safety validation against session/retry/recovery windows, and a dedicated versioned recovery-bucket test. Post-merge main run `45633886907` passed all seven jobs.
 - PR #160 merged as `0c61824b0c1bd6f2618c5d7e32f4310c10916df1`; exact-head CI run `45634043287` passed all seven jobs. Fault-injection coverage proves transient S3 reads are surfaced as sanitized storage errors and failed staging deletion remains retryable without losing source bytes or deleting the durable asset.
-- Post-merge main validation for PR #160 is running as `45641155682`; record its final result before marking VP-0046 complete in the work ledger and closing issue #157.
+- Post-merge main validation run `45641155682` passed all seven jobs. VP-0046 is complete for repository scope; production deployment evidence remains target-specific.
 
 The active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions.
 
