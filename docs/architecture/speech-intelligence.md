@@ -18,12 +18,13 @@ Adapters return the canonical `Transcript` or raise `TranscriptionError` with a 
 
 `SpeechToTextService` validates adapter output against the requested asset and known audio duration before returning it to downstream stages. The initial tests use a deterministic in-memory fake; a real provider adapter must be added only after the evaluation and privacy gates are defined.
 
-## Deferred work
+## Remaining product-quality and deployment follow-ups
 
-- Provider-specific STT adapters and benchmark harness.
-- VAD, language identification, diarization, and audio enhancement.
-- Consent/provenance-managed multilingual evaluation corpus.
-- Transcript persistence, versioning, retention/deletion propagation, and searchable indexing.
+- Human-reviewed, consented, representative Persian and multilingual evaluation data for STT, VAD, language identification and diarization.
+- Hosted-provider activation and measured quality/latency/cost under explicit data-egress authorization and a non-zero approved spend ceiling.
+- Production-specific model selection, capacity, residency, monitoring and operational validation.
+
+The provider-neutral contracts, local adapters, benchmark/evaluator tooling, transcript persistence, retention/deletion propagation and searchable indexing are implemented and covered by repository tests. The follow-ups above are not repository milestone blockers and must not be represented as completed quality or production evidence.
 
 
 ## VAD adapter contract
@@ -37,7 +38,7 @@ The adapters still have different model capabilities (Silero is limited to 8/16 
 
 A third-party adapter must isolate vendor SDKs and normalize responses into the canonical transcript contract. It owns authentication, TLS, endpoint allowlisting, upload/response limits, explicit deadlines, bounded concurrency, region selection and stable error mapping. Credentials and raw vendor payloads never enter logs or public errors.
 
-Hosted providers require explicit operator allowlisting, data-egress and retention approval, verified capabilities and a spend ceiling. Retries are owned by durable workflow orchestration and must use vendor idempotency/reconciliation after ambiguous timeouts; blind retries can create duplicate billable work. A guarded adapter can reuse the same fenced process-local `ProviderCircuitBreaker` used by adaptive routing. Shared multi-process breaker state remains a production gate.
+Hosted providers require explicit operator allowlisting, data-egress and retention approval, verified capabilities and a spend ceiling. Retries are owned by durable workflow orchestration and must use vendor idempotency/reconciliation after ambiguous timeouts; blind retries can create duplicate billable work. A guarded adapter can reuse the same fenced process-local `ProviderCircuitBreaker` used by adaptive routing. A PostgreSQL-shared breaker implementation and concurrency tests are available; production enablement still requires deployment wiring, migration/grant verification and operational alerting. These are deployment follow-ups, not repository milestone gates.
 
 `SpeechToTextService` emits content-free started/succeeded/failed lifecycle events through an optional observer. Telemetry excludes audio, transcript text, asset/tenant identifiers, credentials, local paths and raw provider payloads. Observer failures cannot fail transcription.
 
