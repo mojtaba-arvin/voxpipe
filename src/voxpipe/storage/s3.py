@@ -149,7 +149,14 @@ class S3CompatibleObjectStore:
                 ChecksumMode="ENABLED",
             )
         except Exception as exc:
-            self._raise_provider_error(exc, "object metadata could not be read")
+            code, status = self._error_details(exc)
+            if code in {"InvalidArgument", "NotImplemented", "501"} or status == 501:
+                try:
+                    response = self._client.head_object(Bucket=self._bucket, Key=key)
+                except Exception as fallback_exc:
+                    self._raise_provider_error(fallback_exc, "object metadata could not be read")
+            else:
+                self._raise_provider_error(exc, "object metadata could not be read")
 
         size_bytes = int(response.get("ContentLength", -1))
         if size_bytes < 0 or size_bytes > self._max_object_size_bytes:
