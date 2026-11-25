@@ -123,7 +123,7 @@ class S3CompatibleObjectStore:
                     raise StorageIOError("object could not be stored by the S3-compatible provider") from None
                 except ObjectConflictError:
                     raise
-                except StorageErrorPassthrough:
+                except (StorageIOError, StorageIntegrityError):
                     raise
                 except Exception:
                     raise StorageIOError("object could not be stored by the S3-compatible provider") from None
@@ -256,7 +256,3 @@ class S3CompatibleObjectStore:
         if cls._is_not_found(exc):
             raise ObjectNotFoundError("object does not exist") from None
         raise StorageIOError(message) from None
-
-
-# Used only to make the exception flow above explicit without importing botocore.
-StorageErrorPassthrough = (StorageIOError, StorageIntegrityError)
