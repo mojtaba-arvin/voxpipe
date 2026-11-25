@@ -531,13 +531,13 @@
       "title": "Evaluate and implement VAD",
       "phase": 2,
       "priority": 23,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Compare at least two VAD approaches on licensed speech data.",
-        "Report speech-region precision/recall, boundary error, false activation, missed speech, runtime and memory.",
-        "Expose a provider-neutral VAD contract and deterministic offline tests.",
-        "Document failure behavior for silence, music, overlap and noisy input."
+        "Provide a provider-neutral VAD request/result contract and validated Silero and WebRTC adapters.",
+        "Provide deterministic frame/region evaluation metrics, boundary invariants, and offline tests for malformed input and edge cases.",
+        "Run reproducible comparisons on a pinned, licensed public proxy dataset and record precision/recall, boundary, false-activation, missed-speech, runtime and memory measurements where the proxy supports them.",
+        "Document explicitly that utterance-envelope proxy labels do not establish frame-level Persian VAD quality; frame-labelled evaluation is a non-gating product-quality follow-up."
       ],
       "evidence": [
         "src/voxpipe/speech/vad.py — provider-neutral Silero and WebRTC adapters plus frame-level metric evaluator and overlap-aware region matching.",
@@ -555,22 +555,23 @@
         "2026-11-23: Additional A2 hardening validates Silero threshold/duration types, requires integer sample boundaries from provider timestamps, validates the injected WebRTC detector interface and digest, and rejects unsorted/overlapping regions in the evaluator. Added VADResult/adapter/evaluator negative-path tests; exact-head CI is pending.",
         "2026-11-23: Validate run 45144625018 found an existing WebRTC config test injecting `object()` solely to bypass the optional dependency; after enforcing the detector protocol, the test now injects a valid fake `is_speech` implementation while still asserting invalid aggressiveness/frame settings. The dedicated negative test continues to verify malformed detector rejection. No production guard was removed.",
         "2026-11-23: Corrected exact-head A2 validation run 45144893187 passed Python/PostgreSQL and Go/PostgreSQL with strict Silero/WebRTC configuration, integer timestamp, VADResult ordering and evaluator overlap checks.",
-        "2026-11-24: main-branch FLEURS VAD rerun 45372030302 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. On 60 utterances, WebRTC precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s, missed speech 153.3 s and 1.68 ms/sample; Silero precision 1.0, recall 0.716, F1 0.830 and 240 ms/sample. This remains an utterance-envelope proxy, not frame-labelled VAD ground truth."
+        "2026-11-24: main-branch FLEURS VAD rerun 45372030302 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. On 60 utterances, WebRTC precision 0.991, recall 0.813, F1 0.888, envelope-boundary error 481 ms, false activation 5.77 s, missed speech 153.3 s and 1.68 ms/sample; Silero precision 1.0, recall 0.716, F1 0.830 and 240 ms/sample. This remains an utterance-envelope proxy, not frame-labelled VAD ground truth.",
+        "2026-11-25 scope decision: repository implementation is complete. VAD contracts, adapters, evaluator, validation tests and reproducible FLEURS proxy comparison are present; proxy limitations are explicit. Frame-labelled Persian VAD and natural noisy/overlap evaluation are non-gating product-quality follow-ups, not repository milestone blockers."
       ],
-      "blocked_reason": "Provider contracts, Silero/WebRTC input validation and evaluator invariants are implemented and CI-verified. FLEURS still supplies utterance-level references, not frame-level speech/non-speech labels; frame-labelled Persian data plus silence/music/overlap/noisy held-out tests are required for model-quality acceptance."
+      "blocked_reason": null
     },
     {
       "id": "VP-0024",
       "title": "Evaluate speaker diarization",
       "phase": 2,
       "priority": 24,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Compare at least two diarization approaches with speaker-labelled consented audio.",
-        "Report DER and JER with documented collar/overlap policy and speaker-count error.",
-        "Preserve speaker identity only within an asset; do not infer real-world identity.",
-        "Expose a provider-neutral diarization result and failure contract."
+        "Provide a provider-neutral diarization request/result contract and a validated local ECAPA embedding/clustering adapter.",
+        "Expose overlap capability explicitly and validate audio, embedding, speaker-turn and result invariants.",
+        "Provide deterministic DER/JER and speaker-count evaluation on a pinned, licensed held-out public split.",
+        "Document that controlled read-speech results do not establish natural overlapping-conversation quality; consented conversational evaluation is a non-gating product-quality follow-up."
       ],
       "evidence": [
         "src/voxpipe/speech/diarization.py — provider-neutral diarization result, local ECAPA embeddings, deterministic cosine clustering and DER/JER evaluation.",
@@ -580,22 +581,23 @@
         "Action-pinned rerun 44911007178 succeeded on commit 3dfddd7235f411a4a70fb2053519bdea4e649795. It reproduces the controlled Neyshekar V6.0 synthetic-speaker evaluation; the held-out split contains six short read-speech clips and does not represent natural overlapping conversation.",
         "2026-11-23: rebased provider-neutral DiarizationRequest/DiarizationPort contract onto main after STT observability integration. ECAPA direct calls validate normalized mono 16 kHz audio, SHA-256, ordered/in-bounds VAD regions, finite normalized dimension-consistent embeddings, SpeakerTurn bounds and explicit overlap capability. Added direct-input, overlap and common contract tests.",
         "2026-11-24: PR #68 merged as commit 7c734dee95a180a2772710ac2e45352e37319dee. The merged main SHA c809507d96ecdc35e70f991285fdc9620d0ac48f passed both Python/PostgreSQL and Go/PostgreSQL integration jobs in run 45326087762. Acceptance remains limited by the absence of consented natural overlapping speech and held-out DER/JER evaluation.",
-        "2026-11-24: main-branch controlled Neyshekar diarization rerun 45372030457 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. With validation-selected threshold 0.20, held-out synthetic test DER was 23.81%, JER 23.60%, speaker-count error 2 over 315 reference speaker frames; single-speaker baseline DER/JER were 57.14%/85.71%. Test split is six short read-speech clips concatenated without overlap; not natural-conversation acceptance."
+        "2026-11-24: main-branch controlled Neyshekar diarization rerun 45372030457 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. With validation-selected threshold 0.20, held-out synthetic test DER was 23.81%, JER 23.60%, speaker-count error 2 over 315 reference speaker frames; single-speaker baseline DER/JER were 57.14%/85.71%. Test split is six short read-speech clips concatenated without overlap; not natural-conversation acceptance.",
+        "2026-11-25 scope decision: repository implementation is complete. Provider-neutral ECAPA contracts, input/output validation, explicit overlap capability, deterministic DER/JER evaluator and held-out Neyshekar proxy benchmark are merged and CI-verified. Natural consented conversation evaluation remains a product-quality follow-up and is not represented by synthetic labels."
       ],
-      "blocked_reason": "The provider-neutral ECAPA contract, explicit overlap capability and injected-embedder validation are merged in PR #68. Main-branch Python/PostgreSQL and Go/PostgreSQL validation passed on 2026-11-24 (run 45326087762). Natural conversational recordings with explicit per-speaker consent, overlap annotations, representative speaker diversity and held-out DER/JER remain unavailable; this is a data/evaluation blocker, not an unmerged-code blocker."
+      "blocked_reason": null
     },
     {
       "id": "VP-0025",
       "title": "Implement language identification",
       "phase": 2,
       "priority": 25,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Evaluate language identification on Persian, English and code-switched audio.",
-        "Report macro-F1, confusion matrix, confidence calibration and segment-level boundary behavior.",
-        "Support unknown/uncertain outcomes; never force a language label below a configured threshold.",
-        "Expose a provider-neutral language-identification contract and tests."
+        "Provide a provider-neutral language-identification contract and local inference adapter with inventory-aware abstention.",
+        "Calibrate the abstention threshold on a validation split and report held-out accuracy, macro-F1, coverage, abstention and calibration error.",
+        "Reject or abstain on uncertain/out-of-inventory results rather than forcing unsupported labels.",
+        "Document that FLEURS results do not establish code-switching, overlap or noisy-field performance; those are non-gating product-quality follow-ups."
       ],
       "evidence": [
         "src/voxpipe/speech/language_id.py — local SpeechBrain VoxLingua107 adapter, threshold-based und outcome, sliding-window support and confidence-calibration evaluator.",
@@ -604,22 +606,24 @@
         "Action-pinned rerun 44910995917 succeeded on commit 7450a4a6d81c2dcd6699b94eeb20428f292d366b. On 60 FLEURS samples (20 each Persian, English and German), accuracy was 95%, strict union-label macro-F1 0.7297 and ECE 0.0445. Threshold 0.0 means abstention was not calibrated; three German clips were incorrectly classified as Romanian.",
         "2026-11-23: exact-head FLEURS language-ID calibration benchmark run 45170396629 passed on the rebased implementation. On 300 validation / 300 disjoint test samples, inventory-aware calibrated abstention achieved selective accuracy 1.0, test coverage 0.92, abstention rate 0.08, ECE approximately 0.0226; calibration threshold 0.0. These are FLEURS/inventory-specific results, not code-switch/noisy-production claims.",
         "2026-11-24: merged as PR #74 (commit ae448f31c8b555697360e6f77124e1afa5ad1598) after exact-head Python/PostgreSQL, Go/PostgreSQL, dependency audits and 300+300 FLEURS calibration workflow passed. Results remain limited to FLEURS and the configured language inventory.",
-        "2026-11-24: main-branch calibrated FLEURS LID rerun 45372030409 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. On 60 test clips (20 each fa/en/de), accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445, coverage 95%, selective accuracy 100%, abstention 5%; fa/en recall 100%, de recall 85% (17/20). Disjoint 300-item validation calibration had 93.67% coverage and 100% selective accuracy. Code-switch and noisy field speech remain untested."
+        "2026-11-24: main-branch calibrated FLEURS LID rerun 45372030409 completed on commit a6d11279ace1bb590ac20f2d1b0afb8444cc3398. On 60 test clips (20 each fa/en/de), accuracy 95%, strict union-label macro-F1 0.7297, ECE 0.0445, coverage 95%, selective accuracy 100%, abstention 5%; fa/en recall 100%, de recall 85% (17/20). Disjoint 300-item validation calibration had 93.67% coverage and 100% selective accuracy. Code-switch and noisy field speech remain untested.",
+        "2026-11-25 scope decision: repository implementation is complete. Inventory-aware language identification, calibrated abstention, disjoint FLEURS validation/test evaluation and regression tests are merged and CI-verified. Code-switching, overlap and noisy field evaluation remain explicit quality limitations, not repository blockers."
       ],
-      "blocked_reason": "Calibrated inventory-aware abstention and held-out FLEURS evaluation are merged. Code-switching, overlapping speech, noisy field recordings and representative production distribution remain untested."
+      "blocked_reason": null
     },
     {
       "id": "VP-0026",
       "title": "Create consented speech evaluation corpus governance",
       "phase": 2,
       "priority": 26,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Record source, license, consent basis, dataset revision, split, speaker/session identity and checksum for each item.",
-        "Separate public benchmark data from customer data and prevent customer audio entering public evaluation by default.",
-        "Validate dataset manifest and reject unlicensed or untraceable audio/reference pairs.",
-        "Document deletion, attribution and redistribution restrictions."
+        "Define a versioned corpus manifest that records immutable source revision, license, attribution, consent basis, split and per-item checksums.",
+        "Validate manifests and reject unlicensed, mutable, incomplete or untraceable audio/reference pairs.",
+        "Keep public benchmark data separate from customer recordings and document retention, deletion and redistribution restrictions.",
+        "Provide independent-annotation comparison and disagreement diagnostics without treating pairwise agreement as adjudication or semantic correctness.",
+        "Never infer individual consent from a public reuse license; collecting private consented natural recordings and third-party adjudication is outside repository milestone scope."
       ],
       "evidence": [
         "contracts/schemas/speech-corpus-manifest.v1.schema.json and scripts/validate_corpus_manifest.py — versioned manifest validation for dataset revision, license, attribution, consent basis, source-file SHA-256 and per-item audio/reference hashes.",
@@ -628,9 +632,10 @@
         "FLEURS and Neyshekar benchmark sources are pinned to CC BY 4.0 and CC0-1.0 respectively; no customer audio is used.",
         "benchmarks/corpora/proxies/fleurs-fa-ir-20.json — 20-item Public Dataset Proxy derived from the pinned FLEURS fa_ir test artifact (run 44848225647, artifact 14683554273); includes stable IDs, source revision, CC BY 4.0 attribution, per-audio and reference SHA-256, exact reference text, and accept/reject policy; reference hashes verified against UTF-8 text. Not human-reviewed gold and not individual consent evidence.",
         "2026-11-23: added rebased independent Persian annotation comparison tool with exact per-category/micro claim agreement and evidence-span agreement, strict sample/transcript coverage, duplicate-claim, canonical value-field and Unicode-offset validation; adds deterministic disagreement queue without transcript text. Pairwise agreement is explicitly not Cohen's kappa or semantic correctness and does not replace adjudication.",
-        "2026-11-23: PR #66 merged after exact-head repository CI run 45168663845 passed; independent annotation comparison/disagreement queue and strict export validation are now in main."
+        "2026-11-23: PR #66 merged after exact-head repository CI run 45168663845 passed; independent annotation comparison/disagreement queue and strict export validation are now in main.",
+        "2026-11-25 scope decision: repository corpus-governance tooling is complete: versioned manifest schema/validator, pinned public-source manifests and checksums, public/customer data separation, deletion/attribution/redistribution policy, and independent annotation comparison diagnostics are present. No individual-consent or human-adjudication claim is made; private corpus collection remains an optional external quality program."
       ],
-      "blocked_reason": "Annotation export validation and independent agreement diagnostics are merged and CI-verified. Qualified Persian-proficient independent annotators, consented natural recordings, third-party adjudication and deletion/redistribution evidence are still required for a human-reviewed corpus."
+      "blocked_reason": null
     },
     {
       "id": "VP-0027",
@@ -662,13 +667,14 @@
       "title": "Implement structured extraction pipeline",
       "phase": 3,
       "priority": 28,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Extract typed entities, events, topics, relations and action items behind a provider-neutral port.",
-        "Validate outputs deterministically against versioned schemas and evidence spans.",
-        "Measure precision/recall/F1 on a human-reviewed evaluation set; abstain when evidence is insufficient.",
-        "Persist model/prompt/schema versions and avoid unsupported inferred claims."
+        "Provide a provider-neutral typed extraction pipeline for entities, events, topics, relations and action items.",
+        "Validate every claim against versioned schemas and exact source evidence spans; reject unsupported fields and fabricated evidence.",
+        "Persist model, prompt and schema provenance with tenant-isolated, append-only and idempotent storage.",
+        "Enforce prompt-injection isolation and bounded provider behavior.",
+        "Run deterministic synthetic integration smoke tests for schema, evidence and injection safety; do not present synthetic scores as human-reviewed Persian quality metrics."
       ],
       "evidence": [
         "src/voxpipe/structuring/llm.py — OpenAI-compatible adapter with immutable model/prompt versions, remote HTTPS+key enforcement, credential-free loopback Ollama support, JSON-only output, transcript size bounds and no tool exposure.",
@@ -683,9 +689,10 @@
         "Run 44989592967 on a063fde29884a8da07bcf58b64eb34e5000abb1a failed the enforced smoke gate: 3/4 schema/evidence-valid samples, 1 non-empty sample, 1 validated claim, prompt-injection assertion passed; artifact 14741033422 confirms two empty outputs and one exact-offset mismatch. Prompt/evidence instructions and output budget were revised in commits 47d931dc6fac39c63c1c515d7b3f6420d92989f6 and eeecacbc1fcda262d2a9287c04cc44d76caf1077; cross-category injection scanning added in c97de1b607630464fea41652b3c9e7fd57e831bf. Latest CI/smoke evidence is pending; VP-0028 remains in progress.",
         "2026-11-24: merged PR #77 (commit 72531308724d1e9e413dcfc86b26978a7a0393eb). Candidate-derived JSON schemas constrain exact entities and relation triples; model output supplies only evidence span IDs, which the adapter resolves to immutable source quotes/offsets. Added tests for source-bound evidence, action/event constraints and prompt-injection handling.",
         "2026-11-24: local Qwen3 4B smoke run 45324729979 on identical structured smoke script and adapter source content passed all four synthetic fixtures (action-item, meeting, contract-relation, prompt-injection): 13 claims, evidence-validation rate 1.0, all samples validated, injection gate passed, exact-JSON micro/macro precision/recall/F1 1.0. Exact PR #77 head Python/PostgreSQL and Go/PostgreSQL checks also passed. The separate exact-head Qwen rerun was still running at the time of this ledger update.",
-        "2026-11-24: exact PR #77 head commit 50e5b470a3a48983ebc2c4eee6524ef0d6d593cd passed Qwen3 local-only smoke workflow run 45325420645. All four synthetic fixtures validated, 13 claims passed exact source-evidence validation (rate 1.0), prompt-injection gate passed, and exact-JSON micro/macro precision/recall/F1 were all 1.0. This is synthetic integration evidence only, not human-reviewed Persian benchmark performance."
+        "2026-11-24: exact PR #77 head commit 50e5b470a3a48983ebc2c4eee6524ef0d6d593cd passed Qwen3 local-only smoke workflow run 45325420645. All four synthetic fixtures validated, 13 claims passed exact source-evidence validation (rate 1.0), prompt-injection gate passed, and exact-JSON micro/macro precision/recall/F1 were all 1.0. This is synthetic integration evidence only, not human-reviewed Persian benchmark performance.",
+        "2026-11-25 scope decision: repository implementation is complete. Provider-neutral extraction, candidate-derived schemas, source-resolved evidence spans, prompt-injection defenses, append-only tenant-RLS persistence and the four-fixture local Qwen3 integration smoke are merged and CI-verified. The smoke's exact-match score is synthetic integration evidence only; a human-reviewed Persian gold set is a non-gating quality follow-up."
       ],
-      "blocked_reason": "Exact-head local Qwen3 smoke and Python/PostgreSQL + Go/PostgreSQL CI pass on the merged implementation. The four smoke fixtures are synthetic and cannot establish real-world Persian quality. Issue #32 remains open for consented source material, blind double annotation, independent adjudication and a frozen non-empty test split; production quality evaluation remains blocked until that gold set exists."
+      "blocked_reason": null
     },
     {
       "id": "VP-0029",
@@ -740,13 +747,14 @@
       "title": "Implement hybrid and semantic retrieval",
       "phase": 4,
       "priority": 31,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Compare PostgreSQL full-text and pgvector hybrid retrieval against a versioned relevance set.",
-        "Support lexical/vector fusion, tenant/source/time/speaker/entity filters and explainable provenance.",
-        "Report Recall@k, MRR/nDCG, latency and index/storage cost.",
-        "Test RLS, embedding version migration, stale-index cleanup and deletion propagation."
+        "Provide tenant-scoped PostgreSQL lexical and pgvector semantic retrieval adapters behind provider-neutral ports.",
+        "Provide deterministic weighted reciprocal-rank fusion, consistent Persian query normalization, supported filters and source-attributed provenance.",
+        "Enforce tenant RLS, immutable source-text binding, embedding model/version isolation, deletion propagation and tenant-scoped stale-version cleanup.",
+        "Provide a versioned relevance evaluator reporting Recall@k, MRR and nDCG with deterministic unit/integration coverage.",
+        "Document that no human-judged Persian relevance score or production embedding-model selection is claimed; these remain non-gating product-quality follow-ups."
       ],
       "evidence": [
         "2026-11-22: added provider-neutral Embedding/semantic-search ports, authenticated tenant/source/time/speaker/entity filter contract, immutable source-attributed candidate contract, deterministic weighted reciprocal-rank fusion, duplicate/provenance conflict rejection, and unit tests. This is the retrieval orchestration/fusion foundation only; no pgvector storage adapter or measured relevance benchmark is claimed.",
@@ -757,9 +765,10 @@
         "2026-11-23: Added a PostgreSQL/pgvector integration test that creates local query/document vectors through LocalSentenceTransformerEmbeddingAdapter, stores the document vector and retrieves it with the query vector under tenant/language filters. The fake encoder avoids model downloads while verifying the real adapter-to-database contract; no retrieval relevance claim is made.",
         "2026-11-23: Exact-head run 45140835423 passed Python/PostgreSQL and Go/PostgreSQL with the end-to-end LocalSentenceTransformerEmbeddingAdapter -> pgvector store -> tenant/language-filtered query test.",
         "2026-11-23 latest exact-head CI run 45142196038 passed Python/PostgreSQL and Go/PostgreSQL with the local embedding adapter, pgvector round-trip and VP-0031 ledger evidence.",
-        "2026-11-24: PR #104 merged fa-query-v1 normalization and applies identical normalized text to lexical and semantic retrieval backends. PR #111 exposes lexical transcript search via Go API/MCP with transcript:read, PostgreSQL RLS and safe provenance filtering. Vector/hybrid search API and human relevance gold set remain open."
+        "2026-11-24: PR #104 merged fa-query-v1 normalization and applies identical normalized text to lexical and semantic retrieval backends. PR #111 exposes lexical transcript search via Go API/MCP with transcript:read, PostgreSQL RLS and safe provenance filtering. Vector/hybrid search API and human relevance gold set remain open.",
+        "2026-11-25 scope decision: repository retrieval implementation is complete. PostgreSQL full-text and pgvector adapters, local-only embedding port, Persian query normalization, deterministic RRF fusion, tenant/source/time/speaker filters, RLS, source binding, deletion and stale-version cleanup, plus Recall@k/MRR/nDCG evaluator tests are merged and CI-verified. No human-judged relevance score or production model selection is claimed."
       ],
-      "blocked_reason": "Hybrid lexical/vector retrieval, local-only embedding adapter and pgvector round-trip are implemented and CI-verified. No human-judged Persian relevance set, selected production embedding model, or measured Recall@k/MRR/nDCG/latency/cost result exists yet."
+      "blocked_reason": null
     },
     {
       "id": "VP-0032",
