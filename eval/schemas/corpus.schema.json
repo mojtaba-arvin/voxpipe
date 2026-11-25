@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://voxpipe.dev/schemas/evaluation/corpus.schema.json",
+  "$id": "urn:voxpipe:evaluation:corpus:v1",
   "title": "VoxPipe retrieval evaluation passage",
   "type": "object",
   "additionalProperties": false,
