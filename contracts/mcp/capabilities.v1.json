@@ -599,6 +599,10 @@
           "retryable": false
         },
         {
+          "code": "RETRIEVAL_INDEX_NOT_READY",
+          "retryable": false
+        },
+        {
           "code": "RETRIEVAL_NOT_CONFIGURED",
           "retryable": false
         },

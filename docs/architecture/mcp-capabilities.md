@@ -1,6 +1,6 @@
 # MCP Capability Contract
 
-Contract version: 1.2.0. Transport: stdio.
+Contract version: 1.2.0. Transport: stdio
 
 The MCP server is a thin authenticated adapter over the Go HTTP API. Tenant identity is derived from the bearer token; callers cannot supply tenant IDs.
 
@@ -644,6 +644,7 @@ Output schema:
 
 Stable errors:
 - INVALID_RETRIEVAL_REQUEST; retryable: false
+- RETRIEVAL_INDEX_NOT_READY; retryable: false
 - RETRIEVAL_NOT_CONFIGURED; retryable: false
 - RETRIEVAL_SERVICE_UNAVAILABLE; retryable: true
 - UNAUTHENTICATED; retryable: false
