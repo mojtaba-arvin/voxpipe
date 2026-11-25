@@ -312,10 +312,10 @@ jobs:
           VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS: ${{ env.VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS }}
           VOXPIPE_S3_READ_TIMEOUT_SECONDS: ${{ env.VOXPIPE_S3_READ_TIMEOUT_SECONDS }}
         run: |
-          python scripts/verify_s3_staging_cleanup.py \\
-            --tenant-id "$TENANT_ID" \\
-            --session-id "${{ steps.s3-deployment-e2e.outputs.session_id }}" \\
-            --asset-id "${{ steps.s3-deployment-e2e.outputs.asset_id }}" \\
+          python scripts/verify_s3_staging_cleanup.py \
+            --tenant-id "$TENANT_ID" \
+            --session-id "${{ steps.s3-deployment-e2e.outputs.session_id }}" \
+            --asset-id "${{ steps.s3-deployment-e2e.outputs.asset_id }}" \
             --expected-sha256 "${{ steps.s3-deployment-e2e.outputs.expected_sha256 }}"
       - name: Stop isolated S3 deployment stack
         if: always()
