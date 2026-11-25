@@ -26,7 +26,7 @@ PYTHONPATH=src python scripts/voxpipe_cli.py search 'جلسه فروش' --langua
 
 Ingestion incrementally computes file size and SHA-256, creates an idempotent session, streams the file to private staging, and finalizes a durable job. The command prints the session/job identifiers. With `--wait`, it polls until completion or a bounded timeout. A wait timeout does not cancel the durable job; inspect it later with `status`.
 
-Search returns tenant-scoped transcript segments with source and timing provenance. It uses the existing Persian-normalized lexical API; it does not claim vector/hybrid ranking. The default API URL is loopback, HTTP request timeout is 30 seconds, and wait timeout is 30 minutes.
+Search returns tenant-scoped transcript segments with source and timing provenance. It uses the existing Persian-normalized lexical API; it does not claim vector/hybrid ranking. The default API URL is loopback, ordinary HTTP request timeout is 30 seconds, upload timeout is 30 minutes (configurable with --upload-timeout), and wait timeout is 30 minutes.
 
 ## Safety boundaries
 
