@@ -121,7 +121,7 @@ The following remain non-gating product/deployment follow-ups: frame-labelled Pe
 
 - [x] Deliver a first-party CLI for batch audio ingestion, durable job status, and transcript search (VP-0038; streamed uploads, incremental SHA-256, existing authenticated API boundaries, bounded polling, and five-job CI validation in run 45576085075).
 - [x] Add a guided local quickstart that proves API + worker + PostgreSQL + sample audio flow end-to-end without hosted-provider credentials or paid services (VP-0039; PR #142 merged as c9a9122; exact-head CI run 45581360168 passed all six jobs, including the full Docker Compose sample-ingestion flow).
-- [ ] Expose hybrid retrieval through a versioned authenticated API/MCP contract (VP-0040; next priority). Define a local-only embedding/indexing lifecycle, explicit model/version isolation, and fail-closed behavior when no model is configured; no default production model or hosted egress.
+- [ ] Expose hybrid retrieval through a versioned authenticated API/MCP contract (VP-0040; implementation in progress). Adds a private local embedding sidecar, idempotent transcript revision indexing, transcript:read/transcript:index scopes, and fail-closed no-model behavior; no default production model or hosted egress.
 - [ ] Add a lightweight operational view for ingestion/job failures and queue health (VP-0041), using tenant-safe aggregates rather than transcript or audio content.
 
 **Product boundary:** These are additive product-experience milestones, not a reason to reopen completed repository implementation items. Do not select a production embedding model, enable remote data egress, or claim real Persian quality without the corresponding evidence and approvals.
