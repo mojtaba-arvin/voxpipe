@@ -32,7 +32,7 @@ For the ingestion worker image, include the optional SDK with `docker build --bu
 
 ## Next operational milestone
 
-VP-0045 removes the remaining shared POSIX upload-staging dependency between the Go API and Python ingestion worker. It introduces a versioned shared staging-object contract, keeps local staging as the quickstart default, and proves API/worker separation with disposable S3-compatible CI. See [issue #153](https://github.com/mojtaba-arvin/voxpipe/issues/153).
+VP-0045 removes the remaining shared POSIX upload-staging dependency between the Go API and Python ingestion worker. It introduces a versioned shared staging-object contract, keeps local staging as the quickstart default, and proves API/worker separation with disposable S3-compatible CI. See [issue #153](https://github.com/mojtaba-arvin/voxpipe/issues/153) and [ADR-0045](docs/decisions/ADR-0045-shared-upload-staging.md).
 
 ## Design principles
 
