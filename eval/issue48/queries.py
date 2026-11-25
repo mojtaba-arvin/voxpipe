@@ -10,11 +10,14 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from eval._shared.corpus_loader import load_corpus
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue48" / "queries.jsonl"
 DEFAULT_METADATA = ROOT / "eval" / "artifacts" / "issue48" / "metadata_48.json"
+QUERY_SCHEMA = ROOT / "eval" / "issue48" / "query.schema.json"
 TOKEN_RE = re.compile(r"[A-Za-z0-9-]+|[\u0600-\u06FF]{2,}")
 STOPWORDS = {
     "این", "برای", "در", "و", "به", "را", "از", "است", "شود", "می‌شود",
@@ -76,6 +79,14 @@ def generate_queries(
                 "seed": seed,
             }
         )
+
+    schema = json.loads(QUERY_SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+    for record in records:
+        errors = list(validator.iter_errors(record))
+        if errors:
+            raise ValueError(f"generated query failed schema validation: {errors[0].message}")
 
     rng.shuffle(records)
     train_end = int(count * 0.70)
