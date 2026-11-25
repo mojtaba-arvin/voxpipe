@@ -47,21 +47,25 @@ class LocalHybridRetrievalRuntime:
             raise ValueError("transcript revision exceeds the 5000-segment indexing limit")
         indexed = 0
         with self._model_lock:
-            for segment in segments:
-                candidate = SearchCandidate(
-                    transcript_id=transcript_id,
-                    revision=selected_revision,
-                    asset_id=asset_id,
-                    segment_id=str(segment["segment_id"]),
-                    start_ms=int(segment["start_ms"]),
-                    end_ms=int(segment["end_ms"]),
-                    text=segment["text"],
-                    language=language,
-                    speaker_id=str(segment["speaker_id"]) if segment.get("speaker_id") else None,
-                )
-                embedding = self.embeddings.embed_document(candidate.text)
-                self.semantic.store_embedding(tenant_id, candidate, embedding)
-                indexed += 1
+            for offset in range(0, len(segments), 64):
+                batch = segments[offset:offset + 64]
+                vectors = self.embeddings.embed_documents([segment["text"] for segment in batch])
+                if len(vectors) != len(batch):
+                    raise RuntimeError("local embedding model returned an incomplete batch")
+                for segment, embedding in zip(batch, vectors):
+                    candidate = SearchCandidate(
+                        transcript_id=transcript_id,
+                        revision=selected_revision,
+                        asset_id=asset_id,
+                        segment_id=str(segment["segment_id"]),
+                        start_ms=int(segment["start_ms"]),
+                        end_ms=int(segment["end_ms"]),
+                        text=segment["text"],
+                        language=language,
+                        speaker_id=str(segment["speaker_id"]) if segment.get("speaker_id") else None,
+                    )
+                    self.semantic.store_embedding(tenant_id, candidate, embedding)
+                    indexed += 1
         return {
             "transcript_id": transcript_id,
             "revision": selected_revision,
