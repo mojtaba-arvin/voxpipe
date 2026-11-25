@@ -63,7 +63,9 @@ func main() {
 	default:
 		err = fmt.Errorf("VOXPIPE_STORAGE_BACKEND must be local or s3_compatible")
 	}
-	if err != nil { log.Fatalf("configure upload staging: %v", err) }
+	if err != nil {
+		log.Fatalf("configure upload staging: %v", err)
+	}
 	api, err := httpapi.NewServer(store, auth, stager, maxUpload, time.Duration(sessionTTLSeconds)*time.Second, maxAttempts)
 	if err != nil { log.Fatalf("configure HTTP API: %v", err) }
 	retrievalClient, err := httpapi.NewLocalRetrievalClientFromEnv()
