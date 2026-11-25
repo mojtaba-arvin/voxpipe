@@ -41,7 +41,6 @@ def main() -> int:
                     "Status": "Enabled",
                     "Filter": {"Prefix": "staging/v1/"},
                     "Expiration": {"Days": days},
-                    "NoncurrentVersionExpiration": {"NoncurrentDays": days},
                 }
             ]
         },
