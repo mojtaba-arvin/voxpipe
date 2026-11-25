@@ -113,6 +113,8 @@ func writeRetrievalError(w http.ResponseWriter, err error) {
 	switch serviceErr.Code {
 	case "RETRIEVAL_NOT_CONFIGURED":
 		writeError(w, http.StatusServiceUnavailable, serviceErr.Code, "Local embedding model is not configured")
+	case "RETRIEVAL_INDEX_NOT_READY":
+		writeError(w, http.StatusServiceUnavailable, serviceErr.Code, "No transcript revisions are indexed for this embedding model version; index a revision before searching")
 	case "TRANSCRIPT_NOT_FOUND":
 		writeError(w, http.StatusNotFound, serviceErr.Code, "Transcript revision was not found")
 	case "INVALID_RETRIEVAL_REQUEST", "UNSUPPORTED_ENTITY_FILTER":

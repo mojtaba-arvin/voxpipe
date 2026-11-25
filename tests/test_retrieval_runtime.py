@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from scripts.run_retrieval_service import RetrievalHandler, _validate_index, _validate_search, build_runtime
 from voxpipe.retrieval.hybrid import SearchCandidate, SearchHit
-from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime
+from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime, RetrievalIndexNotReady
 
 TENANT = "11111111-1111-4111-8111-111111111111"
 TRANSCRIPT = "22222222-2222-4222-8222-222222222222"
@@ -44,8 +44,12 @@ class FakeEmbeddings:
 
 
 class FakeSemantic:
-    def __init__(self):
+    def __init__(self, available=True):
         self.stored = []
+        self.available = available
+
+    def has_indexed_segments(self, tenant_id):
+        return self.available
 
     def store_embedding(self, tenant_id, candidate, embedding):
         self.stored.append((tenant_id, candidate, embedding))
@@ -113,6 +117,7 @@ class RetrievalServiceTests(unittest.TestCase):
         runtime.model_version = "sha256:model-revision"
         from threading import RLock
         runtime._model_lock = RLock()
+        runtime.semantic = FakeSemantic(available=True)
         runtime.hybrid = FakeHybrid(hit)
         result = runtime.search(TENANT, {"query": "جلسه", "limit": 5, "language": "fa"})
         self.assertEqual(runtime.hybrid.call[0], "جلسه")
@@ -170,6 +175,15 @@ class RetrievalServiceTests(unittest.TestCase):
         }):
             with self.assertRaises(SystemExit):
                 build_runtime()
+
+
+    def test_search_fails_closed_when_no_matching_model_version_is_indexed(self):
+        runtime = LocalHybridRetrievalRuntime.__new__(LocalHybridRetrievalRuntime)
+        runtime.model = "local-e5"
+        runtime.model_version = "sha256:model-revision"
+        runtime.semantic = FakeSemantic(available=False)
+        with self.assertRaises(RetrievalIndexNotReady):
+            runtime.search(TENANT, {"query": "جلسه"})
 
 
 if __name__ == "__main__":

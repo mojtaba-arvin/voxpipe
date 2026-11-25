@@ -123,3 +123,16 @@ func TestLocalRetrievalClientForwardsInternalIdentityAndMapsServiceErrors(t *tes
 	serviceErr, ok := err.(*RetrievalServiceError)
 	if !ok || serviceErr.Code != "RETRIEVAL_NOT_CONFIGURED" { t.Fatalf("service error was not preserved: %#v", err) }
 }
+
+
+func TestHybridSearchReturnsActionable503WhenModelVersionIsNotIndexed(t *testing.T) {
+	rr := httptest.NewRecorder()
+	writeRetrievalError(rr, &RetrievalServiceError{Code: "RETRIEVAL_INDEX_NOT_READY", Status: http.StatusServiceUnavailable})
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 for a missing model-version index, got %d", rr.Code)
+	}
+	body := decodeResponse(t, rr)
+	if body["code"] != "RETRIEVAL_INDEX_NOT_READY" {
+		t.Fatalf("stable readiness error was not preserved: %#v", body)
+	}
+}
