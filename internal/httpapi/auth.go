@@ -58,7 +58,7 @@ func NewStaticTokenAuthenticator(entries []string) (*StaticTokenAuthenticator, e
 		for _, scope := range strings.Split(parts[2], ",") {
 			scope = strings.TrimSpace(scope)
 			if scope != "" {
-				if scope != "ingestion:read" && scope != "ingestion:write" && scope != "transcript:read" { return nil, fmt.Errorf("unsupported token scope") }
+				if scope != "ingestion:read" && scope != "ingestion:write" && scope != "transcript:read" && scope != "transcript:index" { return nil, fmt.Errorf("unsupported token scope") }
 				scopes[scope] = struct{}{}
 			}
 		}
