@@ -60,9 +60,9 @@ Migration 0004 adds tenant-scoped upload leases and immutable audit events. Uplo
 
 Audit events record session creation/state transitions, upload start/finish, queueing, cancellation, cleanup, and retention deletion. Events are tenant-scoped with forced RLS and contain only lifecycle metadata, never media bytes, bearer tokens, or private storage references. The application role requires CRUD privileges on both new tables.
 
-## Worker liveness (migration 0011)
+## Worker liveness (migration 0013)
 
-Migration 0011 adds `ingestion_worker_heartbeats`, a tenant-scoped process-liveness journal with forced RLS. The application role receives only tenant-context CRUD access through the same `voxpipe.tenant_id` transaction setting as the durable job queue.
+Migration 0013 adds `ingestion_worker_heartbeats`, a tenant-scoped process-liveness journal with forced RLS. The application role receives only tenant-context CRUD access through the same `voxpipe.tenant_id` transaction setting as the durable job queue.
 
 The Python worker registers one row per authorized tenant, refreshes it every 15 seconds from a supervisor thread independent of job processing and job-lease renewal, and marks it stopped during graceful shutdown. Rows older than seven days are pruned when a worker registers. A missing heartbeat is not inferred as healthy: the operations summary classifies rows older than 45 seconds as stale.
 
