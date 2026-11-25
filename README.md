@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository milestones:** 37/37 work items (VP-0001–VP-0037) are complete for repository scope. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is in progress. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
@@ -161,6 +161,20 @@ Run the authenticated MCP stdio adapter with `PYTHONPATH=src python -m voxpipe.m
 Set VOXPIPE_DEFAULT_RETENTION_DAYS to a positive value for server-assigned asset expiry; 0 (default) disables automatic asset expiry. Run per-tenant cleanup with PYTHONPATH=src python scripts/reconcile_ingestion.py --tenant-id UUID after setting VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, and VOXPIPE_OBJECT_STORE_ROOT.
 
 For a PostgreSQL deployment, install the optional driver with `pip install -r requirements-postgres.txt` and apply the versioned migrations using `voxpipe.ingestion.apply_migrations`. See [PostgreSQL operations](docs/architecture/postgres.md). The authenticated Go upload API and Python worker topology are described in [Upload API operations](docs/architecture/upload-api.md).
+
+## First-party CLI
+
+The CLI covers the core developer workflow without a custom API client:
+
+```bash
+export VOXPIPE_API_URL=http://127.0.0.1:8080
+export VOXPIPE_API_TOKEN='...'
+PYTHONPATH=src python scripts/voxpipe.py ingest ./meeting.wav --wait
+PYTHONPATH=src python scripts/voxpipe.py status SESSION_UUID
+PYTHONPATH=src python scripts/voxpipe.py search 'جلسه فروش' --language fa
+```
+
+See [CLI setup, scopes and safety boundaries](docs/architecture/cli.md). The API token must have the capability required by each command; use HTTPS outside loopback.
 
 ## Development workflow
 
