@@ -107,6 +107,8 @@ func (s *Server) SetRetentionDays(days int) error {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health/live", s.healthLive)
+	mux.HandleFunc("GET /health/ready", s.healthReady)
 	mux.HandleFunc("POST /v1/ingestions", s.createIngestion)
 	mux.HandleFunc("PUT /v1/ingestions/{session_id}/content", s.uploadContent)
 	mux.HandleFunc("POST /v1/ingestions/{session_id}/finalize", s.finalizeIngestion)
@@ -674,4 +676,21 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
+}
+
+// healthLive reports process availability without depending on PostgreSQL.
+func (s *Server) healthLive(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// healthReady verifies the core database/schema dependency with a bounded deadline.
+// Dependency errors are deliberately not included in the response.
+func (s *Server) healthReady(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if err := s.store.Ready(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
