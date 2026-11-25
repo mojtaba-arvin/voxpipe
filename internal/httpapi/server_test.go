@@ -143,7 +143,7 @@ func decodeResponse(t *testing.T,recorder *httptest.ResponseRecorder) map[string
 }
 
 func TestAuthenticatedUploadLifecycle(t *testing.T) {
-	server,_,_,token:=testServer(t); handler:=server.Handler()
+	server,store,tenantID,token:=testServer(t); handler:=server.Handler()
 	content:=[]byte("synthetic audio bytes for upload API test")
 	digest:=sha256.Sum256(content)
 	payload:=map[string]any{
@@ -158,8 +158,15 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 	created:=httptest.NewRecorder(); handler.ServeHTTP(created,create)
 	if created.Code!=http.StatusCreated { t.Fatalf("create: got %d: %s",created.Code,created.Body.String()) }
 	session:=decodeResponse(t,created); sessionID:=session["session_id"].(string)
-	if session["staging_backend"] != "local" {
-		t.Fatalf("expected local staging backend, got %#v", session["staging_backend"])
+	if _, exposed := session["staging_backend"]; exposed {
+		t.Fatal("public create response must not expose the staging backend")
+	}
+	storedSession, err := store.GetSession(context.Background(), tenantID, sessionID)
+	if err != nil {
+		t.Fatalf("read persisted session: %v", err)
+	}
+	if storedSession["staging_backend"] != "local" {
+		t.Fatalf("expected local staging backend in persisted session, got %#v", storedSession["staging_backend"])
 	}
 
 	upload:=httptest.NewRequest(http.MethodPut,"/v1/ingestions/"+sessionID+"/content",bytes.NewReader(content))
