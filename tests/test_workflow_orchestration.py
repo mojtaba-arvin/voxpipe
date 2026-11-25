@@ -15,7 +15,10 @@ from voxpipe.workflows import (
 )
 
 ADMIN_DSN = os.environ.get("VOXPIPE_TEST_POSTGRES_ADMIN_DSN")
-APP_DSN = "postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test"
+APP_DSN = os.environ.get(
+    "VOXPIPE_TEST_POSTGRES_APP_DSN",
+    "postgresql://voxpipe_app:voxpipe_app@localhost:5432/voxpipe_test",
+  )
 
 
 @unittest.skipUnless(ADMIN_DSN, "disposable PostgreSQL integration DSN is not configured")
