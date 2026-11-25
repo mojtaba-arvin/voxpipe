@@ -71,7 +71,7 @@ class VoxPipeMCP:
         if method == "tools/list":
             return {"jsonrpc":"2.0","id":request_id,"result":{"tools":[
                 {"name":t["name"],"description":t["description"],"inputSchema":t["inputSchema"],
-                 "annotations":{"readOnlyHint":t["name"]!="create_ingestion","destructiveHint":False,
+                 "annotations":{"readOnlyHint":t["name"] not in {"create_ingestion","index_transcript"},"destructiveHint":False,
                                 "idempotentHint":True,"openWorldHint":True}}
                 for t in self.contract["tools"]]}}
         if method == "tools/call":
@@ -166,6 +166,49 @@ class VoxPipeMCP:
             if "start_ms" in args and "end_ms" in args and args["end_ms"]<=args["start_ms"]:
                 raise ValueError("end_ms must be greater than start_ms")
             return self.client.request("GET","/v1/transcripts/search?"+urllib.parse.urlencode(params))
+        if name=="search_hybrid_transcripts":
+            allowed={"query","limit","transcript_id","asset_id","revision","language","speaker_id","start_ms","end_ms"}
+            if set(args)-allowed or "query" not in args:
+                raise ValueError("search_hybrid_transcripts arguments do not match contract")
+            query=args["query"]
+            if not isinstance(query,str) or not 1<=len(query.strip())<=256:
+                raise ValueError("query must contain between 1 and 256 characters")
+            payload={"query":query.strip()}
+            if "limit" in args:
+                if type(args["limit"]) is not int or not 1<=args["limit"]<=100:
+                    raise ValueError("limit must be between 1 and 100")
+                payload["limit"]=args["limit"]
+            for key in ("transcript_id","asset_id","speaker_id"):
+                if key in args:
+                    payload[key]=self._uuid(args[key])
+            if "revision" in args:
+                if type(args["revision"]) is not int or args["revision"]<1:
+                    raise ValueError("revision must be a positive integer")
+                payload["revision"]=args["revision"]
+            if "language" in args:
+                language=args["language"]
+                if not isinstance(language,str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{1,34}",language):
+                    raise ValueError("language filter is invalid")
+                payload["language"]=language
+            for key,minimum in (("start_ms",0),("end_ms",1)):
+                if key in args:
+                    value=args[key]
+                    if type(value) is not int or value<minimum:
+                        raise ValueError(f"{key} is outside the allowed range")
+                    payload[key]=value
+            if "start_ms" in payload and "end_ms" in payload and payload["end_ms"]<=payload["start_ms"]:
+                raise ValueError("end_ms must be greater than start_ms")
+            return self.client.request("POST","/v1/retrieval/hybrid-search",payload=payload)
+        if name=="index_transcript":
+            if set(args)-{"transcript_id","revision"} or "transcript_id" not in args:
+                raise ValueError("index_transcript requires transcript_id and optional revision")
+            transcript_id=self._uuid(args["transcript_id"])
+            path="/v1/transcripts/"+transcript_id+"/index"
+            if "revision" in args:
+                if type(args["revision"]) is not int or args["revision"]<1:
+                    raise ValueError("revision must be a positive integer")
+                path+="?"+urllib.parse.urlencode({"revision":args["revision"]})
+            return self.client.request("POST",path)
         raise ValueError("unsupported tool")
 
     @staticmethod
