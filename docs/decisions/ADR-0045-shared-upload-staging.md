@@ -44,7 +44,7 @@ VP-0045 removes this remaining shared-volume dependency without changing the gui
 
 ## Implementation and verification
 
-- Core implementation: PR #155, merge commit `ccbe90c5dc68d3f671801a4e07431203ee3a17c6`; exact-head CI run `45624282856` passed all seven jobs and dependency audit run `45624282950` passed both audits.
+- Core implementation: PR #155, merge commit `ccbe90c5dc68d3f671801a4e07431203ee3a17c6`; exact-head CI run `45624282856` passed all seven jobs, dependency audit run `45624282950` passed both audits, and post-merge main validation run `45624632771` passed all seven jobs.
 - Separate-container deployment proof: PR #156, exact-head CI run `45625810038` passed all seven jobs. The S3 job ran the Go API and Python worker in separate containers without shared staging or object filesystem mounts, processed a generated 32,044-byte WAV, reconciled the terminal session from the worker container, and verified staging deletion plus durable-object retention.
 - The E2E uses disposable PGSTY Silo and ephemeral credentials; no production cloud account, live customer data or paid service is involved.
 
