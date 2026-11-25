@@ -141,7 +141,7 @@ def mix_samples(
         speech_rms = math.sqrt(speech_energy / speech_count)
         noise_std = speech_rms / (10 ** (noise_snr_db / 20))
         rng = random.Random(noise_seed)
-        for index in range(len(mixed)):
+        for index in range(leading_samples, len(mixed)):
             mixed[index] += rng.gauss(0.0, noise_std)
 
     peak = max(abs(sample) for sample in mixed)
