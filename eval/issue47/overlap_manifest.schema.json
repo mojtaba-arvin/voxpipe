@@ -12,6 +12,9 @@
     "conversation_count",
     "overlap_count",
     "sample_rate",
+    "leading_silence_seconds",
+    "background_noise_snr_db",
+    "noise_seed_policy",
     "tts_runtime",
     "tts_runtime_version",
     "tts_runtime_license",
@@ -151,6 +154,17 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "leading_silence_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "background_noise_snr_db": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "noise_seed_policy": {
+      "const": "base_seed_plus_conversation_index"
     }
   }
 }
