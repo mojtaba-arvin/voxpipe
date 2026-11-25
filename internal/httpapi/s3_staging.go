@@ -212,7 +212,7 @@ func (s *S3Stager) Write(
 		return 0, "", fmt.Errorf("secure private upload spool: %w", err)
 	}
 	digest := sha256.New()
-	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(contextReader{ctx: ctx, reader: source}, maxSize+1))
+	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(contextReader{ctx: ctx, reader: source}, expectedSize+1))
 	if copyErr != nil {
 		_ = temporary.Close()
 		return 0, "", fmt.Errorf("stage upload stream: %w", copyErr)
