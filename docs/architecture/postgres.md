@@ -36,7 +36,7 @@ Migrations are recorded in `voxpipe_schema_migrations`, applied in version order
 After migrations, grant the non-owner application role:
 
 - `USAGE` on the application schema.
-- `SELECT, INSERT, UPDATE, DELETE` on the session, asset, and job tables.
+- `SELECT, INSERT, UPDATE, DELETE` on the session, asset, job, upload lease, audit, and worker heartbeat tables.
 
 Keep the DSN in a secret manager or environment variable. Never commit credentials. The CI workflow provisions a disposable PostgreSQL 16 service and uses a separate non-superuser role to test RLS.
 
@@ -59,3 +59,11 @@ SQLite remains the zero-service local adapter. PostgreSQL is the intended multi-
 Migration 0004 adds tenant-scoped upload leases and immutable audit events. Upload leases fence concurrent upload attempts and prevent finalization or cleanup while a transfer is active. The API reserves a lease before reading the request body and releases it after the transfer handler exits; crashed handlers leave an expiring lease that reconciliation respects.
 
 Audit events record session creation/state transitions, upload start/finish, queueing, cancellation, cleanup, and retention deletion. Events are tenant-scoped with forced RLS and contain only lifecycle metadata, never media bytes, bearer tokens, or private storage references. The application role requires CRUD privileges on both new tables.
+
+## Worker liveness (migration 0011)
+
+Migration 0011 adds `ingestion_worker_heartbeats`, a tenant-scoped process-liveness journal with forced RLS. The application role receives only tenant-context CRUD access through the same `voxpipe.tenant_id` transaction setting as the durable job queue.
+
+The Python worker registers one row per authorized tenant, refreshes it every 15 seconds from a supervisor thread independent of job processing and job-lease renewal, and marks it stopped during graceful shutdown. Rows older than seven days are pruned when a worker registers. A missing heartbeat is not inferred as healthy: the operations summary classifies rows older than 45 seconds as stale.
+
+The table records only worker UUID, state, and bounded timestamps. The operations API returns aggregate counts and busy age only; it never returns worker IDs or tenant identifiers. See [worker heartbeat semantics](worker-heartbeats.md).
