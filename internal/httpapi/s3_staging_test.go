@@ -197,6 +197,21 @@ func TestS3StagerRejectsNonUUIDReferences(t *testing.T) {
 	}
 }
 
+func TestNewS3StagerFromEnvRejectsHalfStagingCredentialPair(t *testing.T) {
+	t.Setenv("VOXPIPE_S3_BUCKET", "voxpipe-test")
+	t.Setenv("VOXPIPE_S3_REGION", "us-east-1")
+	t.Setenv("VOXPIPE_S3_SERVER_SIDE_ENCRYPTION", "AES256")
+	t.Setenv("VOXPIPE_S3_ENDPOINT_URL", "http://127.0.0.1:9000")
+	t.Setenv("VOXPIPE_S3_ACCESS_KEY_ID", "worker-access")
+	t.Setenv("VOXPIPE_S3_SECRET_ACCESS_KEY", "worker-secret")
+	t.Setenv("VOXPIPE_S3_STAGING_ACCESS_KEY_ID", "api-staging-access")
+	t.Setenv("VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY", "")
+
+	if _, err := NewS3StagerFromEnv(context.Background(), 1024); err == nil {
+		t.Fatal("expected a half-configured API staging credential pair to fail closed")
+	}
+}
+
 func TestNewS3StagerFromEnvRejectsRemoteHTTP(t *testing.T) {
 	t.Setenv("VOXPIPE_S3_BUCKET", "voxpipe-test")
 	t.Setenv("VOXPIPE_S3_REGION", "us-east-1")
