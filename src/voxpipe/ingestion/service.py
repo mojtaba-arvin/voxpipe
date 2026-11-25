@@ -339,6 +339,8 @@ class IngestionService:
         )
 
     def _staged_file(self, file_path: str | Path) -> tuple[Path, int, str]:
+        if self._staging_root is None:
+            raise IngestionRequestError("local staging root is not configured")
         source = Path(file_path)
         if source.is_symlink():
             raise IngestionRequestError("staged media must not be a symbolic link")
@@ -361,35 +363,97 @@ class IngestionService:
         reference = resolved.relative_to(self._staging_root).as_posix()
         return resolved, size_bytes, reference
 
-    def _resolve_staging_reference(self, reference: Any) -> tuple[Path, int]:
-        if (
-            not isinstance(reference, str)
-            or not reference
-            or "\\" in reference
-            or any(ord(character) < 32 or ord(character) == 127 for character in reference)
-        ):
-            raise StagedFileMissingError("staging reference is invalid")
-        pure = PurePosixPath(reference)
-        if (
-            pure.is_absolute()
-            or not pure.parts
-            or ":" in pure.parts[0]
-            or any(part in {"", ".", ".."} for part in pure.parts)
-        ):
-            raise StagedFileMissingError("staging reference is invalid")
-        candidate = self._staging_root.joinpath(*pure.parts)
-        if candidate.is_symlink():
-            raise StagedFileMissingError("staged media is not available")
-        try:
-            resolved = candidate.resolve(strict=True)
-            if not resolved.is_relative_to(self._staging_root) or not resolved.is_file():
+    def _resolve_staging_reference(
+        self,
+        session: Mapping[str, Any],
+        tenant_id: str,
+        session_id: str,
+        expected_upload: Mapping[str, Any],
+    ) -> tuple[Path, int, Path | None]:
+        backend = session.get("staging_backend", "local")
+        reference = session.get("staging_reference")
+        if backend == "local":
+            if self._staging_root is None:
+                raise StagedFileMissingError("local staging root is not configured")
+            if (
+                not isinstance(reference, str)
+                or not reference
+                or "\\" in reference
+                or any(ord(character) < 32 or ord(character) == 127 for character in reference)
+            ):
+                raise StagedFileMissingError("staging reference is invalid")
+            pure = PurePosixPath(reference)
+            if (
+                pure.is_absolute()
+                or not pure.parts
+                or ":" in pure.parts[0]
+                or any(part in {"", ".", ".."} for part in pure.parts)
+            ):
+                raise StagedFileMissingError("staging reference is invalid")
+            candidate = self._staging_root.joinpath(*pure.parts)
+            if candidate.is_symlink():
                 raise StagedFileMissingError("staged media is not available")
-            size_bytes = resolved.stat().st_size
-        except (OSError, RuntimeError):
+            try:
+                resolved = candidate.resolve(strict=True)
+                if not resolved.is_relative_to(self._staging_root) or not resolved.is_file():
+                    raise StagedFileMissingError("staged media is not available")
+                size_bytes = resolved.stat().st_size
+            except (OSError, RuntimeError):
+                raise StagedFileMissingError("staged media is not available") from None
+            if size_bytes < 1 or size_bytes > self._max_file_size_bytes:
+                raise StagedFileMissingError("staged media is outside configured limits")
+            return resolved, size_bytes, None
+
+        if backend != "s3_compatible" or self._storage_provider != "s3_compatible":
+            raise StagedFileMissingError("staging backend is not available on this worker")
+        expected_reference = f"staging/v1/{tenant_id}/{session_id}/source"
+        if not isinstance(reference, str) or reference != expected_reference:
+            raise StagedFileMissingError("staging reference is invalid")
+        expected_size = expected_upload.get("expected_size_bytes")
+        expected_sha256 = expected_upload.get("expected_sha256")
+        if (
+            not isinstance(expected_size, int)
+            or expected_size < 1
+            or expected_size > self._max_file_size_bytes
+            or not isinstance(expected_sha256, str)
+            or len(expected_sha256) != 64
+        ):
+            raise StagedFileMissingError("staged media metadata is invalid")
+        try:
+            stored = self._object_store.head(reference)
+        except Exception:
             raise StagedFileMissingError("staged media is not available") from None
-        if size_bytes < 1 or size_bytes > self._max_file_size_bytes:
-            raise StagedFileMissingError("staged media is outside configured limits")
-        return resolved, size_bytes
+        if stored.size_bytes != expected_size or stored.sha256 != expected_sha256:
+            raise MediaInspectionError(
+                "MEDIA_FILE_CHANGED_DURING_INGESTION",
+                "Staged media metadata changed during recovery",
+            )
+
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(prefix="voxpipe-staging-", suffix=".source", delete=False) as destination:
+                temporary_path = Path(destination.name)
+                digest = hashlib.sha256()
+                size_bytes = 0
+                with self._object_store.open(reference) as source_stream:
+                    while chunk := source_stream.read(1024 * 1024):
+                        size_bytes += len(chunk)
+                        if size_bytes > self._max_file_size_bytes:
+                            raise StagedFileMissingError("staged media is outside configured limits")
+                        destination.write(chunk)
+                        digest.update(chunk)
+                destination.flush()
+                os.fsync(destination.fileno())
+            if size_bytes != expected_size or digest.hexdigest() != expected_sha256:
+                raise MediaInspectionError(
+                    "MEDIA_FILE_CHANGED_DURING_INGESTION",
+                    "Staged media checksum changed during recovery",
+                )
+            return temporary_path, size_bytes, temporary_path
+        except Exception:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            raise
 
     def _cleanup_artifacts(self, tenant_id: str, asset_id: str, object_key: str) -> bool:
         """Delete object bytes before metadata so failures remain retryable.
