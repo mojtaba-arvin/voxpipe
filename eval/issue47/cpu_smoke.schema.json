@@ -18,6 +18,8 @@
     "source_kind",
     "sample_source_url",
     "audio_duration_seconds",
+    "model_download_seconds",
+    "model_size_bytes",
     "model_load_seconds",
     "inference_seconds",
     "real_time_factor",
@@ -108,6 +110,14 @@
       }
     },
     "torch_num_threads": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "model_download_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "model_size_bytes": {
       "type": "integer",
       "minimum": 1
     }
