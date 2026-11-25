@@ -102,6 +102,7 @@ class PostgresProviderCircuitBreakerTests(unittest.TestCase):
                 ("speech-provider-expired-probe",),
             )
 
+        self.assertNotIn("speech-provider-expired-probe", breaker.open_providers())
         replacement_probe = breaker.try_acquire("speech-provider-expired-probe")
         self.assertIsNotNone(replacement_probe)
         self.assertTrue(replacement_probe.is_probe)
