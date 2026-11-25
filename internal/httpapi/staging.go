@@ -27,7 +27,7 @@ type Stager interface {
 }
 
 type contextReader struct {
-	ctx context.Context
+	ctx    context.Context
 	reader io.Reader
 }
 
@@ -159,13 +159,21 @@ func (s *LocalStager) Remove(ctx context.Context, tenantID, sessionID string) er
 		return err
 	}
 	directory, target, _, err := s.paths(tenantID, sessionID)
-	if err != nil { return err }
-	if err := s.rejectSymlinkPath(directory); err != nil {
-		if errors.Is(err, os.ErrNotExist) { return nil }
+	if err != nil {
 		return err
 	}
-	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
-	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
+	if err := s.rejectSymlinkPath(directory); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	return nil
 }
 
