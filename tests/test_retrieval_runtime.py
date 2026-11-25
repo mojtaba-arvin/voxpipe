@@ -186,5 +186,61 @@ class RetrievalServiceTests(unittest.TestCase):
             runtime.search(TENANT, {"query": "جلسه"})
 
 
+    def test_model_configuration_requires_absolute_path_immutable_digest_and_384_dimensions(self):
+        valid = {
+            "VOXPIPE_EMBEDDING_MODEL": "local-e5",
+            "VOXPIPE_EMBEDDING_MODEL_VERSION": "sha256:" + "a" * 64,
+            "VOXPIPE_EMBEDDING_MODEL_PATH": "/preprovisioned/model",
+            "VOXPIPE_EMBEDDING_DIMENSIONS": "384",
+            "VOXPIPE_RETRIEVAL_DATABASE_DSN": "postgresql://localhost/voxpipe",
+            "VOXPIPE_RETRIEVAL_INTERNAL_TOKEN": "s" * 32,
+        }
+        with patch.dict(os.environ, valid, clear=True):
+            with patch("scripts.run_retrieval_service.LocalHybridRetrievalRuntime") as factory:
+                self.assertIsNotNone(build_runtime())
+                self.assertEqual(factory.call_args.kwargs["dimensions"], 384)
+        for name, value in (
+            ("VOXPIPE_EMBEDDING_MODEL_VERSION", "sha256:model-revision"),
+            ("VOXPIPE_EMBEDDING_DIMENSIONS", "768"),
+            ("VOXPIPE_EMBEDDING_MODEL_PATH", "relative/model"),
+        ):
+            invalid = dict(valid)
+            invalid[name] = value
+            with patch.dict(os.environ, invalid, clear=True):
+                with self.assertRaises(SystemExit):
+                    build_runtime()
+
+    def test_internal_service_maps_missing_model_version_index_to_503(self):
+        class NotReadyRuntime:
+            def search(self, tenant_id, request):
+                raise RetrievalIndexNotReady("index missing")
+
+        previous_runtime = RetrievalHandler.runtime
+        previous_token = RetrievalHandler.internal_token
+        RetrievalHandler.runtime = NotReadyRuntime()
+        RetrievalHandler.internal_token = "s" * 32
+        server = ThreadingHTTPServer(("127.0.0.1", 0), RetrievalHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_port}/internal/v1/search"
+            request = urllib.request.Request(url, data=json.dumps({
+                "tenant_id": TENANT, "query": "جلسه",
+            }).encode(), headers={
+                "Content-Type": "application/json",
+                "X-VoxPipe-Retrieval-Token": "s" * 32,
+            }, method="POST")
+            with self.assertRaises(urllib.error.HTTPError) as unavailable:
+                urllib.request.urlopen(request, timeout=3)
+            self.assertEqual(unavailable.exception.code, 503)
+            self.assertEqual(json.loads(unavailable.exception.read())["code"], "RETRIEVAL_INDEX_NOT_READY")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+            RetrievalHandler.runtime = previous_runtime
+            RetrievalHandler.internal_token = previous_token
+
+
 if __name__ == "__main__":
     unittest.main()
