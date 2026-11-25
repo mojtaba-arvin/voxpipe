@@ -284,6 +284,26 @@ jobs:
         run: |
           docker compose -f compose.s3-e2e.yaml up --build --detach postgres bootstrap silo silo-init
           docker compose -f compose.s3-e2e.yaml wait bootstrap silo-init
+      - name: Configure and verify S3 staging lifecycle and recovery
+        env:
+          SILO_ROOT_ACCESS_KEY_ID: ${{ env.SILO_ROOT_ACCESS_KEY_ID }}
+          SILO_ROOT_SECRET_ACCESS_KEY: ${{ env.SILO_ROOT_SECRET_ACCESS_KEY }}
+          VOXPIPE_S3_BUCKET: ${{ env.VOXPIPE_S3_BUCKET }}
+          VOXPIPE_S3_RECOVERY_BUCKET: ${{ env.VOXPIPE_S3_RECOVERY_BUCKET }}
+          VOXPIPE_S3_REGION: ${{ env.VOXPIPE_S3_REGION }}
+          VOXPIPE_S3_ENDPOINT_URL: ${{ env.VOXPIPE_S3_ENDPOINT_URL }}
+          VOXPIPE_S3_ADDRESSING_STYLE: ${{ env.VOXPIPE_S3_ADDRESSING_STYLE }}
+          VOXPIPE_S3_STAGING_LIFECYCLE_DAYS: ${{ env.VOXPIPE_S3_STAGING_LIFECYCLE_DAYS }}
+          VOXPIPE_S3_STAGING_RECOVERY_WINDOW_SECONDS: ${{ env.VOXPIPE_S3_STAGING_RECOVERY_WINDOW_SECONDS }}
+          VOXPIPE_S3_STAGING_SAFETY_MARGIN_DAYS: ${{ env.VOXPIPE_S3_STAGING_SAFETY_MARGIN_DAYS }}
+          VOXPIPE_SESSION_TTL_SECONDS: ${{ env.VOXPIPE_SESSION_TTL_SECONDS }}
+          VOXPIPE_JOB_MAX_ATTEMPTS: ${{ env.VOXPIPE_JOB_MAX_ATTEMPTS }}
+          VOXPIPE_JOB_LEASE_SECONDS: ${{ env.VOXPIPE_JOB_LEASE_SECONDS }}
+          VOXPIPE_WORKER_MAX_BACKOFF_SECONDS: ${{ env.VOXPIPE_WORKER_MAX_BACKOFF_SECONDS }}
+        run: |
+          python scripts/configure_s3_e2e_bucket.py
+          python scripts/validate_s3_lifecycle_policy.py
+          python scripts/verify_s3_version_recovery.py
       - name: Provision distinct least-privilege S3 runtime identities
         env:
           SILO_ROOT_ACCESS_KEY_ID: ${{ env.SILO_ROOT_ACCESS_KEY_ID }}
