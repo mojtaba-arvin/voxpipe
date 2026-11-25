@@ -35,3 +35,6 @@ Milestones become independently reproducible and can be completed without user-o
 - **VP-0032:** closed using strict capability metadata and tests for explicit remote data egress, data/deployment declarations, deprecation, replacement and rollback metadata. No provider capability is populated from guesses; operators supply verified records.
 - **VP-0033:** closed for repository implementation using allowlisted evidence-based routing, process/PostgreSQL breaker behavior, fail-closed coordination, crash-recoverable probe leases, fake-transport ambiguous-timeout tests and replay-safe workflow persistence. Live paid provider activation remains disabled and is not a repository gate.
 - **VP-0035:** closed using a disposable Collector/Prometheus GitHub Actions stack, real OTLP SDK metric emission, Prometheus scrape verification and deterministic promtool alert-firing tests. Live notification delivery and staging SLOs remain deployment concerns.
+
+
+- **VP-0036:** closed after one-shot reusable release-candidate execution 45564559936 succeeded on main, produced Linux amd64/arm64 artifacts and CycloneDX SBOM/manifest/checksums, verified every artifact attestation and uploaded the release bundle. Production canary/rollback remains explicitly out of scope.
