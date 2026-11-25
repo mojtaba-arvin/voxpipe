@@ -23,8 +23,13 @@ def main() -> int:
     days = int(env["VOXPIPE_S3_STAGING_LIFECYCLE_DAYS"])
     if days < 1:
         raise ValueError("staging lifecycle days must be positive")
+    recovery_bucket = env["VOXPIPE_S3_RECOVERY_BUCKET"]
+    try:
+        client.head_bucket(Bucket=recovery_bucket)
+    except Exception:
+        client.create_bucket(Bucket=recovery_bucket)
     client.put_bucket_versioning(
-        Bucket=bucket,
+        Bucket=recovery_bucket,
         VersioningConfiguration={"Status": "Enabled"},
     )
     client.put_bucket_lifecycle_configuration(
