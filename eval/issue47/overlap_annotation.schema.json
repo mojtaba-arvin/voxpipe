@@ -9,6 +9,9 @@
     "scenario",
     "source_kind",
     "sample_rate",
+    "leading_silence_seconds",
+    "noise_snr_db",
+    "noise_seed",
     "segments",
     "overlap"
   ],
@@ -90,6 +93,18 @@
           "exclusiveMinimum": 0
         }
       }
+    },
+    "leading_silence_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "noise_snr_db": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "noise_seed": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }
