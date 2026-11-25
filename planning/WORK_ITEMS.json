@@ -1520,17 +1520,19 @@
     },
     {
       "id": "VP-0062",
-      "title": "Add TTS and FFmpeg overlap synthesis job (issue #179)",
+      "title": "Add local Persian TTS and controlled overlap fixture generation (issue #179)",
       "phase": 9,
       "priority": 62,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0051"
       ],
       "acceptance_criteria": [
-        "Generate reproducible synthetic speech and controlled overlap fixtures.",
-        "Record voice/model provenance and exact synthesis parameters.",
-        "Use the output only for pipeline/overlap plumbing, not as natural speech evidence."
+        "Generate at least 50 reproducible synthetic Persian speech mixtures from Group A template conversations.",
+        "Pin sherpa-onnx and CC0 voice-model assets; verify model asset SHA-256 before use.",
+        "Record exact sample-aligned role timing and overlap annotations.",
+        "Keep generated WAVs temporary; persist only audio-free annotations and aggregate metadata.",
+        "Use the output only for synthetic pipeline/overlap plumbing, not natural-speech or diarization claims."
       ],
       "evidence": [],
       "blocked_reason": null
