@@ -62,7 +62,7 @@ components:
     OperationalSummary:
       type: object
       additionalProperties: false
-      required: [window_hours, observed_at, ingestions, jobs, queue]
+      required: [window_hours, observed_at, ingestions, jobs, queue, workers]
       properties:
         window_hours:
           type: integer
@@ -120,6 +120,19 @@ components:
             active_leases: {type: integer, minimum: 0}
             expired_leases: {type: integer, minimum: 0}
             dead_letter_count: {type: integer, minimum: 0}
+        workers:
+          type: object
+          additionalProperties: false
+          required: [active, stale, idle, busy, stale_busy, oldest_busy_seconds, heartbeat_interval_seconds, stale_after_seconds]
+          properties:
+            active: {type: integer, minimum: 0}
+            stale: {type: integer, minimum: 0}
+            idle: {type: integer, minimum: 0}
+            busy: {type: integer, minimum: 0}
+            stale_busy: {type: integer, minimum: 0}
+            oldest_busy_seconds: {type: number, minimum: 0}
+            heartbeat_interval_seconds: {type: integer, minimum: 1}
+            stale_after_seconds: {type: integer, minimum: 1}
     Error:
       type: object
       additionalProperties: false
