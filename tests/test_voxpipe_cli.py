@@ -1,5 +1,6 @@
 from __future__ import annotations
-import hashlib, json, tempfile, unittest
+import hashlib, json, tempfile, unittest, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from scripts.voxpipe_cli import APIClient, APIError, ingest, sha256_file
 
@@ -50,6 +51,33 @@ class VoxPipeCLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "empty.wav"; path.write_bytes(b"")
             with self.assertRaises(ValueError): ingest(client, path, "file_upload", None, False, 1, 10)
+
+
+    def test_upload_streams_file_bytes_over_loopback_http(self):
+        received = []
+        class Handler(BaseHTTPRequestHandler):
+            def do_PUT(self):
+                received.append(self.rfile.read(int(self.headers["Content-Length"])))
+                self.send_response(204)
+                self.end_headers()
+            def log_message(self, *args):
+                pass
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = APIClient(f"http://127.0.0.1:{server.server_port}", "secret")
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "audio.wav"
+                path.write_bytes(b"streamed-audio-payload")
+                size, _ = sha256_file(path)
+                with path.open("rb") as stream:
+                    client.request("PUT", "/upload", body=stream, content_length=size, request_timeout=10)
+            self.assertEqual(received, [b"streamed-audio-payload"])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
     def test_response_size_is_bounded(self):
         client = APIClient("http://127.0.0.1:8080", "secret")
