@@ -8,7 +8,7 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 ## Project status
 
-**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is in progress. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
+**Repository foundation:** VP-0001–VP-0037 are complete for repository scope. Product Experience work is now tracked separately in Phase 7; VP-0038 (first-party CLI) is complete. See [the roadmap](docs/ROADMAP.md) and [machine-readable work ledger](planning/WORK_ITEMS.json).
 
 **Pre-closure main baseline:** `8bf259155d57fb41dba2a25c7ed6b086fcd7527d` (2026-11-25). Validation run `45565589850` passed all five jobs: Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry runtime smoke, PostgreSQL backup/restore rehearsal, and OpenTelemetry Collector/Prometheus integration. Release-candidate proof run `45564559936` built Linux amd64/arm64 artifacts, CycloneDX SBOM, manifest and checksums, verified GitHub attestations, and uploaded the candidate bundle.
 
@@ -96,7 +96,8 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 │   ├── prepare_test_database.py
 │   ├── reconcile_ingestion.py
 │   ├── run_ingestion_worker.py
-│   └── validate_repo.py
+│   ├── validate_repo.py
+│   └── voxpipe_cli.py
 ├── src/voxpipe/
 │   ├── __init__.py
 │   ├── ingestion/

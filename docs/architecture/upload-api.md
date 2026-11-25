@@ -100,7 +100,7 @@ The worker tenant list is an explicit allowlist supplied by a trusted scheduler/
 
 - Production identity uses OIDC RS256 JWT validation plus per-request token introspection. Static token mapping is an explicit bootstrap/development mode only.
 - Local staging and object storage require API/worker co-location and a private service-owned filesystem.
-- Pre-processing cancellation removes the staged source. Staged-source cleanup after expiry and after cancellation during finalizing/processing still needs a dedicated reconciler and explicit retention policy.
+- Cancellation in the created/receiving states removes staged bytes immediately. The tenant-scoped reconciler expires stale unleased sessions and removes staging artifacts for completed and terminal sessions; it also deletes object data and asset metadata for failed/cancelled/expired sessions and retention-expired assets. Schedule reconciliation per tenant with the documented command. Asset expiry remains disabled by default (VOXPIPE_DEFAULT_RETENTION_DAYS=0) unless the deployment sets a positive retention period.
 - Upload retry is whole-file and idempotent, not byte-range resumable.
 - TLS termination remains the deployment ingress responsibility. Quotas are enforced by PostgreSQL advisory-lock reservations; tune defaults to deployment capacity. Local staging/object storage remain single-node.
 - The API does not run migrations or create roles/grants automatically.
