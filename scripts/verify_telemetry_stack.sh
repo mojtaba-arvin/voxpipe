@@ -34,9 +34,9 @@ docker run --rm --entrypoint=promtool \
 
 docker run --rm --entrypoint=promtool \
   -v "$ROOT/ops/observability:/etc/prometheus:ro" \
-  -v "$ROOT/tests/fixtures/observability:/etc/prometheus/tests:ro" \
+  -v "$ROOT/tests/fixtures/observability:/tmp/voxpipe-tests:ro" \
   prom/prometheus:v3.7.0 \
-  test rules /etc/prometheus/tests/voxpipe-speech-rules-test.yml
+  test rules /tmp/voxpipe-tests/voxpipe-speech-rules-test.yml
 
 # Use a faster scrape interval only in the disposable CI copy.
 sed 's/scrape_interval: 15s/scrape_interval: 2s/g; s/evaluation_interval: 15s/evaluation_interval: 2s/g' \
