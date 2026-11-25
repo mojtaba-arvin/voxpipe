@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -90,6 +94,48 @@ class RetrievalSilverEvaluationTests(unittest.TestCase):
         schema = json.loads((ROOT / "eval" / "issue48" / "metrics.schema.json").read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(result)
+
+
+    def test_cli_pipeline_runs_queries_qrels_ranker_and_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            queries = temp / "queries.jsonl"
+            metadata = temp / "metadata.json"
+            qrels = temp / "qrels.json"
+            run = temp / "run.json"
+            metrics = temp / "metrics.json"
+            env = os.environ.copy()
+            env["CORPUS_PATH"] = ""
+            commands = [
+                [
+                    sys.executable, "-m", "eval.issue48.queries",
+                    "--count", "100", "--seed", "23",
+                    "--output", str(queries), "--metadata", str(metadata),
+                ],
+                [
+                    sys.executable, "-m", "eval.issue48.qrels",
+                    "--queries", str(queries), "--output", str(qrels),
+                ],
+                [
+                    sys.executable, "-m", "eval.issue48.lexical_baseline",
+                    "--queries", str(queries), "--output", str(run),
+                ],
+                [
+                    sys.executable, "-m", "eval.issue48.metrics",
+                    "--queries", str(queries), "--qrels", str(qrels),
+                    "--run", str(run), "--output", str(metrics),
+                ],
+            ]
+            for command in commands:
+                result = subprocess.run(
+                    command, cwd=ROOT, env=env, check=False, capture_output=True, text=True
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(metrics.read_text(encoding="utf-8"))
+            self.assertEqual(report["query_count"], 100)
+            self.assertEqual(report["test_query_count"], 15)
+            self.assertEqual(report["recall_at_5"], 1.0)
+            self.assertEqual(json.loads(metadata.read_text(encoding="utf-8"))["seed"], 23)
 
     def test_qrels_reject_missing_source_passage(self) -> None:
         queries = [{
