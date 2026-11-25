@@ -20,7 +20,7 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
     @patch("voxpipe.workflows.runtime.WorkflowHandlerRegistry")
     @patch("voxpipe.workflows.runtime.SpeechTranscriptionWorkflowHandler")
     @patch("voxpipe.workflows.runtime.FasterWhisperAdapter")
-    @patch("voxpipe.workflows.runtime.LocalFilesystemObjectStore")
+    @patch("voxpipe.workflows.runtime.build_object_store")
     @patch("voxpipe.workflows.runtime.PostgresIngestionRepository")
     @patch("voxpipe.workflows.runtime.PostgresWorkflowRepository")
     def test_composes_only_local_allowlisted_speech_handler(
@@ -33,7 +33,14 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
         })
         guarded_port = object()
         resilience_factory.return_value = SimpleNamespace(speech_port=guarded_port, backend="postgres")
+        object_store.return_value = (object(), "local")
         runtime = build_local_speech_worker(env)
+        object_store.assert_called_once_with(
+            env,
+            local_root="/tmp/voxpipe-test-objects",
+            local_root_env="VOXPIPE_OBJECT_STORE_ROOT",
+            max_object_size_bytes=512 * 1024 * 1024,
+        )
         workflow_repo.assert_called_once_with("postgresql://unit-test")
         asset_repo.assert_called_once_with("postgresql://unit-test")
         adapter.assert_called_once()
@@ -79,7 +86,7 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
         env.pop("VOXPIPE_WORKFLOW_WORKER_ID")
         with patch("voxpipe.workflows.runtime.PostgresWorkflowRepository"), \
              patch("voxpipe.workflows.runtime.PostgresIngestionRepository"), \
-             patch("voxpipe.workflows.runtime.LocalFilesystemObjectStore"), \
+             patch("voxpipe.workflows.runtime.build_object_store"), \
              patch("voxpipe.workflows.runtime.FasterWhisperAdapter") as adapter, \
              patch("voxpipe.workflows.runtime.SpeechTranscriptionWorkflowHandler"), \
              patch("voxpipe.workflows.runtime.WorkflowHandlerRegistry"), \
