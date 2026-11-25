@@ -29,7 +29,7 @@ The first implementation deliberately uses one S3 credential pair for both API a
 - The `staging/v1/` lifecycle expiry must be longer than the maximum session lifetime, maximum retry/backoff window, and an explicit operator recovery window, plus a safety margin. Derive the minimum from configured limits; do not hard-code a short TTL.
 - Never configure lifecycle rules that expire durable `tenant/*` objects as a side effect of staging cleanup.
 - Lifecycle and versioning policy must be verified at deployment time and documented for the selected provider. If the provider cannot prove the required policy, report the storage deployment as not ready rather than guessing.
-- Enable bucket versioning for durable objects where the provider supports it. Document how to recover a deleted object version and how noncurrent-version retention interacts with privacy deletion requirements.
+- Keep the active VoxPipe tenant-object bucket unversioned until the application has a verified hard-delete path for all object versions. Test version recovery in a separate versioned recovery bucket. If a production provider requires versioning, define a privileged all-version purge path and a privacy-compatible noncurrent-version retention policy before enabling it.
 
 ### 3. Content-free storage readiness
 
@@ -55,7 +55,7 @@ Document:
 - The worker can read staging, write durable objects and reconcile staging using its own identity.
 - Tests prove missing/half-configured credentials and insecure non-loopback endpoints fail closed.
 - Lifecycle tests verify the configured staging expiry exceeds session, retry and recovery windows; a live/retryable staging object is not removed by application reconciliation or the tested lifecycle policy.
-- Versioning/recovery tests prove a durable object can be restored after a delete marker where the provider supports versioning.
+- A separate versioned recovery bucket test proves an object can be restored after a delete marker; the active tenant-object bucket remains unversioned until hard-delete semantics are implemented.
 - Fault-injection tests cover transient object-store outage, ambiguous write, denied permissions and cleanup retry.
 - All CI uses disposable Silo and generated credentials. No production cloud account, live customer data, paid resource, RPO/RTO or multi-region durability claim is implied.
 
