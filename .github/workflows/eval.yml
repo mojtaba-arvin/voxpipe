@@ -36,7 +36,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: evaluation-\${{ github.workflow }}-\${{ github.ref }}
+  group: evaluation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -105,11 +105,11 @@ jobs:
 
   eval-48:
     name: Group B — retrieval (silver)
-    if: \${{ inputs.run_eval_48 }}
+    if: ${{ inputs.run_eval_48 }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      CORPUS_PATH: \${{ inputs.corpus_path }}
+      CORPUS_PATH: ${{ inputs.corpus_path }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -135,8 +135,8 @@ jobs:
           if-no-files-found: error
       - name: Disclose retrieval silver baseline on issue 48
         env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: \${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           ISSUE_NUMBER: "48"
         run: |
           COMMENT_BODY="$(python - <<'PY'
@@ -169,7 +169,7 @@ jobs:
 
   eval-47:
     name: Group C — speech (silver)
-    if: \${{ inputs.run_eval_47 }}
+    if: ${{ inputs.run_eval_47 }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -178,33 +178,33 @@ jobs:
 
   post-results:
     name: Aggregate evaluation outcomes
-    if: \${{ always() }}
+    if: ${{ always() }}
     needs: [eval-32, eval-48, eval-47]
     runs-on: ubuntu-latest
     steps:
       - name: Publish truthful group status summary
         env:
-          GROUP_A: \${{ needs['eval-32'].result }}
-          GROUP_B: \${{ needs['eval-48'].result }}
-          GROUP_C: \${{ needs['eval-47'].result }}
+          GROUP_A: ${{ needs['eval-32'].result }}
+          GROUP_B: ${{ needs['eval-48'].result }}
+          GROUP_C: ${{ needs['eval-47'].result }}
         run: |
           {
             echo "## VoxPipe silver evaluation baseline"
             echo
             echo "| Group | Result |"
             echo "|---|---|"
-            echo "| Extraction (#32) | \${GROUP_A} |"
-            echo "| Retrieval (#48) | \${GROUP_B} |"
-            echo "| Speech (#47) | \${GROUP_C} |"
+            echo "| Extraction (#32) | ${GROUP_A} |"
+            echo "| Retrieval (#48) | ${GROUP_B} |"
+            echo "| Speech (#47) | ${GROUP_C} |"
             echo
             echo "These are automated silver-baseline results, not human gold or production-quality claims."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post optional disclosure comment
-        if: \${{ inputs.comment_issue != '' && inputs.comment_body != '' }}
+        if: ${{ inputs.comment_issue != '' && inputs.comment_body != '' }}
         env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: \${{ github.repository }}
-          ISSUE_NUMBER: \${{ inputs.comment_issue }}
-          COMMENT_BODY: \${{ inputs.comment_body }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ inputs.comment_issue }}
+          COMMENT_BODY: ${{ inputs.comment_body }}
         run: bash scripts/comment_issue.sh
