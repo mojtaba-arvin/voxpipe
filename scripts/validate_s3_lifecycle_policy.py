@@ -38,9 +38,12 @@ def main() -> int:
         config=Config(s3={"addressing_style": env.get("VOXPIPE_S3_ADDRESSING_STYLE", "path")}),
     )
     bucket = env["VOXPIPE_S3_BUCKET"]
-    versioning = client.get_bucket_versioning(Bucket=bucket)
-    if versioning.get("Status") != "Enabled":
-        raise RuntimeError("bucket versioning must be enabled")
+    app_versioning = client.get_bucket_versioning(Bucket=bucket)
+    if app_versioning.get("Status") == "Enabled":
+        raise RuntimeError("active VoxPipe bucket versioning is disabled until hard-delete semantics are implemented")
+    recovery_versioning = client.get_bucket_versioning(Bucket=env["VOXPIPE_S3_RECOVERY_BUCKET"])
+    if recovery_versioning.get("Status") != "Enabled":
+        raise RuntimeError("dedicated recovery test bucket must have versioning enabled")
 
     lifecycle = client.get_bucket_lifecycle_configuration(Bucket=bucket)
     minimum_days = minimum_staging_retention_days(
@@ -67,11 +70,8 @@ def main() -> int:
         raise RuntimeError("exactly one enabled staging/v1 lifecycle rule is required")
     rule = staging_rules[0]
     expiration_days = rule.get("Expiration", {}).get("Days")
-    noncurrent_days = rule.get("NoncurrentVersionExpiration", {}).get("NoncurrentDays")
     if expiration_days is None or expiration_days < minimum_days:
-        raise RuntimeError("staging current-version expiry is shorter than the safe retention window")
-    if noncurrent_days is None or noncurrent_days < minimum_days:
-        raise RuntimeError("staging noncurrent-version expiry is shorter than the safe retention window")
+        raise RuntimeError("staging expiry is shorter than the safe retention window")
 
     for candidate in rules:
         prefix = candidate.get("Filter", {}).get("Prefix", "")
