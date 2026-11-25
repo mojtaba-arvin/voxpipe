@@ -89,12 +89,6 @@ class StorageFactoryTests(unittest.TestCase):
                 max_object_size_bytes=1024,
             )
 
-    def test_loopback_http_endpoint_is_allowed_for_local_integration(self) -> None:
-        from urllib.parse import urlparse
-
-        parsed = urlparse("http://127.0.0.1:9000")
-        self.assertEqual(parsed.hostname, "127.0.0.1")
-
 
 if __name__ == "__main__":
     unittest.main()
