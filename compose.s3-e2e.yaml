@@ -103,8 +103,5 @@ services:
         condition: service_healthy
     restart: "no"
 
-# Only PostgreSQL has a persistent volume. API and worker intentionally have
-# no shared staging or object filesystem; all transient and durable audio bytes
-# cross the S3-compatible boundary.
-volumes:
-  postgres_data:
+# No staging or object filesystem is mounted into either application container.
+# All transient and durable audio bytes cross the S3-compatible boundary.
