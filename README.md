@@ -28,7 +28,7 @@ The guided local stack uses the local filesystem adapter and needs no cloud cred
 - KMS mode also requires `VOXPIPE_S3_KMS_KEY_ID`. Credentials may come from a workload role or the paired `VOXPIPE_S3_ACCESS_KEY_ID` / `VOXPIPE_S3_SECRET_ACCESS_KEY` variables.
 - Use `VOXPIPE_S3_ENDPOINT_URL` for an S3-compatible endpoint; non-loopback endpoints require HTTPS.
 
-See [the object-storage boundary and deployment limits](docs/architecture/storage.md). S3 object storage does not replace the private upload-staging filesystem; do not claim full multi-node deployment until staging is shared or its protocol is replaced.
+For the ingestion worker image, include the optional SDK with `docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3 .`; the default image and local Compose quickstart do not install or use boto3. See [the object-storage boundary and deployment limits](docs/architecture/storage.md). S3 object storage does not replace the private upload-staging filesystem; do not claim full multi-node deployment until staging is shared or its protocol is replaced.
 
 ## Design principles
 
