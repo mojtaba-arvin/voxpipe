@@ -74,6 +74,21 @@ class StorageFactoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be configured together"):
             build_object_store(base, local_root=None, local_root_env="VOXPIPE_OBJECT_ROOT", max_object_size_bytes=1024)
 
+    def test_endpoint_paths_and_query_parameters_are_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "without paths"):
+            build_object_store(
+                {
+                    "VOXPIPE_STORAGE_BACKEND": "s3_compatible",
+                    "VOXPIPE_S3_BUCKET": "voxpipe",
+                    "VOXPIPE_S3_REGION": "us-east-1",
+                    "VOXPIPE_S3_SERVER_SIDE_ENCRYPTION": "AES256",
+                    "VOXPIPE_S3_ENDPOINT_URL": "http://localhost:9000/prefix",
+                },
+                local_root=None,
+                local_root_env="VOXPIPE_OBJECT_ROOT",
+                max_object_size_bytes=1024,
+            )
+
     def test_remote_http_endpoint_is_rejected_before_sdk_initialization(self) -> None:
         with self.assertRaisesRegex(ValueError, "must use HTTPS"):
             build_object_store(
