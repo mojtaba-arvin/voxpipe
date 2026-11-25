@@ -135,10 +135,10 @@ class S3CompatibleObjectStore:
         validate_object_key(key)
         try:
             response = self._client.get_object(Bucket=self._bucket, Key=key)
-            self._verify_encryption(response)
-            return response["Body"]
         except Exception as exc:
             self._raise_provider_error(exc, "object could not be opened")
+        self._verify_encryption(response)
+        return response["Body"]
 
     def head(self, key: str) -> ObjectInfo:
         validate_object_key(key)
@@ -158,7 +158,10 @@ class S3CompatibleObjectStore:
             else:
                 self._raise_provider_error(exc, "object metadata could not be read")
 
-        size_bytes = int(response.get("ContentLength", -1))
+        try:
+            size_bytes = int(response.get("ContentLength", -1))
+        except (TypeError, ValueError):
+            raise StorageIntegrityError("provider returned an invalid object size") from None
         if size_bytes < 0 or size_bytes > self._max_object_size_bytes:
             raise StorageIntegrityError("stored object size is outside the configured limit")
         self._verify_encryption(response)
