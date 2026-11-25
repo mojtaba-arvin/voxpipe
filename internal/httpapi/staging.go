@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	ErrUploadTooLarge = errors.New("upload exceeds configured limit")
+	ErrUploadTooLarge  = errors.New("upload exceeds configured limit")
 	ErrUploadIntegrity = errors.New("upload size or checksum does not match declaration")
-	ErrUploadConflict = errors.New("staged upload already exists with different content")
+	ErrUploadConflict  = errors.New("staged upload already exists with different content")
 )
 
 type Stager interface {
@@ -79,7 +79,9 @@ func (s *LocalStager) Write(
 	expectedSize, maxSize int64,
 	expectedSHA256 string,
 ) (int64, string, error) {
-	if err := ctx.Err(); err != nil { return 0, "", err }
+	if err := ctx.Err(); err != nil {
+		return 0, "", err
+	}
 	if expectedSize < 1 || maxSize < 1 || expectedSize > maxSize {
 		return 0, "", ErrUploadTooLarge
 	}
@@ -153,7 +155,9 @@ func (s *LocalStager) Write(
 }
 
 func (s *LocalStager) Remove(ctx context.Context, tenantID, sessionID string) error {
-	if err := ctx.Err(); err != nil { return err }
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	directory, target, _, err := s.paths(tenantID, sessionID)
 	if err != nil { return err }
 	if err := s.rejectSymlinkPath(directory); err != nil {
@@ -166,7 +170,9 @@ func (s *LocalStager) Remove(ctx context.Context, tenantID, sessionID string) er
 }
 
 func (s *LocalStager) Verify(ctx context.Context, tenantID, sessionID string) (int64, string, error) {
-	if err := ctx.Err(); err != nil { return 0, "", err }
+	if err := ctx.Err(); err != nil {
+		return 0, "", err
+	}
 	_, target, _, err := s.paths(tenantID, sessionID)
 	if err != nil {
 		return 0, "", err
