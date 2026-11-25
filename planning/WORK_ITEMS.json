@@ -1107,7 +1107,34 @@
         "Operations and API contract documentation explain the difference between process liveness, job-lease health and semantic processing progress."
       ],
       "evidence": [
-        "Implementation is in progress on feat/vp-0043-worker-heartbeats; exact-head CI and post-merge CI are required before completion."
+        "2026-11-25: PR #149 (feat/ops: tenant-scoped worker heartbeats) squash-merged to main as eee1bf36502a04f241271bff1d822e2ee0722a17. Exact-head GitHub Actions run 45612304573 passed all six jobs, including 478 Python/PostgreSQL tests, Go/PostgreSQL, guided quickstart E2E, OpenTelemetry runtime/Collector and PostgreSQL backup/restore.",
+        "2026-11-25: implementation on main includes migration 0013 with forced tenant RLS, independent 15-second process heartbeat, idle/busy/stopped state, 45-second stale classification, tenant-safe operations aggregates and redaction. Post-merge push-triggered main CI still requires verification before this item can be marked done."
+      ],
+      "blocked_reason": "Post-merge main CI for eee1bf36502a04f241271bff1d822e2ee0722a17 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify the push-triggered main run with `gh run list --commit eee1bf36502a04f241271bff1d822e2ee0722a17 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0043 done until all six jobs are successful."
+    },
+    {
+      "id": "VP-0044",
+      "title": "Add shared S3-compatible object storage for multi-node deployments",
+      "phase": 8,
+      "priority": 44,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0043"
+      ],
+      "acceptance_criteria": [
+        "Implement an optional provider-neutral S3-compatible adapter behind ObjectStoragePort; keep local filesystem storage as the default.",
+        "Derive tenant-scoped object keys only from trusted application context and preserve opaque-key validation; never accept caller-controlled tenant prefixes as authorization.",
+        "Stream reads and writes with bounded memory, enforce object-size limits and bounded network timeouts, and verify byte count plus SHA-256 before successful writes.",
+        "Use conditional create for immutable writes; identical content is idempotent, different content conflicts, and explicit overwrite remains deliberate.",
+        "Keep the current 512 MiB object limit on single-request PutObject; do not add multipart upload without a measured requirement beyond the single-request limit.",
+        "Require explicit server-side encryption configuration and fail closed if the selected S3-compatible endpoint cannot satisfy required checksum or encryption behavior.",
+        "Use bounded retries only where idempotency is safe; cover interrupted writes, ambiguous outcomes, conflict, deletion, and two independent adapter instances in disposable S3-compatible CI without external credentials or egress.",
+        "Use one storage factory consistently in API/worker/workflow/reconciliation runtimes; preserve local quickstart and asset metadata compatibility.",
+        "Document deployment-specific IAM, encryption, versioning, retention, lifecycle and recovery requirements without claiming production RPO/RTO or multi-region durability."
+      ],
+      "evidence": [
+        "2026-11-25: created tracking issue #150 and design ADR-0044-s3-compatible-object-storage.md. Branch feat/vp-0044-s3-object-storage contains the proposed architecture; implementation has not yet been merged or enabled by default.",
+        "Product decision: keep the local filesystem adapter as the default and do not select a cloud account, bucket, region, endpoint or secret. Use a bounded single-request PutObject for the existing 512 MiB upload limit; multipart remains out of scope until required."
       ],
       "blocked_reason": null
     }
