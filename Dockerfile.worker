@@ -1,5 +1,6 @@
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src
+ARG VOXPIPE_INSTALL_S3=0
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
@@ -8,8 +9,11 @@ RUN apt-get update \
     && mkdir -p /var/lib/voxpipe/staging /var/lib/voxpipe/objects \
     && chown -R 10001:10001 /var/lib/voxpipe
 WORKDIR /app
-COPY requirements-postgres.txt ./
-RUN python -m pip install --no-cache-dir --disable-pip-version-check -r requirements-postgres.txt
+COPY requirements-postgres.txt requirements-s3.txt ./
+RUN python -m pip install --no-cache-dir --disable-pip-version-check -r requirements-postgres.txt \
+    && if [ "$VOXPIPE_INSTALL_S3" = "1" ]; then \
+         python -m pip install --no-cache-dir --disable-pip-version-check -r requirements-s3.txt; \
+       fi
 COPY --chown=10001:10001 src ./src
 COPY --chown=10001:10001 migrations ./migrations
 COPY --chown=10001:10001 scripts/run_ingestion_worker.py scripts/bootstrap_local_postgres.py ./scripts/
