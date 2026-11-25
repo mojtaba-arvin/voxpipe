@@ -20,9 +20,17 @@ The worker owns the guarded port for its process lifetime.
 The process-local backend is retained as the compatibility default. It is now
 used by the supervised worker unless explicitly overridden. To share provider
 availability across workers, set `VOXPIPE_CIRCUIT_BREAKER_BACKEND=postgres` and
-provide `VOXPIPE_DATABASE_DSN` with the dedicated application-role database DSN. The PostgreSQL adapter uses the
-existing migration 0010 table and requires its documented grants before traffic
-is admitted.
+provide `VOXPIPE_DATABASE_DSN` with the dedicated application-role database DSN.
+Apply migrations 0010 and 0011 before enabling the backend. Grant the dedicated
+application role only the operations the adapter needs:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON provider_circuit_breakers TO voxpipe_app;
+```
+
+This table contains system-wide provider availability metadata, not tenant
+payloads; do not add request, tenant, audio, transcript, or credential fields.
 
 ## Failure policy
 
