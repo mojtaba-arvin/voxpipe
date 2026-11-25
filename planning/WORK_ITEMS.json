@@ -1011,7 +1011,7 @@
       "title": "Expose configured hybrid transcript retrieval through authenticated API and MCP",
       "phase": 7,
       "priority": 40,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0031",
         "VP-0039"
@@ -1027,7 +1027,10 @@
       ],
       "evidence": [
         "2026-11-25 product sequencing: VP-0039 is complete; VP-0040 is next because hybrid retrieval is already implemented as Python ports/adapters but is not exposed through the authenticated Go API/MCP path.",
-        "Existing design evidence: docs/architecture/hybrid-retrieval.md; src/voxpipe/retrieval/{ports.py,hybrid.py,postgres.py,local_embeddings.py}; docs/architecture/mcp-capabilities.md. No production embedding model is selected; local model files must be provisioned out of band."
+        "Existing design evidence: docs/architecture/hybrid-retrieval.md; src/voxpipe/retrieval/{ports.py,hybrid.py,postgres.py,local_embeddings.py}; docs/architecture/mcp-capabilities.md. No production embedding model is selected; local model files must be provisioned out of band.",
+        "2026-11-25: implemented the Go API internal retrieval client and authenticated POST /v1/retrieval/hybrid-search (transcript:read) plus POST /v1/transcripts/{id}/index (transcript:index); static and OIDC scope allowlists updated.",
+        "2026-11-25: added a private Python retrieval sidecar over the internal network, local-only pre-provisioned SentenceTransformer loading, 384-dim model/version metadata, batched idempotent transcript indexing (max 5000 segments, batches of 64), hybrid RRF search, and fail-closed RETRIEVAL_NOT_CONFIGURED behavior. Optional Compose profile is off by default and mounts model files read-only.",
+        "2026-11-25: added MCP 1.2.0 search_hybrid_transcripts and index_transcript tools, OpenAPI 1.2.0 request/response contracts, ADR-0040, and unit/API/MCP tests. Exact-head CI and security review pending."
       ],
       "blocked_reason": null
     },
