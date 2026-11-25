@@ -215,6 +215,7 @@ class IngestionService:
         current = claimed
         asset_id = current["asset_id"]
         object_key = f"tenant/{tenant_id}/assets/{asset_id}/source"
+        temporary_staged_path: Path | None = None
         try:
             if current.get("failure") is not None:
                 resumed = dict(current)
@@ -234,8 +235,10 @@ class IngestionService:
                 )
                 raise IngestionFailed("INGESTION_SESSION_EXPIRED", current)
 
-            staged_path, size_bytes = self._resolve_staging_reference(current.get("staging_reference"))
             expected_upload = current.get("upload", {})
+            staged_path, size_bytes, temporary_staged_path = self._resolve_staging_reference(
+                current, tenant_id, session_id, expected_upload
+            )
             if size_bytes != expected_upload.get("expected_size_bytes"):
                 raise MediaInspectionError(
                     "MEDIA_FILE_CHANGED_DURING_INGESTION",
@@ -314,6 +317,12 @@ class IngestionService:
                 except IngestionRepositoryConflict:
                     latest = self._repository.get_session(tenant_id, session_id) or latest
             raise IngestionFailed(failure_code, latest) from error
+        finally:
+            if temporary_staged_path is not None:
+                try:
+                    temporary_staged_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
     def _transition(self, session: dict[str, Any], target: str) -> dict[str, Any]:
         current_state = session["state"]
