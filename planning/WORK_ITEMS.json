@@ -888,16 +888,16 @@
     },
     {
       "id": "VP-0036",
-      "title": "Implement release, canary and rollback automation",
+      "title": "Build verifiable release artifacts and provenance",
       "phase": 6,
       "priority": 36,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
-        "Build immutable Linux release artifacts with CycloneDX SBOM, dependency inventories, release manifest, SHA-256 checksums and GitHub artifact provenance.",
-        "Run Python/Go integration validation and migration compatibility checks before artifact publication.",
-        "Execute the reusable release-candidate workflow on main in GitHub Actions and verify artifact generation and provenance.",
-        "Do not require production deployment, customer-traffic canary, production restore or live rollback; deployment-specific rollout remains outside the repository milestone."
+        "Build Linux amd64/arm64 release binaries with CycloneDX SBOM, dependency inventories, release manifest, SHA-256 checksums and GitHub artifact provenance.",
+        "Run Python/PostgreSQL and Go/PostgreSQL integration validation against isolated disposable databases before artifact publication.",
+        "Execute the reusable release-candidate workflow on main in GitHub Actions; verify every artifact attestation and upload the release bundle.",
+        "Exclude production deployment, customer-traffic canary, production restore and live rollback from the repository milestone."
       ],
       "evidence": [
         "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted.",
@@ -905,9 +905,13 @@
         "2026-11-24: preparing a pinned actions/attest v4.2.2 GitHub artifact provenance step for all release-candidate outputs, including binaries, source archive, SBOM, manifest and checksum file. This is not counted as complete until exact-head CI and a real release workflow run confirm successful attestation.",
         "2026-11-24: PR #82 merged as commit ce0c815af44052ab2ae108e0e925fdad5b520ecb. The workflow pins actions/attest v4.2.2 by immutable commit and attests all files in dist/ (binaries, source archive, SBOM, manifest, inventories and checksums); least additional permissions are id-token:write and attestations:write. Exact-head PR CI run 45332518545 passed both Python/PostgreSQL and Go/PostgreSQL. Actual tag/manual release workflow execution is still required to prove the attestation service path.",
         "2026-11-25: first one-shot reusable release proof run 45563179846 exposed that the release workflow prepared the disposable database before setting PYTHONPATH=src. Fixing the workflow environment so repository scripts import the package before integration validation.",
-        "2026-11-25: release proof run 45564027146 exposed that the Python integration suite and Go database bootstrap must not share one already-migrated database. The release candidate now uses isolated PostgreSQL services/DSNs for Python and Go; hard-coded Python APP_DSNs are being replaced with the configured app DSN."
+        "2026-11-25: release proof run 45564027146 exposed that the Python integration suite and Go database bootstrap must not share one already-migrated database. The release candidate now uses isolated PostgreSQL services/DSNs for Python and Go; hard-coded Python APP_DSNs are being replaced with the configured app DSN.",
+        "2026-11-25: PR #134 introduced the one-shot reusable release proof; PR #136 fixed PYTHONPATH; PR #137 isolated Python and Go PostgreSQL validation into separate disposable services.",
+        "2026-11-25: GitHub Actions release proof run 45564559936 succeeded end-to-end on main commit da5939b285dc3ef0a8a86548c2a8b751df808eac. Python/PostgreSQL, Go/PostgreSQL, dependency inventory, Linux amd64/arm64 builds, CycloneDX SBOM, manifest, checksums, GitHub artifact attestation, gh attestation verify for all release files, and artifact upload all succeeded.",
+        "2026-11-25: uploaded artifact voxpipe-release-candidate, artifact ID 14999357260, size 8,338,148 bytes, SHA-256 archive digest 71f9895dba76840e9925081f98549120f63e01c2631191b6a3e1a8d061c0e7c3. Artifact expires 2026-12-25.",
+        "Production canary, customer traffic, deployment rollback and production restore remain explicitly outside the repository milestone; no production readiness claim is made."
       ],
-      "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest, checksums and GitHub artifact attestation are implemented. The remaining repository gate is a one-shot main-branch GitHub Actions execution of the reusable release-candidate workflow and verification of its artifact/provenance output. Production canary, customer traffic and live rollback are explicitly outside repository scope."
+      "blocked_reason": null
     },
     {
       "id": "VP-0037",

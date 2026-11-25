@@ -17,3 +17,12 @@ Manual dispatch creates a `manual-<sha>` artifact set. Tag builds use the tag na
 ## Explicit limitations
 
 This workflow does not build a container, sign artifacts, deploy, perform a canary, or execute rollback. VoxPipe has no configured deployment environment or production-like database migration target in this repository. Do not interpret a successful build as production readiness. Canary and rollback automation require deployment-specific health checks, immutable release identity, compatible database migrations, and a rehearsed restore path.
+
+
+## Reusable CI proof
+
+The release-candidate workflow is also callable through `workflow_call`. The one-shot `.github/workflows/release-proof.yml` workflow invokes it on main only when the pushed commit title contains `[release-proof]`; ordinary main pushes do not create release artifacts.
+
+The release job uses separate disposable PostgreSQL services for Python integration and Go integration so their migration/bootstrap steps cannot collide. It builds Linux amd64/arm64 binaries, dependency inventories, CycloneDX SBOM, release manifest and SHA-256 checksums, then creates and verifies GitHub artifact attestations for every file before uploading `voxpipe-release-candidate`.
+
+This proves repository artifact generation and provenance only. It does not deploy to production, exercise customer traffic, or establish production rollback/restore readiness.
