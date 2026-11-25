@@ -1,6 +1,6 @@
 # ADR-0044: Shared S3-Compatible Object Storage
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-25
 - **Decision owners:** VoxPipe architecture
 
