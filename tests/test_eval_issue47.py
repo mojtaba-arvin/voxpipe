@@ -12,6 +12,8 @@ from eval.issue47.cpu_smoke import build_report, MODEL_REVISION, MODEL_ID
 class CpuSmokeReportTests(unittest.TestCase):
     def test_report_is_reproducible_and_discloses_english_only_scope(self) -> None:
         report = build_report(
+            model_download_seconds=1.25,
+            model_size_bytes=1880000000,
             model_load_seconds=12.5,
             inference_seconds=4.0,
             audio_seconds=8.0,
