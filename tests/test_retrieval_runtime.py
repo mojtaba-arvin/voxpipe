@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import os
 import unittest
+import json
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 
-from scripts.run_retrieval_service import _validate_index, _validate_search, build_runtime
+from scripts.run_retrieval_service import RetrievalHandler, _validate_index, _validate_search, build_runtime
 from voxpipe.retrieval.hybrid import SearchCandidate, SearchHit
 from voxpipe.retrieval.runtime import LocalHybridRetrievalRuntime
 
@@ -126,6 +131,37 @@ class RetrievalServiceTests(unittest.TestCase):
         }
         with patch.dict(os.environ, values):
             self.assertIsNone(build_runtime())
+
+    def test_internal_service_requires_shared_secret_and_fails_closed_without_model(self):
+        previous_runtime = RetrievalHandler.runtime
+        previous_token = RetrievalHandler.internal_token
+        RetrievalHandler.runtime = None
+        RetrievalHandler.internal_token = "s" * 32
+        server = ThreadingHTTPServer(("127.0.0.1", 0), RetrievalHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_port}/internal/v1/search"
+            body = json.dumps({"tenant_id": TENANT, "query": "meeting"}).encode()
+            bad = urllib.request.Request(url, data=body, headers={
+                "Content-Type": "application/json", "X-VoxPipe-Retrieval-Token": "wrong",
+            }, method="POST")
+            with self.assertRaises(urllib.error.HTTPError) as denied:
+                urllib.request.urlopen(bad, timeout=3)
+            self.assertEqual(denied.exception.code, 401)
+            good = urllib.request.Request(url, data=body, headers={
+                "Content-Type": "application/json", "X-VoxPipe-Retrieval-Token": "s" * 32,
+            }, method="POST")
+            with self.assertRaises(urllib.error.HTTPError) as disabled:
+                urllib.request.urlopen(good, timeout=3)
+            self.assertEqual(disabled.exception.code, 503)
+            self.assertEqual(json.loads(disabled.exception.read())["code"], "RETRIEVAL_NOT_CONFIGURED")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+            RetrievalHandler.runtime = previous_runtime
+            RetrievalHandler.internal_token = previous_token
 
     def test_partial_model_configuration_fails_closed(self):
         with patch.dict(os.environ, {
