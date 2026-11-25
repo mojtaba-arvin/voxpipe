@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Evaluation implementation pending
-        run: echo "Group A implementation is tracked by issues #168–#171."
+        run: echo "Group A implementation is tracked by issues 168 through 171."
 
   eval-48:
     name: Group B — retrieval (silver)
@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Evaluation implementation pending
-        run: echo "Group B implementation is tracked by issues #172–#175."
+        run: echo "Group B implementation is tracked by issues 172 through 175."
 
   eval-47:
     name: Group C — speech (silver)
@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Evaluation implementation pending
-        run: echo "Group C implementation is tracked by issues #176–#180."
+        run: echo "Group C implementation is tracked by issues 176 through 180."
 
   post-results:
     name: Aggregate evaluation outcomes
