@@ -86,7 +86,7 @@ class WorkflowWorkerRuntimeTests(unittest.TestCase):
         env.pop("VOXPIPE_WORKFLOW_WORKER_ID")
         with patch("voxpipe.workflows.runtime.PostgresWorkflowRepository"), \
              patch("voxpipe.workflows.runtime.PostgresIngestionRepository"), \
-             patch("voxpipe.workflows.runtime.build_object_store"), \
+             patch("voxpipe.workflows.runtime.build_object_store", return_value=(object(), "local")), \
              patch("voxpipe.workflows.runtime.FasterWhisperAdapter") as adapter, \
              patch("voxpipe.workflows.runtime.SpeechTranscriptionWorkflowHandler"), \
              patch("voxpipe.workflows.runtime.WorkflowHandlerRegistry"), \
