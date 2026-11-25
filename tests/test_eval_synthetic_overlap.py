@@ -35,6 +35,7 @@ class SyntheticOverlapTests(unittest.TestCase):
         self.assertEqual(leading_samples, 2)
         self.assertEqual(delay_samples, 2)
         self.assertEqual(len(mixed), 12)
+        self.assertEqual(list(mixed[:2]), [0.0, 0.0])
         self.assertAlmostEqual(max(mixed), 0.98, places=5)
 
     def test_noise_injection_is_seeded(self) -> None:
@@ -49,7 +50,11 @@ class SyntheticOverlapTests(unittest.TestCase):
         }
         annotation = build_annotation(conversation, 4.0, 3.0)
         self.assertEqual(annotation["source_kind"], "synthetic_template")
-        self.assertEqual(annotation["overlap"]["duration_seconds"], 2.25)
+        self.assertEqual(annotation["leading_silence_seconds"], 0.25)
+        self.assertEqual(annotation["noise_snr_db"], 30.0)
+        self.assertEqual(annotation["overlap"]["start_seconds"], 1.0)
+        self.assertEqual(annotation["overlap"]["end_seconds"], 4.0)
+        self.assertEqual(annotation["overlap"]["duration_seconds"], 3.0)
         self.assertEqual(annotation["segments"][0]["role"], "customer")
         self.assertEqual(annotation["segments"][1]["role"], "agent")
         self.assertEqual(annotation["segments"][0]["voice_model"], VOICE_MODELS["customer"]["name"])
