@@ -15,6 +15,7 @@ from eval.issue48.queries import _terms
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_QUERIES = ROOT / "eval" / "artifacts" / "issue48" / "queries.jsonl"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue48" / "qrels.json"
+QUERY_SCHEMA = ROOT / "eval" / "issue48" / "query.schema.json"
 QRELS_SCHEMA = ROOT / "eval" / "issue48" / "qrels.schema.json"
 LEXICAL_OVERLAP_THRESHOLD = 0.5
 TIE_BREAKING = "passage_id_ascending"
@@ -49,6 +50,17 @@ def build_qrels(
         raise ValueError("queries must contain at least one record")
     if not 0 < threshold <= 1:
         raise ValueError("threshold must be in (0, 1]")
+    query_schema = json.loads(QUERY_SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(query_schema)
+    query_validator = Draft202012Validator(query_schema)
+    for query in queries:
+        errors = list(query_validator.iter_errors(query))
+        if errors:
+            raise ValueError(f"query failed schema validation: {errors[0].message}")
+    seeds = {query["seed"] for query in queries}
+    if len(seeds) != 1:
+        raise ValueError("all queries must use the same recorded seed")
+
     passages = {item["passage_id"]: item for item in corpus}
     if len(passages) != len(corpus):
         raise ValueError("corpus contains duplicate passage IDs")
@@ -62,6 +74,9 @@ def build_qrels(
         source_id = query["source_passage_id"]
         if source_id not in passages:
             raise ValueError(f"{query['query_id']}: source passage {source_id!r} is missing")
+        source_passage = passages[source_id]
+        if query["source_kind"] != source_passage["source_kind"]:
+            raise ValueError(f"{query['query_id']}: source kind does not match its passage")
         query_tokens = set(_terms(query["query_text"]))
         split_counts[query["split"]] += 1
         for passage_id in sorted(passages):
@@ -82,11 +97,13 @@ def build_qrels(
                     "split": query["split"],
                 }
             )
+    source_kinds = {item["source_kind"] for item in corpus}
+    source_kind = next(iter(source_kinds)) if len(source_kinds) == 1 else "mixed_or_external"
     result = {
         "schema_version": 1,
-        "source_kind": "synthetic_template" if all(x["source_kind"] == "synthetic_template" for x in corpus) else "mixed_or_external",
+        "source_kind": source_kind,
         "label_kind": "heuristic_lexical_silver",
-        "seed": queries[0]["seed"],
+        "seed": next(iter(seeds)),
         "threshold": threshold,
         "tie_breaking": TIE_BREAKING,
         "query_count": len(queries),
