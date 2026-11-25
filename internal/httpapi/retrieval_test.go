@@ -81,6 +81,18 @@ func TestTranscriptIndexRequiresDedicatedScopeAndUsesAuthenticatedTenant(t *test
 	}
 }
 
+func TestLocalRetrievalClientRejectsPlainHTTPToNonLocalHosts(t *testing.T) {
+	if _, err := NewLocalRetrievalClient("http://example.com:8090", strings.Repeat("s", 32)); err == nil {
+		t.Fatal("plain HTTP to a non-local retrieval host must be rejected")
+	}
+	if _, err := NewLocalRetrievalClient("http://retrieval:8090", strings.Repeat("s", 32)); err != nil {
+		t.Fatalf("private compose service name should be allowed: %v", err)
+	}
+	if _, err := NewLocalRetrievalClient("https://retrieval.example.com", strings.Repeat("s", 32)); err != nil {
+		t.Fatalf("HTTPS service URL should be allowed: %v", err)
+	}
+}
+
 func TestLocalRetrievalClientForwardsInternalIdentityAndMapsServiceErrors(t *testing.T) {
 	var tenant string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
