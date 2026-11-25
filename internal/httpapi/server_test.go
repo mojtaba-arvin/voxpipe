@@ -143,7 +143,7 @@ func decodeResponse(t *testing.T,recorder *httptest.ResponseRecorder) map[string
 }
 
 func TestAuthenticatedUploadLifecycle(t *testing.T) {
-	server,_,_,token:=testServer(t); handler:=server.Handler()
+	server,store,tenantID,token:=testServer(t); handler:=server.Handler()
 	content:=[]byte("synthetic audio bytes for upload API test")
 	digest:=sha256.Sum256(content)
 	payload:=map[string]any{
@@ -158,6 +158,16 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 	created:=httptest.NewRecorder(); handler.ServeHTTP(created,create)
 	if created.Code!=http.StatusCreated { t.Fatalf("create: got %d: %s",created.Code,created.Body.String()) }
 	session:=decodeResponse(t,created); sessionID:=session["session_id"].(string)
+	if _, exposed := session["staging_backend"]; exposed {
+		t.Fatal("public create response must not expose the staging backend")
+	}
+	storedSession, err := store.GetSession(context.Background(), tenantID, sessionID)
+	if err != nil {
+		t.Fatalf("read persisted session: %v", err)
+	}
+	if storedSession["staging_backend"] != "local" {
+		t.Fatalf("expected local staging backend in persisted session, got %#v", storedSession["staging_backend"])
+	}
 
 	upload:=httptest.NewRequest(http.MethodPut,"/v1/ingestions/"+sessionID+"/content",bytes.NewReader(content))
 	upload.Header.Set("Authorization","Bearer "+token)
@@ -467,12 +477,12 @@ func TestCancelReceivingSessionRemovesStagedBytes(t *testing.T) {
 	uploaded := httptest.NewRecorder()
 	handler.ServeHTTP(uploaded, upload)
 	if uploaded.Code != http.StatusNoContent { t.Fatalf("upload failed: %s", uploaded.Body.String()) }
-	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err != nil {
+	if _, _, err := server.stager.Verify(context.Background(), "11111111-1111-4111-8111-111111111111", sessionID); err != nil {
 		t.Fatalf("staged file should exist before cancellation: %v", err)
 	}
 	cancelled := request(handler, http.MethodDelete, "/v1/ingestions/"+sessionID, token, nil)
 	if cancelled.Code != http.StatusAccepted { t.Fatalf("cancel failed: %s", cancelled.Body.String()) }
-	if _, _, err := server.stager.Verify("11111111-1111-4111-8111-111111111111", sessionID); err == nil {
+	if _, _, err := server.stager.Verify(context.Background(), "11111111-1111-4111-8111-111111111111", sessionID); err == nil {
 		t.Fatal("staged file remained after pre-processing cancellation")
 	}
 }
@@ -554,7 +564,7 @@ func TestCancellationRacingWithUploadDoesNotLeaveStagedBytes(t *testing.T) {
 	if status.Code != http.StatusOK || decodeResponse(t, status)["state"] != "cancelled" {
 		t.Fatalf("session did not remain cancelled: %d %s", status.Code, status.Body.String())
 	}
-	if _, _, err := server.stager.Verify(tenantID, sessionID); err == nil {
+	if _, _, err := server.stager.Verify(context.Background(), tenantID, sessionID); err == nil {
 		t.Fatal("upload racing with cancellation left published staged bytes")
 	}
 }
@@ -571,9 +581,9 @@ func TestInterruptedUploadDoesNotPublishPartialFile(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	tenant := "11111111-1111-4111-8111-111111111111"
 	session := "22222222-2222-4222-8222-222222222222"
-	_, _, err = stager.Write(tenant, session, &interruptedReader{}, 32, 64, strings.Repeat("a", 64))
+	_, _, err = stager.Write(context.Background(), tenant, session, &interruptedReader{}, 32, 64, strings.Repeat("a", 64))
 	if err == nil { t.Fatal("interrupted stream should fail") }
-	if _, _, verifyErr := stager.Verify(tenant, session); verifyErr == nil {
+	if _, _, verifyErr := stager.Verify(context.Background(), tenant, session); verifyErr == nil {
 		t.Fatal("partial upload was published")
 	}
 }
@@ -582,10 +592,10 @@ func TestStagerRejectsOversizedAndChecksumMismatch(t *testing.T) {
 	stager,err:=NewLocalStager(t.TempDir()); if err!=nil { t.Fatal(err) }
 	tenant:="11111111-1111-4111-8111-111111111111"
 	session:="22222222-2222-4222-8222-222222222222"
-	if _,_,err:=stager.Write(tenant,session,bytes.NewReader([]byte("1234")),4,3,strings.Repeat("0",64)); err!=ErrUploadTooLarge {
+	if _,_,err:=stager.Write(context.Background(),tenant,session,bytes.NewReader([]byte("1234")),4,3,strings.Repeat("0",64)); err!=ErrUploadTooLarge {
 		t.Fatalf("expected size limit error, got %v",err)
 	}
-	if _,_,err:=stager.Write(tenant,session,bytes.NewReader([]byte("1234")),4,8,strings.Repeat("0",64)); err!=ErrUploadIntegrity {
+	if _,_,err:=stager.Write(context.Background(),tenant,session,bytes.NewReader([]byte("1234")),4,8,strings.Repeat("0",64)); err!=ErrUploadIntegrity {
 		t.Fatalf("expected integrity error, got %v",err)
 	}
 }

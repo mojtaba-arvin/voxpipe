@@ -39,10 +39,10 @@ def main() -> int:
             tenants.append(str(UUID(value)))
         except ValueError:
             raise SystemExit("VOXPIPE_TENANT_IDS must contain only UUID values")
-    if not dsn or not staging_root or not tenants:
+    if not dsn or not tenants:
         raise SystemExit(
-            "VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, and an explicit "
-            "VOXPIPE_TENANT_IDS allowlist are required; local storage also requires VOXPIPE_OBJECT_ROOT"
+            "VOXPIPE_DATABASE_DSN and an explicit VOXPIPE_TENANT_IDS allowlist are required; "
+            "local storage also requires VOXPIPE_OBJECT_ROOT"
         )
     if len(set(tenants)) != len(tenants):
         raise SystemExit("VOXPIPE_TENANT_IDS must not contain duplicates")
@@ -70,8 +70,11 @@ def main() -> int:
         local_root_env="VOXPIPE_OBJECT_ROOT",
         max_object_size_bytes=max_upload,
     )
+    if storage_provider == "local" and not staging_root:
+        raise SystemExit("VOXPIPE_STAGING_ROOT is required for local staging")
+
     service = IngestionService(
-        staging_root=staging_root,
+        staging_root=staging_root or None,
         repository=repository,
         object_store=object_store,
         max_file_size_bytes=max_upload,

@@ -113,11 +113,15 @@ class IngestionOrphanReconciler:
         *,
         repository: IngestionRepositoryPort,
         object_store: ObjectStoragePort,
-        staging_root: str | Path,
+        staging_root: str | Path | None,
+        storage_provider: str = "local",
     ) -> None:
+        if storage_provider not in {"local", "s3_compatible"}:
+            raise ValueError("unsupported storage provider")
         self._repository = repository
         self._object_store = object_store
-        self._staging_root = Path(staging_root).expanduser()
+        self._storage_provider = storage_provider
+        self._staging_root = Path(staging_root).expanduser() if staging_root is not None else None
 
     def run(self, *, tenant_id: str | None = None, limit: int = 100) -> ReconciliationReport:
         if limit < 1:
@@ -169,10 +173,21 @@ class IngestionOrphanReconciler:
             try:
                 reference = session.get("staging_reference")
                 if reference:
-                    staging_deleted = remove_staged_source(
-                        self._staging_root, tenant, session_id, reference,
-                        include_temporary=True,
-                    )
+                    staging_backend = session.get("staging_backend", "local")
+                    if staging_backend == "local":
+                        if self._staging_root is None:
+                            raise ValueError("local staging root is not configured")
+                        staging_deleted = remove_staged_source(
+                            self._staging_root, tenant, session_id, reference,
+                            include_temporary=True,
+                        )
+                    elif staging_backend == "s3_compatible":
+                        expected_reference = f"staging/v1/{tenant}/{session_id}/source"
+                        if self._storage_provider != "s3_compatible" or reference != expected_reference:
+                            raise ValueError("S3 staging reference does not match the session identity")
+                        staging_deleted = self._object_store.delete(reference)
+                    else:
+                        raise ValueError("unsupported staging backend")
             except Exception:
                 error_code = "INGESTION_RECONCILE_STAGING_FAILED"
 

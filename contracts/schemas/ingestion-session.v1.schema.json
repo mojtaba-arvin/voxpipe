@@ -44,6 +44,7 @@
     "asset_id": { "type": "string", "format": "uuid" },
     "retention_policy_id": { "type": "string", "minLength": 1, "maxLength": 128 },
     "staging_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "staging_backend": { "type": "string", "enum": ["local", "s3_compatible"] },
     "lease": {
       "type": "object",
       "additionalProperties": false,

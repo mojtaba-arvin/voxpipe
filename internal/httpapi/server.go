@@ -32,7 +32,7 @@ var (
 type Server struct {
 	store        Store
 	auth         Authenticator
-	stager       *LocalStager
+	stager       Stager
 	maxUpload    int64
 	sessionTTL   time.Duration
 	maxAttempts  int
@@ -64,7 +64,7 @@ type SourceMetadata struct {
 	DeclaredBy        string `json:"declared_by,omitempty"`
 }
 
-func NewServer(store Store, auth Authenticator, stager *LocalStager, maxUpload int64, sessionTTL time.Duration, maxAttempts int) (*Server, error) {
+func NewServer(store Store, auth Authenticator, stager Stager, maxUpload int64, sessionTTL time.Duration, maxAttempts int) (*Server, error) {
 	if store == nil || auth == nil || stager == nil {
 		return nil, fmt.Errorf("store, authenticator, and stager are required")
 	}
@@ -180,6 +180,7 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 		"idempotency_key": key,
 		"asset_id": assetID,
 		"staging_reference": reference,
+		"staging_backend": s.stager.Backend(),
 		"upload": upload,
 		"created_at": timestamp,
 		"updated_at": timestamp,
@@ -193,7 +194,7 @@ func (s *Server) createIngestion(w http.ResponseWriter, r *http.Request) {
 	saved, created, err := s.store.CreateSession(r.Context(), principal.TenantID, key, session, s.tenantLimits)
 	if err != nil { writeStoreError(w, err); return }
 	savedUpload, _ := saved["upload"].(map[string]any)
-	if !sameCreateRequest(saved, savedUpload, request) {
+	if !sameCreateRequest(saved, savedUpload, request, s.stager.Backend()) {
 		writeError(w, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request")
 		return
 	}
@@ -222,7 +223,22 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
-	if err != nil { writeStoreError(w, err); return }
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	stagingBackend, _ := session["staging_backend"].(string)
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
+	if stagingBackend != s.stager.Backend() {
+		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
+		return
+	}
+	if !s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
+		writeError(w, http.StatusConflict, "STAGING_REFERENCE_MISMATCH", "Session staging reference is invalid")
+		return
+	}
 	state, _ := session["state"].(string)
 	if state != "created" && state != "receiving" {
 		writeError(w, http.StatusConflict, "INVALID_SESSION_STATE", "Session is not accepting upload bytes")
@@ -258,7 +274,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		responseController = http.NewResponseController(w)
 		uploadReader = &boundedUploadReader{reader: r.Body, controller: responseController, started: time.Now(), inactivityTimeout: s.uploadIdleTimeout, maxDuration: s.uploadMaxDuration}
 	}
-	written, _, err := s.stager.Write(principal.TenantID, sessionID, uploadReader, expectedSize, s.maxUpload, expectedDigest)
+	written, _, err := s.stager.Write(r.Context(), principal.TenantID, sessionID, uploadReader, expectedSize, s.maxUpload, expectedDigest)
 	if responseController != nil { _ = responseController.SetReadDeadline(time.Time{}) }
 	if errors.Is(err, ErrUploadTimeout) {
 		writeError(w, http.StatusRequestTimeout, "UPLOAD_TIMEOUT", "Upload exceeded its configured duration or inactivity limit")
@@ -298,7 +314,7 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 			if latestState == "cancelled" {
 				// Cancellation may have removed staging just before this upload
 				// atomically published its file. Re-check after the failed CAS.
-				_ = s.stager.Remove(principal.TenantID, sessionID)
+				_ = s.stager.Remove(r.Context(), principal.TenantID, sessionID)
 			}
 		}
 		writeStoreError(w, err)
@@ -315,6 +331,18 @@ func (s *Server) finalizeIngestion(w http.ResponseWriter, r *http.Request) {
 	if !isUUID(sessionID) { writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found"); return }
 	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
 	if err != nil { writeStoreError(w, err); return }
+	stagingBackend, _ := session["staging_backend"].(string)
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
+	if stagingBackend != s.stager.Backend() {
+		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
+		return
+	}
+	if !s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
+		writeError(w, http.StatusConflict, "STAGING_REFERENCE_MISMATCH", "Session staging reference is invalid")
+		return
+	}
 	state, _ := session["state"].(string)
 	if state != "receiving" && state != "finalizing" && state != "queued" && state != "processing" && state != "completed" {
 		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "A complete upload is required before finalization")
@@ -327,7 +355,7 @@ func (s *Server) finalizeIngestion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "Upload metadata is incomplete")
 		return
 	}
-	actualSize, actualDigest, err := s.stager.Verify(principal.TenantID, sessionID)
+	actualSize, actualDigest, err := s.stager.Verify(r.Context(), principal.TenantID, sessionID)
 	if err != nil || actualSize != expectedSize || actualDigest != strings.ToLower(expectedDigest) {
 		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "Staged upload is missing or failed integrity verification")
 		return
@@ -376,17 +404,30 @@ func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found")
 		return
 	}
+	// Staging backend is immutable within a session. Read it before the
+	// cancellation transaction so cleanup can be routed to the correct adapter.
+	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	stagingBackend, _ := session["staging_backend"].(string)
+	if stagingBackend == "" {
+		stagingBackend = "local"
+	}
 	// The store returns the state observed while holding the session row lock.
-	// This prevents deleting a staging file if finalization won the race.
+	// This prevents deleting a staging object if finalization won the race.
 	priorState, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID)
 	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	if priorState == "created" || priorState == "receiving" {
+	if (priorState == "created" || priorState == "receiving") && stagingBackend == s.stager.Backend() && s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
 		// Cancellation is already durable. Cleanup failure is left for the
 		// staging-retention reconciler rather than reversing the state change.
-		_ = s.stager.Remove(principal.TenantID, sessionID)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = s.stager.Remove(cleanupCtx, principal.TenantID, sessionID)
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -615,16 +656,30 @@ func sourceMap(source SourceMetadata) map[string]any {
 	return result
 }
 
-func sameCreateRequest(session, upload map[string]any, request CreateIngestionRequest) bool {
+func (s *Server) sessionStagingReferenceMatches(session map[string]any, tenantID, sessionID string) bool {
+	expected, err := s.stager.Reference(tenantID, sessionID)
+	if err != nil {
+		return false
+	}
+	actual, _ := session["staging_reference"].(string)
+	return actual == expected
+}
+
+func sameCreateRequest(session, upload map[string]any, request CreateIngestionRequest, stagingBackend string) bool {
 	size, sizeOK := numberInt64(upload["expected_size_bytes"])
 	digest, digestOK := upload["expected_sha256"].(string)
 	sourceBytes, _ := json.Marshal(session["source"])
 	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
 	contentType, _ := upload["content_type_hint"].(string)
+	storedBackend, _ := session["staging_backend"].(string)
+	if storedBackend == "" {
+		storedBackend = "local"
+	}
 	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
 		digest == strings.ToLower(request.ExpectedSHA256) &&
 		string(sourceBytes) == string(requestSourceBytes) &&
-		contentType == request.ContentTypeHint
+		contentType == request.ContentTypeHint &&
+		storedBackend == stagingBackend
 }
 
 func numberInt64(value any) (int64, bool) {

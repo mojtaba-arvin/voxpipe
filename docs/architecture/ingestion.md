@@ -6,7 +6,7 @@
 
 - Tenant identity supplied by authenticated application context.
 - An idempotency key.
-- A server-staged file path beneath a private staging root.
+- A server-staged file path beneath a private staging root, or a tenant/session-scoped S3 staging reference that the worker materializes to private local temporary disk.
 - A small allowlisted source metadata object.
 - A retention policy identifier selected by trusted application configuration, never by an untrusted client.
 
@@ -15,7 +15,13 @@ It never accepts a client URL or arbitrary filesystem path. The staging root mus
 ## Processing sequence
 
 ```text
-staged file
+local staged file or S3 staging reference
+    |
+    v
+backend + tenant + session reference validation
+    |
+    v
+private worker-local materialization (S3 only)
     |
     v
 path + tenant + request validation
@@ -55,7 +61,8 @@ The object store verifies that the bytes it stores match the digest computed bef
 - The repository enforces a unique `(tenant_id, idempotency_key)` constraint.
 - A repeated request with the same tenant, key, content digest, source metadata, and retention policy returns the completed result without reprocessing.
 - Active sessions carry an expiring worker lease; a second worker cannot claim a live lease.
-- The session stores only a relative private staging reference, never an absolute filesystem path.
+- The session stores a `staging_backend` (`local` or `s3_compatible`) and a private staging reference, never an absolute filesystem path.
+- S3 staging keys are deterministic and tenant/session-scoped: `staging/v1/{tenant_uuid}/{session_uuid}/source`; the worker rejects any reference that does not exactly match the session identity.
 - Reusing a key for different content or metadata fails with `INGESTION_IDEMPOTENCY_CONFLICT`.
 - The same key in a different tenant is independent.
 - Every repository lookup/update includes tenant scope.
@@ -69,8 +76,15 @@ The object store verifies that the bytes it stores match the digest computed bef
 - A completed session is returned only after the asset metadata commit succeeds.
 - The legacy session recovery worker handles non-queued sessions. Sessions with durable jobs are exclusively recovered by the PostgreSQL queue worker, using the same asset ID and object key.
 - Asset timestamps are derived from the session creation time so a restart after object/asset persistence can safely replay idempotent writes.
-- The orphan reconciler cleans artifacts associated with failed sessions and returns a structured report; it does not perform broad object-store prefix deletion.
+- The orphan reconciler removes local staged files or S3 staging objects only for terminal/expired sessions and returns a structured report; it does not perform broad object-store prefix deletion.
+- Retryable queued/processing sessions retain their S3 staging object. Completed sessions retain the durable audio asset but have their temporary staging object removed.
 - Raw parser stderr, local paths, and audio bytes are not included in session failure details.
+
+## Shared upload staging
+
+Local staging remains the default and requires the Go API and Python worker to see the same private staging filesystem. With `VOXPIPE_STORAGE_BACKEND=s3_compatible`, the Go API writes the upload directly to the shared S3-compatible bucket using conditional create, SHA-256 checks, and the configured server-side encryption. The Python worker reads the same key through the object-storage port and streams it to a private worker-local temporary file for ffprobe/FFmpeg; no shared POSIX staging volume is required for new S3-backed sessions.
+
+The API and worker must use the same `VOXPIPE_STORAGE_BACKEND` and `VOXPIPE_S3_*` settings. During a migration from local staging, keep `VOXPIPE_STAGING_ROOT` mounted until all legacy local sessions are terminal. S3 staging cleanup is database-session-driven; configure a bucket lifecycle rule for the `staging/v1/` prefix as defense in depth, with expiry longer than the maximum session TTL, retry/backoff window, and recovery allowance. Do not set a lifecycle expiry that can remove an object still referenced by a live or retryable session.
 
 ## Persistence adapter status
 

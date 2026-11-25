@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -12,10 +13,30 @@ import (
 )
 
 var (
-	ErrUploadTooLarge = errors.New("upload exceeds configured limit")
+	ErrUploadTooLarge  = errors.New("upload exceeds configured limit")
 	ErrUploadIntegrity = errors.New("upload size or checksum does not match declaration")
-	ErrUploadConflict = errors.New("staged upload already exists with different content")
+	ErrUploadConflict  = errors.New("staged upload already exists with different content")
 )
+
+type Stager interface {
+	Backend() string
+	Reference(tenantID, sessionID string) (string, error)
+	Write(ctx context.Context, tenantID, sessionID string, source io.Reader, expectedSize, maxSize int64, expectedSHA256 string) (int64, string, error)
+	Remove(ctx context.Context, tenantID, sessionID string) error
+	Verify(ctx context.Context, tenantID, sessionID string) (int64, string, error)
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(buffer []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(buffer)
+}
 
 type LocalStager struct {
 	root string
@@ -42,6 +63,8 @@ func NewLocalStager(root string) (*LocalStager, error) {
 	return &LocalStager{root: absolute}, nil
 }
 
+func (s *LocalStager) Backend() string { return "local" }
+
 func (s *LocalStager) Reference(tenantID, sessionID string) (string, error) {
 	if !isUUID(tenantID) || !isUUID(sessionID) {
 		return "", fmt.Errorf("tenant and session identifiers must be UUIDs")
@@ -50,11 +73,15 @@ func (s *LocalStager) Reference(tenantID, sessionID string) (string, error) {
 }
 
 func (s *LocalStager) Write(
+	ctx context.Context,
 	tenantID, sessionID string,
 	source io.Reader,
 	expectedSize, maxSize int64,
 	expectedSHA256 string,
 ) (int64, string, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, "", err
+	}
 	if expectedSize < 1 || maxSize < 1 || expectedSize > maxSize {
 		return 0, "", ErrUploadTooLarge
 	}
@@ -87,7 +114,7 @@ func (s *LocalStager) Write(
 	}
 
 	digest := sha256.New()
-	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(source, maxSize+1))
+	written, copyErr := io.Copy(io.MultiWriter(temporary, digest), io.LimitReader(contextReader{ctx: ctx, reader: source}, expectedSize+1))
 	if copyErr != nil {
 		temporary.Close()
 		return 0, "", fmt.Errorf("stream upload: %w", copyErr)
@@ -114,7 +141,7 @@ func (s *LocalStager) Write(
 		if !errors.Is(err, os.ErrExist) {
 			return 0, "", fmt.Errorf("publish staged upload: %w", err)
 		}
-		existingSize, existingDigest, verifyErr := s.Verify(tenantID, sessionID)
+		existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
 		if verifyErr != nil || existingSize != expectedSize ||
 			existingDigest != strings.ToLower(expectedSHA256) {
 			return 0, "", ErrUploadConflict
@@ -127,19 +154,33 @@ func (s *LocalStager) Write(
 	return written, reference, nil
 }
 
-func (s *LocalStager) Remove(tenantID, sessionID string) error {
-	directory, target, _, err := s.paths(tenantID, sessionID)
-	if err != nil { return err }
-	if err := s.rejectSymlinkPath(directory); err != nil {
-		if errors.Is(err, os.ErrNotExist) { return nil }
+func (s *LocalStager) Remove(ctx context.Context, tenantID, sessionID string) error {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
-	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) { return err }
+	directory, target, _, err := s.paths(tenantID, sessionID)
+	if err != nil {
+		return err
+	}
+	if err := s.rejectSymlinkPath(directory); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Remove(directory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	return nil
 }
 
-func (s *LocalStager) Verify(tenantID, sessionID string) (int64, string, error) {
+func (s *LocalStager) Verify(ctx context.Context, tenantID, sessionID string) (int64, string, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, "", err
+	}
 	_, target, _, err := s.paths(tenantID, sessionID)
 	if err != nil {
 		return 0, "", err
@@ -160,7 +201,7 @@ func (s *LocalStager) Verify(tenantID, sessionID string) (int64, string, error) 
 	}
 	defer file.Close()
 	digest := sha256.New()
-	if _, err := io.Copy(digest, file); err != nil {
+	if _, err := io.Copy(digest, contextReader{ctx: ctx, reader: file}); err != nil {
 		return 0, "", err
 	}
 	return info.Size(), hex.EncodeToString(digest.Sum(nil)), nil
