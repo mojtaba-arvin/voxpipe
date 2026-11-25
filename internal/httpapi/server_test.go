@@ -641,6 +641,53 @@ func TestOperationalSummaryRequiresDedicatedScopeAndReturnsOnlyAggregates(t *tes
 	if denied.Code != http.StatusForbidden { t.Fatalf("ordinary tenant scope must not access operations: %d", denied.Code) }
 }
 
+type failingReadinessStager struct {
+	Stager
+	err error
+}
+
+func (s failingReadinessStager) Ready(context.Context) error { return s.err }
+
+func TestHealthDependenciesDistinguishesDatabaseAndObjectStorage(t *testing.T) {
+	server, store, _, _ := testServer(t)
+	server.stager = failingReadinessStager{
+		Stager: server.stager,
+		err:    errors.New("private S3 endpoint and credential details"),
+	}
+	handler := server.Handler()
+
+	response := request(handler, http.MethodGet, "/health/dependencies", "", nil)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("storage outage must fail dependency readiness: %d %s", response.Code, response.Body.String())
+	}
+	payload := decodeResponse(t, response)
+	dependencies, ok := payload["dependencies"].(map[string]any)
+	if !ok || payload["status"] != "not_ready" ||
+		dependencies["database"] != "ready" || dependencies["object_storage"] != "not_ready" {
+		t.Fatalf("dependency states were not separated: %#v", payload)
+	}
+	if strings.Contains(response.Body.String(), "private S3") || strings.Contains(response.Body.String(), "credential") {
+		t.Fatal("dependency readiness leaked provider details")
+	}
+	if ready := request(handler, http.MethodGet, "/health/ready", "", nil); ready.Code != http.StatusServiceUnavailable {
+		t.Fatalf("object storage outage must fail the orchestrator readiness probe: %d", ready.Code)
+	}
+	if live := request(handler, http.MethodGet, "/health/live", "", nil); live.Code != http.StatusOK {
+		t.Fatalf("object storage outage must not fail liveness: %d", live.Code)
+	}
+
+	store.readyErr = errors.New("private database connection details")
+	databaseOutage := request(handler, http.MethodGet, "/health/dependencies", "", nil)
+	if databaseOutage.Code != http.StatusServiceUnavailable {
+		t.Fatalf("database outage must fail dependency readiness: %d", databaseOutage.Code)
+	}
+	payload = decodeResponse(t, databaseOutage)
+	dependencies, _ = payload["dependencies"].(map[string]any)
+	if dependencies["database"] != "not_ready" || dependencies["object_storage"] != "not_ready" {
+		t.Fatalf("database outage states were not reported safely: %#v", payload)
+	}
+}
+
 func TestHealthEndpointsSeparateLivenessAndReadiness(t *testing.T) {
 	server, store, _, _ := testServer(t)
 	handler := server.Handler()

@@ -109,6 +109,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health/live", s.healthLive)
 	mux.HandleFunc("GET /health/ready", s.healthReady)
+	mux.HandleFunc("GET /health/dependencies", s.healthDependencies)
 	mux.HandleFunc("POST /v1/ingestions", s.createIngestion)
 	mux.HandleFunc("PUT /v1/ingestions/{session_id}/content", s.uploadContent)
 	mux.HandleFunc("POST /v1/ingestions/{session_id}/finalize", s.finalizeIngestion)
@@ -738,14 +739,55 @@ func (s *Server) healthLive(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// healthReady verifies the core database/schema dependency with a bounded deadline.
-// Dependency errors are deliberately not included in the response.
+// dependencyReadiness checks database and storage independently. Both probes
+// share a bounded context and must honor its cancellation.
+func (s *Server) dependencyReadiness(ctx context.Context) (bool, bool) {
+	database := make(chan bool, 1)
+	storage := make(chan bool, 1)
+	go func() {
+		database <- s.store.Ready(ctx) == nil
+	}()
+	go func() {
+		probe, ok := s.stager.(StagerReadiness)
+		storage <- ok && probe.Ready(ctx) == nil
+	}()
+	return <-database, <-storage
+}
+
+// healthReady remains a compact orchestrator probe. Dependency details are
+// available only from the separate content-free /health/dependencies endpoint.
 func (s *Server) healthReady(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
-	if err := s.store.Ready(ctx); err != nil {
+	databaseReady, storageReady := s.dependencyReadiness(ctx)
+	if !databaseReady || !storageReady {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+func (s *Server) healthDependencies(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	databaseReady, storageReady := s.dependencyReadiness(ctx)
+	status := "ready"
+	code := http.StatusOK
+	if !databaseReady || !storageReady {
+		status = "not_ready"
+		code = http.StatusServiceUnavailable
+	}
+	state := func(ready bool) string {
+		if ready {
+			return "ready"
+		}
+		return "not_ready"
+	}
+	writeJSON(w, code, map[string]any{
+		"status": status,
+		"dependencies": map[string]string{
+			"database":      state(databaseReady),
+			"object_storage": state(storageReady),
+		},
+	})
 }

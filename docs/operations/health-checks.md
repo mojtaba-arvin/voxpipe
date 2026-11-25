@@ -2,12 +2,17 @@
 
 ## HTTP contract
 
-The API exposes two unauthenticated, content-free endpoints:
+The API exposes three unauthenticated, content-free endpoints:
 
-- `GET /health/live` returns `200 {"status":"ok"}` when the HTTP process can serve requests. It does not depend on PostgreSQL.
-- `GET /health/ready` returns `200 {"status":"ready"}` only when PostgreSQL is reachable and the core ingestion session/job tables are installed. It returns a generic `503 {"status":"not_ready"}` otherwise.
+- `GET /health/live` returns `200 {"status":"ok"}` when the HTTP process can serve requests. It does not depend on PostgreSQL or object storage.
+- `GET /health/ready` returns `200 {"status":"ready"}` only when PostgreSQL/schema and the configured staging backend are reachable. It returns a generic `503 {"status":"not_ready"}` otherwise. The Docker health check uses this endpoint.
+- `GET /health/dependencies` reports separate `database` and `object_storage` states, each either `ready` or `not_ready`, with an overall status and HTTP 200/503. It never includes provider errors or configuration values.
 
-The readiness check has a two-second deadline. It does not return DSNs, database errors, schema names, tenant data, or credentials. Optional subsystems such as hybrid retrieval are not part of core API readiness: retrieval remains independently fail-closed and reports its own configuration/index errors through the retrieval contract.
+The readiness checks share a two-second deadline and run independently. They do not return DSNs, database errors, schema names, bucket names, object keys, tenant data, or credentials. Optional subsystems such as hybrid retrieval are not part of core API readiness: retrieval remains independently fail-closed and reports its own configuration/index errors through the retrieval contract.
+
+For local staging, the API creates, syncs, reads and removes a small private probe file under the configured staging root; a read-only or unavailable staging volume therefore fails readiness.
+
+For S3-compatible staging, the API verifies a reserved, content-free probe object under the staging namespace. It creates the probe if it is missing (for example, after lifecycle expiry) and verifies its checksum on subsequent checks. The API identity needs only its staging-prefix permissions; no bucket-wide listing permission is required. The probe is not associated with an ingestion session and is never returned by the API.
 
 These endpoints are intended for container/orchestrator probes and must not be used as customer-facing service guarantees. They do not assert worker progress, queue drain time, model availability, SLO compliance, or production capacity.
 

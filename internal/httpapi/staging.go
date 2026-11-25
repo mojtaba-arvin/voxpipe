@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -38,6 +39,10 @@ func (r contextReader) Read(buffer []byte) (int, error) {
 	return r.reader.Read(buffer)
 }
 
+type StagerReadiness interface {
+	Ready(context.Context) error
+}
+
 type LocalStager struct {
 	root string
 }
@@ -61,6 +66,42 @@ func NewLocalStager(root string) (*LocalStager, error) {
 		return nil, fmt.Errorf("secure staging root: %w", err)
 	}
 	return &LocalStager{root: absolute}, nil
+}
+
+func (s *LocalStager) Ready(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	info, err := os.Lstat(s.root)
+	if err != nil {
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("local staging root is not a real directory")
+	}
+	file, err := os.CreateTemp(s.root, ".voxpipe-readiness-*")
+	if err != nil {
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	path := file.Name()
+	defer os.Remove(path)
+	probe := []byte("voxpipe-local-staging-readiness-v1")
+	if _, err := file.Write(probe); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("local staging readiness: %w", err)
+	}
+	actual, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(actual, probe) {
+		return fmt.Errorf("local staging readiness verification failed")
+	}
+	return nil
 }
 
 func (s *LocalStager) Backend() string { return "local" }

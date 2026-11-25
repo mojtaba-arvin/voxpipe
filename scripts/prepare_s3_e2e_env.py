@@ -22,6 +22,14 @@ def main() -> int:
         "API_TOKEN_HASHES": hashlib.sha256(token.encode("utf-8")).hexdigest()
         + f":{tenant}:ingestion:read,ingestion:write,transcript:read",
         "VOXPIPE_S3_BUCKET": "voxpipe-staging-e2e",
+        "VOXPIPE_S3_RECOVERY_BUCKET": "voxpipe-version-recovery-e2e",
+        "VOXPIPE_S3_STAGING_LIFECYCLE_DAYS": "90",
+        "VOXPIPE_S3_STAGING_RECOVERY_WINDOW_SECONDS": "2592000",
+        "VOXPIPE_S3_STAGING_SAFETY_MARGIN_DAYS": "7",
+        "VOXPIPE_SESSION_TTL_SECONDS": "86400",
+        "VOXPIPE_JOB_MAX_ATTEMPTS": "5",
+        "VOXPIPE_JOB_LEASE_SECONDS": "90",
+        "VOXPIPE_WORKER_MAX_BACKOFF_SECONDS": "30",
         "VOXPIPE_S3_REGION": "us-east-1",
         "VOXPIPE_S3_ENDPOINT_URL": "http://127.0.0.1:9000",
         "SILO_ROOT_ACCESS_KEY_ID": "voxpipe-root",
@@ -44,7 +52,16 @@ def main() -> int:
         stream.write("".join(f"{key}={value}\n" for key, value in values.items()))
     github_env = os.environ.get("GITHUB_ENV")
     if github_env:
-        for key in ("POSTGRES_PASSWORD", "APP_DB_PASSWORD", "VOXPIPE_API_TOKEN", "API_TOKEN_HASHES", "SILO_ROOT_SECRET_ACCESS_KEY", "VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY", "VOXPIPE_S3_SECRET_ACCESS_KEY"):
+        secret_keys = (
+            "POSTGRES_PASSWORD",
+            "APP_DB_PASSWORD",
+            "VOXPIPE_API_TOKEN",
+            "API_TOKEN_HASHES",
+            "SILO_ROOT_SECRET_ACCESS_KEY",
+            "VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY",
+            "VOXPIPE_S3_SECRET_ACCESS_KEY",
+        )
+        for key in secret_keys:
             print(f"::add-mask::{values[key]}")
         with open(github_env, "a", encoding="utf-8") as stream:
             stream.write("".join(f"{key}={value}\n" for key, value in values.items()))

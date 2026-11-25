@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -210,6 +211,34 @@ func envDurationSeconds(name string, fallback, maximum float64) (time.Duration, 
 
 func (s *S3Stager) Backend() string { return "s3_compatible" }
 
+// Ready verifies write/read access using one reserved, content-free staging probe.
+// Lifecycle expiry may remove it; the next readiness check recreates it.
+func (s *S3Stager) Ready(ctx context.Context) error {
+	const probeTenantID = "00000000-0000-4000-8000-000000000000"
+	const probeSessionID = "00000000-0000-4000-8000-000000000001"
+	probe := []byte("voxpipe-s3-readiness-v1")
+	digest := sha256.Sum256(probe)
+	expected := hex.EncodeToString(digest[:])
+
+	size, actual, err := s.Verify(ctx, probeTenantID, probeSessionID)
+	if err == nil {
+		if size != int64(len(probe)) || actual != expected {
+			return ErrUploadIntegrity
+		}
+		return nil
+	}
+	if errors.Is(err, ErrUploadIntegrity) {
+		return ErrUploadIntegrity
+	}
+	// A missing object may be reported as AccessDenied when the identity has
+	// no bucket-list permission. Conditional Write distinguishes that case
+	// without granting broader ListBucket access.
+	if _, _, err := s.Write(ctx, probeTenantID, probeSessionID, bytes.NewReader(probe), int64(len(probe)), s.maxSize, expected); err != nil {
+		return fmt.Errorf("S3 staging readiness probe failed")
+	}
+	return nil
+}
+
 func (s *S3Stager) Reference(tenantID, sessionID string) (string, error) {
 	if !isUUID(tenantID) || !isUUID(sessionID) {
 		return "", fmt.Errorf("tenant and session identifiers must be UUIDs")
@@ -307,7 +336,19 @@ func (s *S3Stager) Write(
 		return 0, "", fmt.Errorf("close private upload spool: %w", closeErr)
 	}
 	existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
-	if verifyErr != nil || existingSize != written || existingDigest != actualDigest {
+	if verifyErr != nil {
+		if errors.Is(verifyErr, ErrUploadIntegrity) {
+			return 0, "", ErrUploadIntegrity
+		}
+		if errors.Is(verifyErr, ErrStagingNotFound) {
+			return 0, "", fmt.Errorf("verify staged upload: object was not found after write")
+		}
+		// A successful PutObject followed by a failed verification is an
+		// operationally ambiguous result, not proof of corrupt content. Keep
+		// the staging object and let the caller retry/reconcile it.
+		return 0, "", fmt.Errorf("verify staged upload: S3-compatible provider request failed")
+	}
+	if existingSize != written || existingDigest != actualDigest {
 		return 0, "", ErrUploadIntegrity
 	}
 	return written, reference, nil

@@ -40,6 +40,12 @@ The storage adapter returns a content digest; the asset metadata stores that dig
 Deletion is one operation in a larger asset lifecycle. The application layer must coordinate deletion of object bytes, database metadata, transcripts, embeddings, caches, and provider copies. A local object delete does not imply that derived data has been deleted.
 
 
+## Storage readiness probe
+
+The API's `/health/ready` includes the configured staging backend. In S3-compatible mode it verifies a reserved content-free probe object at the system-reserved staging reference derived from fixed non-tenant UUIDs. The API creates the small probe object if it is absent (for example, after staging lifecycle expiry), then verifies its size and SHA-256. The object is not linked to an ingestion session and is never exposed by public API responses.
+
+The probe uses only the API staging identity's existing `PutObject`, `GetObject`/HeadObject and checksum permissions under `staging/v1/*`; it does not require bucket-wide listing. `GET /health/dependencies` reports separate database and object-storage readiness states without exposing provider errors, bucket names, keys or tenant identifiers. The probe is a reachability/configuration signal, not a durability or capacity guarantee.
+
 ## Runtime credential separation
 
 The Go API and Python worker must not share one long-lived S3 credential pair:
