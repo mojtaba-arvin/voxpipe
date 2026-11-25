@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from collections import Counter
@@ -96,6 +98,39 @@ class ExtractionSilverEvaluationTests(unittest.TestCase):
         self.assertEqual(result["fields"]["order_id"]["tp"], 99)
         self.assertEqual(result["fields"]["order_id"]["fp"], 1)
         self.assertEqual(result["fields"]["order_id"]["fn"], 1)
+
+
+    def test_cli_pipeline_runs_generation_labeling_and_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            utterances = temp / "utterances.jsonl"
+            metadata = temp / "metadata.json"
+            labels = temp / "labels.jsonl"
+            metrics = temp / "metrics.json"
+            commands = [
+                [
+                    sys.executable, "-m", "eval.issue32.templates",
+                    "--count", "100", "--seed", "53",
+                    "--output", str(utterances), "--metadata", str(metadata),
+                ],
+                [
+                    sys.executable, "-m", "eval.issue32.rules",
+                    "--input", str(utterances), "--output", str(labels),
+                ],
+                [
+                    sys.executable, "-m", "eval.issue32.metrics",
+                    "--input", str(utterances), "--labels", str(labels), "--output", str(metrics),
+                ],
+            ]
+            for command in commands:
+                result = subprocess.run(
+                    command, cwd=ROOT, check=False, capture_output=True, text=True
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(metrics.read_text(encoding="utf-8"))
+            self.assertEqual(report["dataset_count"], 100)
+            self.assertEqual(report["overall_micro"]["f1"], 1.0)
+            self.assertEqual(json.loads(metadata.read_text(encoding="utf-8"))["seed"], 53)
 
     def test_metrics_reject_missing_predictions_and_non_synthetic_sources(self) -> None:
         records = generate_conversations(count=100, seed=47)
