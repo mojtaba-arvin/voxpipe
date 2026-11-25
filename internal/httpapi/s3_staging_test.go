@@ -2,8 +2,8 @@ package httpapi
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -25,8 +25,8 @@ type fakeS3StagingObject struct {
 }
 
 type fakeS3StagingClient struct {
-	objects       map[string]fakeS3StagingObject
-	omitChecksum  bool
+	objects      map[string]fakeS3StagingObject
+	omitChecksum bool
 }
 
 func newFakeS3StagingClient() *fakeS3StagingClient {
@@ -39,7 +39,9 @@ func (f *fakeS3StagingClient) PutObject(_ context.Context, input *s3.PutObjectIn
 		return nil, &smithy.GenericAPIError{Code: "PreconditionFailed", Message: "conditional write failed", Fault: smithy.FaultClient}
 	}
 	body, err := io.ReadAll(input.Body)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if int64(len(body)) != aws.ToInt64(input.ContentLength) {
 		return nil, fmt.Errorf("content length mismatch")
 	}
@@ -48,11 +50,11 @@ func (f *fakeS3StagingClient) PutObject(_ context.Context, input *s3.PutObjectIn
 		return nil, fmt.Errorf("provider checksum mismatch")
 	}
 	f.objects[key] = fakeS3StagingObject{
-		body: body,
-		checksum: checksum,
-		metadata: input.Metadata,
+		body:       body,
+		checksum:   checksum,
+		metadata:   input.Metadata,
 		encryption: input.ServerSideEncryption,
-		kmsKeyID: aws.ToString(input.SSEKMSKeyId),
+		kmsKeyID:   aws.ToString(input.SSEKMSKeyId),
 	}
 	return &s3.PutObjectOutput{}, nil
 }
@@ -63,12 +65,16 @@ func (f *fakeS3StagingClient) HeadObject(_ context.Context, input *s3.HeadObject
 		return nil, &smithy.GenericAPIError{Code: "NoSuchKey", Message: "not found", Fault: smithy.FaultClient}
 	}
 	output := &s3.HeadObjectOutput{
-		ContentLength: aws.Int64(int64(len(object.body))),
-		Metadata: object.metadata,
+		ContentLength:        aws.Int64(int64(len(object.body))),
+		Metadata:             object.metadata,
 		ServerSideEncryption: object.encryption,
 	}
-	if object.kmsKeyID != "" { output.SSEKMSKeyId = aws.String(object.kmsKeyID) }
-	if !f.omitChecksum { output.ChecksumSHA256 = aws.String(object.checksum) }
+	if object.kmsKeyID != "" {
+		output.SSEKMSKeyId = aws.String(object.kmsKeyID)
+	}
+	if !f.omitChecksum {
+		output.ChecksumSHA256 = aws.String(object.checksum)
+	}
 	return output, nil
 }
 
@@ -78,10 +84,12 @@ func (f *fakeS3StagingClient) GetObject(_ context.Context, input *s3.GetObjectIn
 		return nil, &smithy.GenericAPIError{Code: "NoSuchKey", Message: "not found", Fault: smithy.FaultClient}
 	}
 	output := &s3.GetObjectOutput{
-		Body: io.NopCloser(bytes.NewReader(object.body)),
+		Body:                 io.NopCloser(bytes.NewReader(object.body)),
 		ServerSideEncryption: object.encryption,
 	}
-	if object.kmsKeyID != "" { output.SSEKMSKeyId = aws.String(object.kmsKeyID) }
+	if object.kmsKeyID != "" {
+		output.SSEKMSKeyId = aws.String(object.kmsKeyID)
+	}
 	return output, nil
 }
 
@@ -98,18 +106,32 @@ func sha256Bytes(value []byte) []byte {
 func TestS3StagerWriteVerifyAndRemove(t *testing.T) {
 	client := newFakeS3StagingClient()
 	stager, err := NewS3Stager(client, "voxpipe-test", 1024, "AES256", "")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	tenantID, sessionID := "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10", "e41a2e87-b4e2-4b1c-8e3a-8c2e2b8c3e21"
 	body := []byte("shared staging fixture")
 	digest := fmt.Sprintf("%x", sha256Bytes(body))
 	size, reference, err := stager.Write(context.Background(), tenantID, sessionID, bytes.NewReader(body), int64(len(body)), 1024, digest)
-	if err != nil { t.Fatal(err) }
-	if reference != "staging/v1/"+tenantID+"/"+sessionID+"/source" { t.Fatalf("unexpected reference: %s", reference) }
-	if size != int64(len(body)) { t.Fatalf("unexpected size: %d", size) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reference != "staging/v1/"+tenantID+"/"+sessionID+"/source" {
+		t.Fatalf("unexpected reference: %s", reference)
+	}
+	if size != int64(len(body)) {
+		t.Fatalf("unexpected size: %d", size)
+	}
 	verifiedSize, verifiedDigest, err := stager.Verify(context.Background(), tenantID, sessionID)
-	if err != nil { t.Fatal(err) }
-	if verifiedSize != size || verifiedDigest != digest { t.Fatalf("unexpected verification result: %d %s", verifiedSize, verifiedDigest) }
-	if err := stager.Remove(context.Background(), tenantID, sessionID); err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verifiedSize != size || verifiedDigest != digest {
+		t.Fatalf("unexpected verification result: %d %s", verifiedSize, verifiedDigest)
+	}
+	if err := stager.Remove(context.Background(), tenantID, sessionID); err != nil {
+		t.Fatal(err)
+	}
 	if _, _, err := stager.Verify(context.Background(), tenantID, sessionID); !errors.Is(err, ErrStagingNotFound) {
 		t.Fatalf("expected ErrStagingNotFound, got %v", err)
 	}
@@ -118,7 +140,9 @@ func TestS3StagerWriteVerifyAndRemove(t *testing.T) {
 func TestS3StagerConditionalWriteIsIdempotentAndConflictsOnDifferentBytes(t *testing.T) {
 	client := newFakeS3StagingClient()
 	stager, err := NewS3Stager(client, "voxpipe-test", 1024, "AES256", "")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	tenantID, sessionID := "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10", "e41a2e87-b4e2-4b1c-8e3a-8c2e2b8c3e21"
 	first := []byte("same source")
 	firstDigest := fmt.Sprintf("%x", sha256Bytes(first))
@@ -139,7 +163,9 @@ func TestS3StagerStreamsChecksumWhenHeadOmitsProviderChecksum(t *testing.T) {
 	client := newFakeS3StagingClient()
 	client.omitChecksum = true
 	stager, err := NewS3Stager(client, "voxpipe-test", 1024, "AES256", "")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	tenantID, sessionID := "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10", "e41a2e87-b4e2-4b1c-8e3a-8c2e2b8c3e21"
 	body := []byte("provider checksum fallback")
 	digest := fmt.Sprintf("%x", sha256Bytes(body))
@@ -163,7 +189,9 @@ func TestS3StagerRequiresExplicitEncryptionAndKMSKey(t *testing.T) {
 
 func TestS3StagerRejectsNonUUIDReferences(t *testing.T) {
 	stager, err := NewS3Stager(newFakeS3StagingClient(), "voxpipe-test", 1024, "AES256", "")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := stager.Reference("../tenant", "session"); err == nil {
 		t.Fatal("expected invalid tenant/session identifiers to be rejected")
 	}
