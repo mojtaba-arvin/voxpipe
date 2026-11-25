@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -118,11 +119,11 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	if err != nil || maxAttempts < 1 || maxAttempts > 5 {
 		return nil, fmt.Errorf("VOXPIPE_S3_MAX_ATTEMPTS must be between 1 and 5")
 	}
-	connectTimeout, err := envDurationSeconds("VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS", 5, 30)
+	connectTimeout, err := envDurationSeconds("VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS", 5.0, 30.0)
 	if err != nil {
 		return nil, err
 	}
-	readTimeout, err := envDurationSeconds("VOXPIPE_S3_READ_TIMEOUT_SECONDS", 60, 120)
+	readTimeout, err := envDurationSeconds("VOXPIPE_S3_READ_TIMEOUT_SECONDS", 60.0, 120.0)
 	if err != nil {
 		return nil, err
 	}
@@ -165,10 +166,7 @@ func validateS3Endpoint(value string) error {
 		return fmt.Errorf("VOXPIPE_S3_ENDPOINT_URL must be an HTTP(S) origin without paths or embedded credentials")
 	}
 	host := strings.ToLower(parsed.Hostname())
-	loopback := host == "localhost" || host == "::1"
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
-		loopback = true
-	}
+	loopback := host == "localhost" || host == "127.0.0.1" || host == "::1"
 	if parsed.Scheme != "https" && !loopback {
 		return fmt.Errorf("VOXPIPE_S3_ENDPOINT_URL must use HTTPS outside loopback development endpoints")
 	}
@@ -183,12 +181,20 @@ func envInt(name string, fallback int) (int, error) {
 	return strconv.Atoi(value)
 }
 
-func envDurationSeconds(name string, fallback, maximum int) (time.Duration, error) {
-	value, err := envInt(name, fallback)
-	if err != nil || value < 1 || value > maximum {
-		return 0, fmt.Errorf("%s must be between 1 and %d seconds", name, maximum)
+func envDurationSeconds(name string, fallback, maximum float64) (time.Duration, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	value := fallback
+	if raw != "" {
+		parsed, err := strconv.ParseFloat(raw, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s must be a number", name)
+		}
+		value = parsed
 	}
-	return time.Duration(value) * time.Second, nil
+	if math.IsNaN(value) || math.IsInf(value, 0) || value <= 0 || value > maximum {
+		return 0, fmt.Errorf("%s must be greater than zero and at most %.0f seconds", name, maximum)
+	}
+	return time.Duration(value * float64(time.Second)), nil
 }
 
 func (s *S3Stager) Backend() string { return "s3_compatible" }
