@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+import random
 import tarfile
 import tempfile
 import urllib.request
@@ -109,18 +111,39 @@ def calculate_overlap_window(duration_a: float, duration_b: float) -> tuple[floa
 
 
 def mix_samples(
-    first: Sequence[float], second: Sequence[float], sample_rate: int, delay_seconds: float
-) -> tuple[array, int]:
+    first: Sequence[float],
+    second: Sequence[float],
+    sample_rate: int,
+    delay_seconds: float,
+    leading_silence_seconds: float = 0.25,
+    noise_snr_db: float | None = 30.0,
+    noise_seed: int = 0,
+) -> tuple[array, int, int]:
     if sample_rate <= 0 or len(first) == 0 or len(second) == 0:
         raise ValueError("sample rate and both audio streams must be non-empty")
+    if leading_silence_seconds < 0 or (noise_snr_db is not None and noise_snr_db <= 0):
+        raise ValueError("leading silence and noise SNR must be valid")
     delay_samples = round(delay_seconds * sample_rate)
+    leading_samples = round(leading_silence_seconds * sample_rate)
+    first_offset = leading_samples
+    second_offset = leading_samples + delay_samples
     if delay_samples < 0 or delay_samples >= len(first):
         raise ValueError("second utterance must start before the first utterance ends")
-    mixed = array("f", [0.0]) * max(len(first), delay_samples + len(second))
+    mixed = array("f", [0.0]) * max(first_offset + len(first), second_offset + len(second))
     for index, sample in enumerate(first):
-        mixed[index] += float(sample)
+        mixed[first_offset + index] += float(sample)
     for index, sample in enumerate(second):
-        mixed[delay_samples + index] += float(sample)
+        mixed[second_offset + index] += float(sample)
+
+    if noise_snr_db is not None:
+        speech_energy = sum(float(sample) ** 2 for sample in first) + sum(float(sample) ** 2 for sample in second)
+        speech_count = len(first) + len(second)
+        speech_rms = math.sqrt(speech_energy / speech_count)
+        noise_std = speech_rms / (10 ** (noise_snr_db / 20))
+        rng = random.Random(noise_seed)
+        for index in range(len(mixed)):
+            mixed[index] += rng.gauss(0.0, noise_std)
+
     peak = max(abs(sample) for sample in mixed)
     if peak == 0:
         raise ValueError("mixed audio is silent")
@@ -128,7 +151,7 @@ def mix_samples(
         scale = 0.98 / peak
         for index in range(len(mixed)):
             mixed[index] *= scale
-    return mixed, delay_samples
+    return mixed, leading_samples, delay_samples
 
 
 def build_annotation(
@@ -137,6 +160,9 @@ def build_annotation(
     duration_agent: float,
     sample_rate: int = SAMPLE_RATE,
     delay_seconds: float | None = None,
+    leading_silence_seconds: float = 0.25,
+    noise_snr_db: float = 30.0,
+    noise_seed: int = 0,
 ) -> dict[str, Any]:
     if delay_seconds is None:
         delay, overlap_end, overlap_duration = calculate_overlap_window(duration_customer, duration_agent)
@@ -146,28 +172,34 @@ def build_annotation(
         overlap_duration = round(overlap_end - delay, 6)
         if delay < 0 or overlap_duration < 0.2:
             raise ValueError("actual mixed audio does not contain a meaningful overlap")
+    leading = round(leading_silence_seconds, 6)
+    if leading < 0 or noise_snr_db <= 0 or noise_seed < 0:
+        raise ValueError("leading silence, noise SNR and noise seed must be valid")
     result = {
         "conversation_id": conversation["conversation_id"],
         "scenario": conversation["scenario"],
         "source_kind": "synthetic_template",
         "sample_rate": sample_rate,
+        "leading_silence_seconds": leading,
+        "noise_snr_db": noise_snr_db,
+        "noise_seed": noise_seed,
         "segments": [
             {
                 "role": "customer",
                 "voice_model": VOICE_MODELS["customer"]["name"],
-                "start_seconds": 0.0,
-                "end_seconds": round(duration_customer, 6),
+                "start_seconds": leading,
+                "end_seconds": round(leading + duration_customer, 6),
             },
             {
                 "role": "agent",
                 "voice_model": VOICE_MODELS["agent"]["name"],
-                "start_seconds": delay,
-                "end_seconds": round(delay + duration_agent, 6),
+                "start_seconds": round(leading + delay, 6),
+                "end_seconds": round(leading + delay + duration_agent, 6),
             },
         ],
         "overlap": {
-            "start_seconds": delay,
-            "end_seconds": overlap_end,
+            "start_seconds": round(leading + delay, 6),
+            "end_seconds": round(leading + overlap_end, 6),
             "duration_seconds": overlap_duration,
         },
     }
@@ -228,13 +260,32 @@ def run_synthesis(
             customer_duration = len(customer_samples) / customer_rate
             agent_duration = len(agent_samples) / agent_rate
             delay, _, _ = calculate_overlap_window(customer_duration, agent_duration)
-            mixed, delay_samples = mix_samples(customer_samples, agent_samples, customer_rate, delay)
+            noise_seed = seed + len(annotations) + 1
+            mixed, leading_samples, delay_samples = mix_samples(
+                customer_samples,
+                agent_samples,
+                customer_rate,
+                delay,
+                leading_silence_seconds=0.25,
+                noise_snr_db=30.0,
+                noise_seed=noise_seed,
+            )
             actual_delay = delay_samples / customer_rate
+            actual_leading = leading_samples / customer_rate
             mix_path = audio_dir / f"{record['conversation_id']}.wav"
             sf.write(mix_path, np.asarray(mixed, dtype=np.float32), customer_rate, subtype="PCM_16")
             if not mix_path.is_file() or mix_path.stat().st_size <= 44:
                 raise RuntimeError(f"{record['conversation_id']}: mixed WAV was not written")
-            annotation = build_annotation(record, customer_duration, agent_duration, customer_rate, actual_delay)
+            annotation = build_annotation(
+                record,
+                customer_duration,
+                agent_duration,
+                customer_rate,
+                actual_delay,
+                actual_leading,
+                30.0,
+                noise_seed,
+            )
             annotations.append(annotation)
             overlap_seconds.append(annotation["overlap"]["duration_seconds"])
             mixed_audio_seconds += len(mixed) / customer_rate
@@ -252,6 +303,9 @@ def run_synthesis(
             "conversation_count": count,
             "overlap_count": len(annotations),
             "sample_rate": SAMPLE_RATE,
+            "leading_silence_seconds": 0.25,
+            "background_noise_snr_db": 30.0,
+            "noise_seed_policy": "base_seed_plus_conversation_index",
             "tts_runtime": "sherpa-onnx",
             "tts_runtime_version": version("sherpa-onnx"),
             "tts_runtime_license": "Apache-2.0",
