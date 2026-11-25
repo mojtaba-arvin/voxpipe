@@ -4,14 +4,13 @@ from __future__ import annotations
 import math
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Mapping
 from uuid import UUID, uuid4
 
 from voxpipe.ingestion.postgres import PostgresIngestionRepository
 from voxpipe.speech.faster_whisper import FasterWhisperAdapter
 from voxpipe.speech.runtime import build_speech_resilience_runtime
-from voxpipe.storage.local import LocalFilesystemObjectStore
+from voxpipe.storage.factory import build_object_store
 from voxpipe.workflows.postgres import PostgresWorkflowRepository
 from voxpipe.workflows.runner import PostgresWorkflowWorker, WorkflowHandlerRegistry
 from voxpipe.workflows.speech import SpeechTranscriptionWorkflowHandler
@@ -69,7 +68,6 @@ def build_local_speech_worker(env: Mapping[str, str] | None = None) -> WorkflowW
     except (ValueError, TypeError, AttributeError):
         raise ValueError("VOXPIPE_WORKFLOW_TENANT_ID must be a UUID") from None
 
-    object_root = Path(_required(settings, "VOXPIPE_OBJECT_STORE_ROOT")).expanduser()
     worker_id = settings.get("VOXPIPE_WORKFLOW_WORKER_ID", "").strip() or str(uuid4())
     try:
         worker_id = str(UUID(worker_id))
@@ -85,7 +83,12 @@ def build_local_speech_worker(env: Mapping[str, str] | None = None) -> WorkflowW
 
     workflow_repository = PostgresWorkflowRepository(dsn)
     asset_repository = PostgresIngestionRepository(dsn)
-    object_store = LocalFilesystemObjectStore(object_root, max_object_size_bytes=max_audio_bytes)
+    object_store, _storage_provider = build_object_store(
+        settings,
+        local_root=settings.get("VOXPIPE_OBJECT_STORE_ROOT"),
+        local_root_env="VOXPIPE_OBJECT_STORE_ROOT",
+        max_object_size_bytes=max_audio_bytes,
+    )
     adapter = FasterWhisperAdapter(
         model_name=settings.get("VOXPIPE_STT_MODEL_NAME", "small").strip() or "small",
         device=settings.get("VOXPIPE_STT_DEVICE", "cpu").strip() or "cpu",

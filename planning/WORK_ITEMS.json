@@ -1120,20 +1120,21 @@
       "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
-        "Implement an optional provider-neutral S3-compatible adapter behind ObjectStoragePort; keep local filesystem storage as the default.",
-        "Derive tenant-scoped object keys only from trusted application context and preserve opaque-key validation; never accept caller-controlled tenant prefixes as authorization.",
-        "Stream reads and writes with bounded memory, enforce object-size limits and bounded network timeouts, and verify byte count plus SHA-256 before successful writes.",
-        "Use conditional create for immutable writes; identical content is idempotent, different content conflicts, and explicit overwrite remains deliberate.",
-        "Keep the current 512 MiB object limit on single-request PutObject; do not add multipart upload without a measured requirement beyond the single-request limit.",
-        "Require explicit server-side encryption configuration and fail closed if the selected S3-compatible endpoint cannot satisfy required checksum or encryption behavior.",
-        "Use bounded retries only where idempotency is safe; cover interrupted writes, ambiguous outcomes, conflict, deletion, and two independent adapter instances in disposable S3-compatible CI without external credentials or egress.",
-        "Use one storage factory consistently in API/worker/workflow/reconciliation runtimes; preserve local quickstart and asset metadata compatibility.",
-        "Document deployment-specific IAM, encryption, versioning, retention, lifecycle and recovery requirements without claiming production RPO/RTO or multi-region durability."
+        "Implement an optional provider-neutral S3-compatible adapter behind ObjectStoragePort; keep local filesystem storage as the default and avoid importing boto3 unless the S3 backend is selected.",
+        "Derive tenant-scoped object keys only from trusted application context and preserve shared opaque-key validation; never accept caller-controlled tenant prefixes as authorization.",
+        "Stream uploads through a bounded private temporary file, enforce the configured size limit and bounded network timeouts, and verify byte count plus provider SHA-256 before successful writes.",
+        "Use conditional create for immutable writes; identical content is idempotent, different content conflicts, explicit overwrite remains deliberate, and ambiguous outcomes are reconciled by checksum.",
+        "Keep the current 512 MiB maximum on single-request PutObject; do not add multipart upload until a measured requirement exceeds the single-request limit.",
+        "Require explicit server-side encryption configuration and verify the returned encryption mode and canonical KMS key ID/ARN; fail closed if the endpoint cannot satisfy checksum or encryption behavior.",
+        "Use bounded SDK retries and test interrupted source streams, checksum mismatch, conditional conflicts, ambiguous commits, deletion, and independent clients against a disposable S3-compatible service in CI.",
+        "Use one storage factory consistently in the ingestion worker, speech workflow worker and reconciliation command; preserve local quickstart and existing asset metadata/storage-reference compatibility.",
+        "Keep the optional S3 SDK out of the default worker image; document the explicit build argument required to include it.",
+        "Document deployment configuration, key isolation, encryption, lifecycle/retention responsibilities, and the remaining shared-staging requirement. Do not claim shared object storage alone enables multi-node API/worker deployment."
       ],
       "evidence": [
-        "2026-11-25: created tracking issue #150 and design ADR-0044-s3-compatible-object-storage.md. Branch feat/vp-0044-s3-object-storage contains the proposed architecture; implementation has not yet been merged or enabled by default.",
-        "Product decision: keep the local filesystem adapter as the default and do not select a cloud account, bucket, region, endpoint or secret. Use a bounded single-request PutObject for the existing 512 MiB upload limit; multipart remains out of scope until required.",
-        "VP-0044 is sequenced after VP-0043 for product rollout but has no hard implementation dependency on it; the adapter can be built in parallel while post-merge CI evidence for VP-0043 is finalized."
+        "2026-11-25: created issue #150 and ADR-0044. Implementation is in progress on feat/vp-0044-s3-object-storage-main: S3 adapter, fail-closed backend factory, worker/workflow/reconciliation composition, optional worker-image SDK build, fake-client tests and disposable MinIO integration CI job.",
+        "Product decision: keep local filesystem as the default and do not select a cloud account, bucket, region, endpoint or secret. Keep the current 512 MiB limit on single-request PutObject; multipart remains out of scope.",
+        "Important boundary: this milestone shares persistent object bytes only. The Go upload API and ingestion worker still require a shared private VOXPIPE_STAGING_ROOT. A separate staging protocol or shared volume is still required before full multi-node API/worker deployment."
       ],
       "blocked_reason": null
     }

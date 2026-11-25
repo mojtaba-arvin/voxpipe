@@ -17,6 +17,7 @@ from voxpipe.storage.ports import (
     ObjectNotFoundError,
     StorageIOError,
     StorageIntegrityError,
+    validate_object_key,
 )
 
 
@@ -181,18 +182,7 @@ class LocalFilesystemObjectStore:
 
     @staticmethod
     def _validate_key(key: str) -> tuple[str, ...]:
-        if not isinstance(key, str) or not key or len(key) > 1024:
-            raise InvalidObjectKeyError("object key must contain 1 to 1024 characters")
-        if "\x00" in key or "\\" in key or key.startswith("/"):
-            raise InvalidObjectKeyError("object key must be a relative POSIX path")
-        if ":" in key.split("/", 1)[0]:
-            raise InvalidObjectKeyError("object key must not contain a drive prefix")
-        if any(ord(character) < 32 or ord(character) == 127 for character in key):
-            raise InvalidObjectKeyError("object key contains control characters")
-        parts = tuple(key.split("/"))
-        if any(part in {"", ".", ".."} for part in parts):
-            raise InvalidObjectKeyError("object key contains an invalid path segment")
-        return parts
+        return validate_object_key(key)
 
     @staticmethod
     def _fsync_directory(directory: Path) -> None:

@@ -38,3 +38,26 @@ The root directory must be owned by the service account and not writable by untr
 The storage adapter returns a content digest; the asset metadata stores that digest as the canonical integrity reference. Retrieval can compare the current object digest with the asset record before processing.
 
 Deletion is one operation in a larger asset lifecycle. The application layer must coordinate deletion of object bytes, database metadata, transcripts, embeddings, caches, and provider copies. A local object delete does not imply that derived data has been deleted.
+
+
+## S3-compatible adapter
+
+`S3CompatibleObjectStore` implements the same opaque-key port for shared object bytes. It is optional and never selected implicitly:
+
+- `VOXPIPE_STORAGE_BACKEND=local` is the default and preserves the guided quickstart.
+- `VOXPIPE_STORAGE_BACKEND=s3_compatible` selects the S3 API adapter and fails closed if configuration or the optional SDK is missing.
+- Install the optional SDK with `pip install -r requirements-s3.txt`.
+- Configure `VOXPIPE_S3_BUCKET`, `VOXPIPE_S3_REGION`, and `VOXPIPE_S3_SERVER_SIDE_ENCRYPTION` (`AES256` or `aws:kms`). KMS mode also requires `VOXPIPE_S3_KMS_KEY_ID`; configure the canonical key ID/ARN returned by the provider (not an alias), which the adapter verifies on reads.
+- `VOXPIPE_S3_ENDPOINT_URL` is optional for standard AWS S3 and required for most self-hosted S3-compatible services. Non-loopback endpoints must use HTTPS. Path-style addressing is the default; `VOXPIPE_S3_ADDRESSING_STYLE` may be `path` or `virtual`.
+- Credentials are supplied as a pair through `VOXPIPE_S3_ACCESS_KEY_ID` and `VOXPIPE_S3_SECRET_ACCESS_KEY`, or obtained from the SDK's default credential chain (for example, an AWS workload role). Never embed credentials in the endpoint URL.
+- Connection/read timeouts and SDK retry attempts are bounded by `VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS`, `VOXPIPE_S3_READ_TIMEOUT_SECONDS`, and `VOXPIPE_S3_MAX_ATTEMPTS`.
+
+The adapter spools each incoming stream to a private temporary file to calculate length and SHA-256 with bounded memory. It uses one conditional `PutObject` request, provider SHA-256 checksums and required server-side encryption. Same-content retries are idempotent; different content at an immutable key conflicts. It verifies provider checksum data (or streams a GET when the endpoint omits checksum headers) before returning object metadata. The current 512 MiB limit is below the S3 single-PUT maximum of 5 GiB; multipart upload is deliberately not implemented.
+
+For the ingestion worker container, build the optional SDK into the image only when S3 is selected: `docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3 .`. The default image does not install boto3, and the local Compose quickstart remains unchanged. Host-based workflow workers must install `requirements-s3.txt` in their runtime environment when configured for S3.
+
+The local root setting remains entrypoint-specific for backward compatibility: `VOXPIPE_OBJECT_ROOT` for the ingestion worker and `VOXPIPE_OBJECT_STORE_ROOT` for the speech workflow worker and reconciliation command. S3 mode ignores these local-root settings; `VOXPIPE_STAGING_ROOT` is still required by the upload/ingestion path.
+
+The S3 adapter is used by the ingestion worker, speech workflow worker and reconciliation command through one storage factory. The API's private upload-staging files remain a separate concern: the Go upload API and ingestion worker still need the same private staging filesystem. Shared S3 object bytes alone therefore do not prove that a deployment can run API and workers on separate hosts. A shared staging volume or a future shared staging/upload protocol must also be selected and tested before claiming full multi-node deployment readiness.
+
+CI exercises a disposable local S3-compatible endpoint and fake-client failure cases without live cloud credentials, external egress or paid resources. This does not prove production bucket policy, IAM, lifecycle, versioning, KMS configuration, durability, backup RPO/RTO or multi-region behavior. Configure those controls in the target deployment and keep local storage as the default until then.

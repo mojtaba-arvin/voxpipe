@@ -14,10 +14,21 @@ VoxPipe turns audio into traceable, structured, searchable knowledge that both p
 
 **Product maturity:** VoxPipe includes tenant-scoped ingestion and transcript persistence, durable PostgreSQL-backed jobs/workflows, local Faster-Whisper STT, optional disabled-by-default Deepgram integration, VAD and diarization adapters, calibrated language identification, evidence-validated structured extraction, lexical and pgvector hybrid retrieval, adaptive provider routing, privacy-safe telemetry, and release/governance automation. These are repository implementation claims backed by tests; they are not a blanket production-readiness claim.
 
-**Explicit limitations:** FLEURS VAD labels are utterance-envelope proxies, diarization data is controlled read speech rather than natural overlapping conversation, LID has no code-switch/noisy-field evaluation, extraction has no human-reviewed Persian gold set, and retrieval has no human-judged Persian relevance score or selected production embedding model. Deepgram remains disabled pending an API key and separately approved spend (current test budget: USD 0). Production capacity, staging SLOs, live notification delivery, customer-traffic canaries, production backup/PITR and RPO/RTO are not established. Local filesystem storage remains a single-node development/deployment option.
+**Explicit limitations:** FLEURS VAD labels are utterance-envelope proxies, diarization data is controlled read speech rather than natural overlapping conversation, LID has no code-switch/noisy-field evaluation, extraction has no human-reviewed Persian gold set, and retrieval has no human-judged Persian relevance score or selected production embedding model. Deepgram remains disabled pending an API key and separately approved spend (current test budget: USD 0). Production capacity, staging SLOs, live notification delivery, customer-traffic canaries, production backup/PITR and RPO/RTO are not established. Local filesystem storage remains the default single-node option. An optional S3-compatible adapter is under implementation for shared persistent object bytes; upload staging still requires a shared private filesystem, so this adapter alone does not establish multi-node API/worker readiness.
 
 **Default branch:** `main`
 
+
+## Object storage configuration
+
+The guided local stack uses the local filesystem adapter and needs no cloud credentials. A shared S3-compatible backend is opt-in and remains under implementation:
+
+- Install its optional SDK with `pip install -r requirements-s3.txt`.
+- Set `VOXPIPE_STORAGE_BACKEND=s3_compatible`, `VOXPIPE_S3_BUCKET`, `VOXPIPE_S3_REGION`, and an explicit `VOXPIPE_S3_SERVER_SIDE_ENCRYPTION=AES256` or `aws:kms`.
+- KMS mode also requires `VOXPIPE_S3_KMS_KEY_ID` using the canonical provider key ID/ARN (not an alias). Credentials may come from a workload role or the paired `VOXPIPE_S3_ACCESS_KEY_ID` / `VOXPIPE_S3_SECRET_ACCESS_KEY` variables.
+- Use `VOXPIPE_S3_ENDPOINT_URL` for an S3-compatible endpoint; non-loopback endpoints require HTTPS.
+
+For the ingestion worker image, include the optional SDK with `docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3 .`; the default image and local Compose quickstart do not install or use boto3. See [the object-storage boundary and deployment limits](docs/architecture/storage.md). S3 object storage does not replace the private upload-staging filesystem; do not claim full multi-node deployment until staging is shared or its protocol is replaced.
 
 ## Design principles
 
