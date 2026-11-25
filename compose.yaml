@@ -78,6 +78,8 @@ services:
     depends_on:
       storage-init:
         condition: service_completed_successfully
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 
