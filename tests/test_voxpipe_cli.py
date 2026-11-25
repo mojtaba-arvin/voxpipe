@@ -41,7 +41,7 @@ class VoxPipeCLITests(unittest.TestCase):
         self.assertEqual(len(opener.requests[0][0].get_header("Idempotency-key")), 32)
         self.assertEqual(opener.requests[1][0].get_header("Content-type"), "application/octet-stream")
         self.assertEqual(opener.requests[1][0].get_header("Content-length"), "11")
-        self.assertTrue(opener.requests[1][0].data.readable())
+        self.assertTrue(hasattr(opener.requests[1][0].data, "read"))\n        self.assertTrue(opener.requests[1][0].data.closed)
         self.assertEqual(opener.requests[2][0].full_url, f"http://127.0.0.1:8080/v1/ingestions/{session}/finalize")
 
     def test_ingest_rejects_empty_file_before_network(self):
