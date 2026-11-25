@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,8 +47,15 @@ type LocalRetrievalClient struct {
 func NewLocalRetrievalClient(baseURL, token string) (*LocalRetrievalClient, error) {
 	parsed, err := url.Parse(strings.TrimSpace(baseURL))
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
-		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil, fmt.Errorf("retrieval service URL must be an absolute HTTP(S) URL without credentials or query")
+		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return nil, fmt.Errorf("retrieval service URL must be an absolute HTTP(S) origin without credentials or query")
+	}
+	if parsed.Scheme == "http" {
+		host := strings.ToLower(parsed.Hostname())
+		ip := net.ParseIP(host)
+		if host != "retrieval" && host != "localhost" && (ip == nil || !ip.IsLoopback()) {
+			return nil, fmt.Errorf("HTTPS is required for non-local retrieval service hosts")
+		}
 	}
 	if len(token) < 32 {
 		return nil, fmt.Errorf("retrieval service internal token must contain at least 32 characters")
