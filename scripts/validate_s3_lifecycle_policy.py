@@ -82,7 +82,7 @@ def main() -> int:
         ):
             raise RuntimeError("lifecycle policy must not expire all objects or durable tenant objects")
 
-    print(f"S3 staging lifecycle verified: {configured_days} days (minimum {minimum_days}); versioning enabled.")
+    print(f"S3 staging lifecycle verified: {configured_days} days (minimum {minimum_days}); active bucket unversioned, recovery bucket versioned.")
     return 0
 
 
