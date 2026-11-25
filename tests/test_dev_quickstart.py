@@ -7,8 +7,16 @@ import uuid
 import wave
 from pathlib import Path
 from scripts.dev_quickstart import create_sample_audio, ensure_environment_file
+from scripts.bootstrap_local_postgres import validate_database_target
 
 class LocalQuickstartTests(unittest.TestCase):
+    def test_database_bootstrap_refuses_non_disposable_or_non_superuser_targets(self):
+        with self.assertRaises(SystemExit):
+            validate_database_target("production", True)
+        with self.assertRaises(SystemExit):
+            validate_database_target("voxpipe_dev", False)
+        self.assertIsNone(validate_database_target("voxpipe_dev", True))
+
     def test_environment_is_generated_with_least_privilege_digest_and_private_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
