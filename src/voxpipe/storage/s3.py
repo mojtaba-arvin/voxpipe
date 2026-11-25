@@ -7,10 +7,9 @@ import hashlib
 import hmac
 import re
 import tempfile
-from typing import BinaryIO, Any
+from typing import Any, BinaryIO
 
 from voxpipe.storage.ports import (
-    InvalidObjectKeyError,
     ObjectConflictError,
     ObjectInfo,
     ObjectNotFoundError,
