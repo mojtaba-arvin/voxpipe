@@ -3,6 +3,11 @@ from __future__ import annotations
 import os
 import sys
 
+def validate_database_target(database: str, is_superuser: bool) -> None:
+    if database != "voxpipe_dev" or not is_superuser:
+        raise SystemExit("refusing bootstrap: expected disposable voxpipe_dev and PostgreSQL superuser")
+
+
 def main() -> int:
     admin_dsn = os.environ.get("VOXPIPE_ADMIN_DATABASE_DSN", "").strip()
     app_password = os.environ.get("VOXPIPE_LOCAL_APP_PASSWORD", "")
@@ -15,8 +20,7 @@ def main() -> int:
         database, is_superuser = connection.execute(
             "SELECT current_database(), (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)"
         ).fetchone()
-        if database != "voxpipe_dev" or not is_superuser:
-            raise SystemExit("refusing bootstrap: expected disposable voxpipe_dev and PostgreSQL superuser")
+        validate_database_target(database, is_superuser)
         role_exists = connection.execute("SELECT 1 FROM pg_roles WHERE rolname = 'voxpipe_app'").fetchone()
         role_sql = (
             sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD {} NOSUPERUSER NOBYPASSRLS")
