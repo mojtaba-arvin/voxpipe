@@ -120,6 +120,8 @@ def compute_metrics(
         warnings.append("Synthetic template results are pipeline evidence only, not Persian production-quality evidence.")
     elif qrels["source_kind"] == "read_speech":
         warnings.append("Read-speech results do not establish natural-conversation performance.")
+    elif qrels["source_kind"] == "consented_natural":
+        warnings.append("Consent does not turn heuristic qrels into human judgments; keep participant and privacy controls in force.")
     elif qrels["source_kind"] == "mixed_or_external":
         warnings.append("Mixed/external corpus claims require separate provenance and privacy review.")
     if qrels["corpus_count"] <= 5:
