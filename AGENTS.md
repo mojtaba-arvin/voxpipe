@@ -101,3 +101,50 @@ At the end of a work unit, report:
 5. Remaining risks, blockers, and next unblocked task.
 
 A successful tool call is not proof that the resulting system works. Verify the resulting repository state.
+
+
+# AGENTS.md — VoxPipe Engineering Context
+
+This file is read automatically by AI agents working in this
+repository. It points to the engineering evaluation context and
+states the hard constraints.
+
+## Read before working on evaluation tasks
+
+- docs/engineering/evaluation-baseline.md
+- docs/engineering/execution-plan.md
+- docs/engineering/ci-speedups.md
+- docs/engineering/dev-speedups.md
+- docs/engineering/scientific-discipline.md
+- docs/engineering/language-architecture.md
+- docs/engineering/honest-disclosure-template.md
+
+## Hard constraints (do not violate)
+
+- No paid APIs. No non-free services. No external inference APIs.
+- No \`gh\` CLI. Use \`curl\` + GitHub REST API with \`GITHUB_TOKEN\`.
+- No local machine. GitHub Actions is the only execution environment.
+- Content must be safe for sales and (future) medical examples.
+  No real customer data. No medical diagnostic content.
+- Every automated baseline must be labeled **silver**, never **gold**.
+- Medical readiness claims require human-validated, consented data.
+  Synthetic data is not sufficient for any medical readiness claim.
+
+## Issue triage
+
+| Issue | Priority | Nature                         |
+|-------|----------|--------------------------------|
+| #32   | 1        | Quality evidence gap (extraction) |
+| #48   | 2        | Quality evidence gap (retrieval)  |
+| #47   | 3        | Test-condition gap (natural audio) |
+
+## Key architectural decisions
+
+- Multilingual ASR: one multilingual model + \`language_hint\` as prior
+  (Deepgram-style), not per-language routing.
+- New languages: register \`LIDStrategy\` + \`Normalizer\` in \`Adapter
+  Registry\`. No core pipeline changes.
+- All API responses must expose \`detected_language\`,
+  \`language_confidence\`, \`asr_provider_used\`, \`lid_strategy_used\`.
+- Model selection uses an ordered \`speech_models\` fallback list
+  (AssemblyAI-style), not a single \`model\` field.
