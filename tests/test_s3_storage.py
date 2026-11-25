@@ -26,6 +26,17 @@ class FakeClientError(Exception):
         }
 
 
+class FailingStream:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def read(self, size: int = -1) -> bytes:
+        self.calls += 1
+        if self.calls == 1:
+            return b"partial-content"
+        raise OSError("simulated interrupted source")
+
+
 class FakeS3Client:
     def __init__(self) -> None:
         self.objects: dict[str, dict] = {}
@@ -121,6 +132,11 @@ class S3CompatibleObjectStoreTests(unittest.TestCase):
         self.client.fail_put_after_commit = True
         info = self.store.put("tenant-a/asset.wav", io.BytesIO(b"committed"))
         self.assertEqual(info.sha256, hashlib.sha256(b"committed").hexdigest())
+
+    def test_interrupted_source_never_starts_provider_upload(self) -> None:
+        with self.assertRaises(StorageIOError):
+            self.store.put("tenant-a/interrupted.wav", FailingStream())
+        self.assertNotIn("tenant-a/interrupted.wav", self.client.objects)
 
     def test_expected_checksum_mismatch_leaves_no_object(self) -> None:
         with self.assertRaises(StorageIntegrityError):
