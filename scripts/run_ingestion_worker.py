@@ -16,7 +16,7 @@ from voxpipe.ingestion import (
 )
 from voxpipe.ingestion.worker import run_forever
 from voxpipe.ingestion.service import IngestionService
-from voxpipe.storage.local import LocalFilesystemObjectStore
+from voxpipe.storage.factory import build_object_store
 
 
 def main() -> int:
@@ -39,10 +39,10 @@ def main() -> int:
             tenants.append(str(UUID(value)))
         except ValueError:
             raise SystemExit("VOXPIPE_TENANT_IDS must contain only UUID values")
-    if not dsn or not staging_root or not object_root or not tenants:
+    if not dsn or not staging_root or not tenants:
         raise SystemExit(
-            "VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, VOXPIPE_OBJECT_ROOT, "
-            "and an explicit VOXPIPE_TENANT_IDS allowlist are required"
+            "VOXPIPE_DATABASE_DSN, VOXPIPE_STAGING_ROOT, and an explicit "
+            "VOXPIPE_TENANT_IDS allowlist are required; local storage also requires VOXPIPE_OBJECT_ROOT"
         )
     if len(set(tenants)) != len(tenants):
         raise SystemExit("VOXPIPE_TENANT_IDS must not contain duplicates")
@@ -64,8 +64,10 @@ def main() -> int:
 
     repository = PostgresIngestionRepository(dsn)
     queue = PostgresIngestionJobQueue(dsn)
-    object_store = LocalFilesystemObjectStore(
-        object_root,
+    object_store, storage_provider = build_object_store(
+        os.environ,
+        local_root=object_root or None,
+        local_root_env="VOXPIPE_OBJECT_ROOT",
         max_object_size_bytes=max_upload,
     )
     service = IngestionService(
@@ -73,7 +75,7 @@ def main() -> int:
         repository=repository,
         object_store=object_store,
         max_file_size_bytes=max_upload,
-        storage_provider="local",
+        storage_provider=storage_provider,
         lease_ttl=timedelta(seconds=max(1, lease_seconds // 2)),
     )
     worker = IngestionJobWorker(
