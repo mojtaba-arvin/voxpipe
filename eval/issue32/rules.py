@@ -13,7 +13,7 @@ DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue32" / "silver_labels.jsonl"
 DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 DATE_RE = re.compile(r"(?<!\d)(14\d{2})/(0?[1-9]|1[0-2])/(0?[1-9]|[12]\d|3[01])(?!\d)")
-AMOUNT_RE = re.compile(r"(?:مبلغ|بازپرداخت)\s*([\d,٬]+)\s*تومان")
+AMOUNT_RE = re.compile(r"(?:مبلغ(?:\s+سفارش)?|بازپرداخت)\s*([\d,٬]+)\s*تومان")
 ORDER_RE = re.compile(r"\bORD-\d{4}\b")
 NAME_RE = re.compile(r"مشتری نمونه\s+\d{3}")
 
@@ -22,8 +22,10 @@ def normalize_digits(text: str) -> str:
     return text.translate(DIGIT_TRANSLATION)
 
 
-def _extract_one(pattern: re.Pattern[str], text: str, normalize: Any = None) -> dict[str, Any]:
-    matches = [match.group(0) for match in pattern.finditer(text)]
+def _extract_one(
+    pattern: re.Pattern[str], text: str, normalize: Any = None, group: int = 0
+) -> dict[str, Any]:
+    matches = [match.group(group) for match in pattern.finditer(text)]
     if normalize is not None:
         matches = [normalize(value) for value in matches]
     unique = list(dict.fromkeys(matches))
@@ -42,7 +44,7 @@ def label_conversation(record: dict[str, Any]) -> dict[str, Any]:
     text = normalize_digits("\n".join(item["text"] for item in record["utterances"]))
     fields = {
         "date": _extract_one(DATE_RE, text),
-        "amount": _extract_one(AMOUNT_RE, text, _normalize_amount),
+        "amount": _extract_one(AMOUNT_RE, text, _normalize_amount, group=1),
         "order_id": _extract_one(ORDER_RE, text),
         "customer_name": _extract_one(NAME_RE, text),
     }
