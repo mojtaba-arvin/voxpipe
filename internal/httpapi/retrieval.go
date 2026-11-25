@@ -56,7 +56,7 @@ func NewLocalRetrievalClient(baseURL, token string) (*LocalRetrievalClient, erro
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token: token,
 		client: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 5 * time.Minute,
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
