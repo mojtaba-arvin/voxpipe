@@ -1,0 +1,107 @@
+name: voxpipe-s3-staging-e2e
+
+x-worker-build: &worker-build
+  context: .
+  dockerfile: Dockerfile.worker
+  args:
+    VOXPIPE_INSTALL_S3: "1"
+
+x-s3-environment: &s3-environment
+  VOXPIPE_STORAGE_BACKEND: s3_compatible
+  VOXPIPE_S3_BUCKET: ${VOXPIPE_S3_BUCKET}
+  VOXPIPE_S3_REGION: ${VOXPIPE_S3_REGION}
+  VOXPIPE_S3_ENDPOINT_URL: ${VOXPIPE_S3_ENDPOINT_URL}
+  VOXPIPE_S3_ACCESS_KEY_ID: ${VOXPIPE_S3_ACCESS_KEY_ID}
+  VOXPIPE_S3_SECRET_ACCESS_KEY: ${VOXPIPE_S3_SECRET_ACCESS_KEY}
+  VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: ${VOXPIPE_S3_SERVER_SIDE_ENCRYPTION}
+  VOXPIPE_S3_ADDRESSING_STYLE: ${VOXPIPE_S3_ADDRESSING_STYLE}
+  VOXPIPE_S3_MAX_ATTEMPTS: ${VOXPIPE_S3_MAX_ATTEMPTS}
+  VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS: ${VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS}
+  VOXPIPE_S3_READ_TIMEOUT_SECONDS: ${VOXPIPE_S3_READ_TIMEOUT_SECONDS}
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16-bookworm
+    network_mode: host
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: voxpipe_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d voxpipe_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+  bootstrap:
+    build: *worker-build
+    network_mode: host
+    command: ["python", "scripts/bootstrap_local_postgres.py"]
+    environment:
+      VOXPIPE_ADMIN_DATABASE_DSN: postgresql://postgres:${POSTGRES_PASSWORD}@127.0.0.1:5432/voxpipe_dev
+      VOXPIPE_LOCAL_APP_PASSWORD: ${APP_DB_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  silo:
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+    network_mode: host
+    environment:
+      MINIO_ROOT_USER: ${VOXPIPE_S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${VOXPIPE_S3_SECRET_ACCESS_KEY}
+      MINIO_KMS_SECRET_KEY: voxpipe-ci:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+    command: ["server", "/data"]
+    restart: "no"
+
+  silo-init:
+    build: *worker-build
+    network_mode: host
+    command: ["python", "scripts/prepare_s3_e2e_bucket.py"]
+    environment:
+      <<: *s3-environment
+    depends_on:
+      silo:
+        condition: service_started
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    network_mode: host
+    environment:
+      VOXPIPE_LISTEN_ADDR: ":8080"
+      VOXPIPE_DATABASE_DSN: postgresql://voxpipe_app:${APP_DB_PASSWORD}@127.0.0.1:5432/voxpipe_dev
+      VOXPIPE_AUTH_MODE: static
+      VOXPIPE_API_TOKEN_HASHES: ${API_TOKEN_HASHES}
+      <<: *s3-environment
+      VOXPIPE_MAX_UPLOAD_BYTES: "104857600"
+      VOXPIPE_UPLOAD_INACTIVITY_TIMEOUT_SECONDS: "30"
+      VOXPIPE_UPLOAD_MAX_DURATION_SECONDS: "300"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      silo-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  worker:
+    build: *worker-build
+    network_mode: host
+    environment:
+      VOXPIPE_DATABASE_DSN: postgresql://voxpipe_app:${APP_DB_PASSWORD}@127.0.0.1:5432/voxpipe_dev
+      <<: *s3-environment
+      VOXPIPE_TENANT_IDS: ${TENANT_ID}
+      VOXPIPE_MAX_UPLOAD_BYTES: "104857600"
+      VOXPIPE_JOB_LEASE_SECONDS: "90"
+      VOXPIPE_JOB_POLL_SECONDS: "0.25"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+
+# No staging or object filesystem is mounted into either application container.
+# All transient and durable audio bytes cross the S3-compatible boundary.

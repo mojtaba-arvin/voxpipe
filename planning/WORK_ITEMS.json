@@ -1093,7 +1093,7 @@
       "title": "Add tenant-scoped worker liveness and progress aggregates",
       "phase": 8,
       "priority": 43,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0042",
         "VP-0041"
@@ -1109,16 +1109,17 @@
       "evidence": [
         "2026-11-25: PR #149 (feat/ops: tenant-scoped worker heartbeats) squash-merged to main as eee1bf36502a04f241271bff1d822e2ee0722a17. Exact-head GitHub Actions run 45612304573 passed all six jobs, including 478 Python/PostgreSQL tests, Go/PostgreSQL, guided quickstart E2E, OpenTelemetry runtime/Collector and PostgreSQL backup/restore.",
         "2026-11-25: implementation on main includes migration 0013 with forced tenant RLS, independent 15-second process heartbeat, idle/busy/stopped state, 45-second stale classification, tenant-safe operations aggregates and redaction. Post-merge push-triggered main CI still requires verification before this item can be marked done.",
-        "2026-11-25: main merge commit eee1bf36502a04f241271bff1d822e2ee0722a17 passed exact-head PR validation run 45612304573 (6/6 jobs). Post-merge push-triggered CI remains unverified via the connected GitHub run-list action."
+        "2026-11-25: main merge commit eee1bf36502a04f241271bff1d822e2ee0722a17 passed exact-head PR validation run 45612304573 (6/6 jobs). Post-merge push-triggered CI remains unverified via the connected GitHub run-list action.",
+        "2026-11-25: post-merge main validation run 45613094434 passed all six jobs (Go/PostgreSQL, Python/PostgreSQL, guided quickstart E2E, OpenTelemetry runtime, Collector/Prometheus and backup/restore). The post-merge main check is now verified; VP-0043 is complete."
       ],
-      "blocked_reason": "Post-merge main CI for eee1bf36502a04f241271bff1d822e2ee0722a17 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify with `gh run list --repo mojtaba-arvin/voxpipe --commit eee1bf36502a04f241271bff1d822e2ee0722a17 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0043 done until successful."
+      "blocked_reason": null
     },
     {
       "id": "VP-0044",
       "title": "Add shared S3-compatible object storage for multi-node deployments",
       "phase": 8,
       "priority": 44,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Implement an optional provider-neutral S3-compatible adapter behind ObjectStoragePort; keep local filesystem storage as the default and avoid importing boto3 unless the S3 backend is selected.",
@@ -1135,16 +1136,17 @@
       "evidence": [
         "2026-11-25: PR #152 squash-merged to main as ee19b92e41cc6598b354296bf0a74dee03a15b90. Exact-head validation run 45615557588 passed all seven jobs, including 502 Python/PostgreSQL tests, Go/PostgreSQL, guided quickstart, OpenTelemetry runtime/Collector, PostgreSQL backup/restore, Silo S3 integration, and S3-enabled worker image build. Dependency audit run 45615557541 passed both Python and Go audits.",
         "2026-11-25: issue #150 closed by PR #152. The adapter is optional; local filesystem remains the default. S3 object bytes are shared, but VOXPIPE_STAGING_ROOT remains a shared private filesystem dependency; this milestone alone does not establish multi-node API/worker readiness.",
-        "Product decision: keep the current 512 MiB limit on single-request PutObject; multipart remains out of scope. No production cloud account, bucket, region, endpoint or secret was selected."
+        "Product decision: keep the current 512 MiB limit on single-request PutObject; multipart remains out of scope. No production cloud account, bucket, region, endpoint or secret was selected.",
+        "2026-11-25: post-merge main validation run 45615847663 passed all seven jobs (Go/PostgreSQL, Python/PostgreSQL, S3/Silo integration, S3-enabled worker build, guided quickstart, OpenTelemetry runtime, Collector/Prometheus and backup/restore). Dependency audit 45615557541 passed both Go and Python audits. The post-merge main check is now verified; VP-0044 is complete."
       ],
-      "blocked_reason": "Post-merge main CI for ee19b92e41cc6598b354296bf0a74dee03a15b90 is not exposed by the connected GitHub run-list action (it only returns pull_request-triggered runs). Verify with `gh run list --repo mojtaba-arvin/voxpipe --commit ee19b92e41cc6598b354296bf0a74dee03a15b90 --workflow validate.yml --json databaseId,status,conclusion,headSha,url`; do not mark VP-0044 done until successful."
+      "blocked_reason": null
     },
     {
       "id": "VP-0045",
       "title": "Replace shared POSIX upload staging with a shared object protocol",
       "phase": 8,
       "priority": 45,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Define a versioned provider-neutral cross-language staging contract for Go API and Python worker with tenant-scoped opaque keys, immutable writes, content length, SHA-256, state transitions and cleanup ownership.",
@@ -1167,7 +1169,35 @@
         "Python ingestion now validates and materializes S3 staging streams to worker-local temporary files, preserves retryable source objects, and removes terminal S3 staging objects through tenant-scoped reconciliation. VOXPIPE_STAGING_ROOT remains required only for local staging and legacy local sessions.",
         "Added Go unit/integration coverage, Python ingestion/reconciliation coverage, and a CI interoperability path where Go writes to disposable Silo and Python ObjectStoragePort reads/deletes the same object. Exact-head CI and separate-container/no-shared-volume E2E remain pending.",
         "2026-11-25: first exact-head validation run 45621690117 exposed only integration-test compile drift after the Stager interface became context-aware (old server_test.go call sites) and Go module tidy metadata (AWS credentials/smithy packages were directly imported but marked indirect). Updated the legacy test calls to pass context.Background(), promoted direct dependencies in go.mod and normalized go.sum ordering. No production contract or test assertions were weakened.",
-        "2026-11-25: ADR-0045 corrected to match the implemented immutable per-session key `staging/v1/{tenant_uuid}/{session_uuid}/source`; the adapter-level Go-to-Python Silo interoperability test is explicitly distinguished from the still-outstanding separate-container API/queue-worker deployment E2E. Do not close VP-0045 or claim multi-node readiness until that deployment E2E and retry/cleanup recovery proof pass."
+        "2026-11-25: ADR-0045 corrected to match the implemented immutable per-session key `staging/v1/{tenant_uuid}/{session_uuid}/source`; the adapter-level Go-to-Python Silo interoperability test is explicitly distinguished from the still-outstanding separate-container API/queue-worker deployment E2E. Do not close VP-0045 or claim multi-node readiness until that deployment E2E and retry/cleanup recovery proof pass.",
+        "2026-11-25: core shared staging implementation merged by PR #155 as ccbe90c5dc68d3f671801a4e07431203ee3a17c6. Exact-head validation run 45624282856 passed all seven jobs; dependency audit run 45624282950 passed both Go and Python audits.",
+        "2026-11-25: deployment E2E merged by PR #156 after exact-head validation run 45625810038 passed all seven jobs. The CI stack ran the Go API and Python ingestion worker in separate host-network containers with no shared staging/object volume, created a generated 32,044-byte WAV via the public API, observed session completion and durable asset creation, ran tenant-scoped reconciliation inside the worker container, and verified the staging key was absent while the durable object remained with matching SHA-256. Credentials were generated per run and masked; disposable Silo/PostgreSQL containers were removed.",
+        "Product boundary: S3-compatible mode no longer requires a shared POSIX staging filesystem. Local filesystem mode and guided quickstart remain the defaults. Disposable Silo E2E proves adapter and process/container interoperability, not production cloud durability, IAM policy correctness in a real account, RPO/RTO, multi-region replication or customer-traffic capacity.",
+        "2026-11-25: post-merge main validation run 45624632771 for PR #155's merge commit passed all seven jobs, including the separate S3 integration and worker image build."
+      ],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0046",
+      "title": "Harden S3 deployment credentials, lifecycle and recovery",
+      "phase": 8,
+      "priority": 46,
+      "status": "in_progress",
+      "depends_on": [
+        "VP-0045"
+      ],
+      "acceptance_criteria": [
+        "Separate Go API transient-staging credentials from Python worker durable-object credentials; the API identity must not access durable tenant audio objects.",
+        "Document least-privilege S3 permissions for API staging writes/verification/cancellation, worker staging reads and durable-object writes, and terminal reconciliation.",
+        "Keep bucket, region, endpoint, TLS, encryption and checksum configuration explicit and fail closed without exposing credentials, presigned URLs, object contents or tenant identifiers.",
+        "Define a staging lifecycle safety net whose expiry exceeds maximum session lifetime, retry window and recovery window; it must never race a live or retryable job.",
+        "Document versioning, encryption/KMS, retention, lifecycle, backup/restore, outage recovery, cleanup retry and migration/rollback requirements.",
+        "Add disposable Silo CI coverage for distinct identities, denied cross-prefix operations, encryption, lifecycle configuration and recovery after transient object-store failures.",
+        "Add a content-free storage readiness/operational signal that distinguishes database readiness from object-store reachability.",
+        "Preserve local filesystem storage and the guided quickstart as defaults; do not select production cloud resources or credentials."
+      ],
+      "evidence": [
+        "2026-11-25: created issue #157 after VP-0045 proved separate-container API/worker operation. Product priority is now credential separation, lifecycle safety and recoverability before production S3 deployment claims."
       ],
       "blocked_reason": null
     }
