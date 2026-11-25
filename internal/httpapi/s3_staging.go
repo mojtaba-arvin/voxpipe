@@ -43,6 +43,7 @@ type S3Stager struct {
 	maxSize    int64
 	encryption types.ServerSideEncryption
 	kmsKeyID   string
+	readTimeout time.Duration
 }
 
 func NewS3Stager(
@@ -79,6 +80,7 @@ func NewS3Stager(
 		maxSize:    maxSize,
 		encryption: algorithm,
 		kmsKeyID:   strings.TrimSpace(kmsKeyID),
+		readTimeout: 60 * time.Second,
 	}, nil
 }
 
@@ -155,7 +157,12 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 			options.BaseEndpoint = aws.String(endpoint)
 		}
 	})
-	return NewS3Stager(client, bucket, maxSize, encryption, kmsKeyID)
+	stager, err := NewS3Stager(client, bucket, maxSize, encryption, kmsKeyID)
+	if err != nil {
+		return nil, err
+	}
+	stager.readTimeout = readTimeout
+	return stager, nil
 }
 
 func validateS3Endpoint(value string) error {
@@ -303,6 +310,9 @@ func (s *S3Stager) Write(
 }
 
 func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int64, string, error) {
+	verifyCtx, cancel := context.WithTimeout(ctx, s.readTimeout)
+	defer cancel()
+	ctx = verifyCtx
 	reference, err := s.Reference(tenantID, sessionID)
 	if err != nil {
 		return 0, "", err
@@ -364,6 +374,9 @@ func (s *S3Stager) Verify(ctx context.Context, tenantID, sessionID string) (int6
 }
 
 func (s *S3Stager) Remove(ctx context.Context, tenantID, sessionID string) error {
+	removeCtx, cancel := context.WithTimeout(ctx, s.readTimeout)
+	defer cancel()
+	ctx = removeCtx
 	reference, err := s.Reference(tenantID, sessionID)
 	if err != nil {
 		return err
