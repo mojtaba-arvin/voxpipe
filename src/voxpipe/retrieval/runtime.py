@@ -1,6 +1,8 @@
 """Configured local hybrid retrieval and idempotent transcript indexing."""
 from __future__ import annotations
 
+from threading import RLock
+
 from voxpipe.ingestion.postgres import PostgresIngestionRepository
 from voxpipe.retrieval import (
     HybridRetrievalService,
@@ -17,6 +19,7 @@ class LocalHybridRetrievalRuntime:
         query_prefix: str = "", document_prefix: str = "",
     ) -> None:
         self.model = model
+        self._model_lock = RLock()
         self.model_version = model_version
         self.repository = PostgresIngestionRepository(database_dsn)
         self.embeddings = LocalSentenceTransformerEmbeddingAdapter(
@@ -43,21 +46,22 @@ class LocalHybridRetrievalRuntime:
         if len(segments) > 5000:
             raise ValueError("transcript revision exceeds the 5000-segment indexing limit")
         indexed = 0
-        for segment in segments:
-            candidate = SearchCandidate(
-                transcript_id=transcript_id,
-                revision=selected_revision,
-                asset_id=asset_id,
-                segment_id=str(segment["segment_id"]),
-                start_ms=int(segment["start_ms"]),
-                end_ms=int(segment["end_ms"]),
-                text=segment["text"],
-                language=language,
-                speaker_id=str(segment["speaker_id"]) if segment.get("speaker_id") else None,
-            )
-            embedding = self.embeddings.embed_document(candidate.text)
-            self.semantic.store_embedding(tenant_id, candidate, embedding)
-            indexed += 1
+        with self._model_lock:
+            for segment in segments:
+                candidate = SearchCandidate(
+                    transcript_id=transcript_id,
+                    revision=selected_revision,
+                    asset_id=asset_id,
+                    segment_id=str(segment["segment_id"]),
+                    start_ms=int(segment["start_ms"]),
+                    end_ms=int(segment["end_ms"]),
+                    text=segment["text"],
+                    language=language,
+                    speaker_id=str(segment["speaker_id"]) if segment.get("speaker_id") else None,
+                )
+                embedding = self.embeddings.embed_document(candidate.text)
+                self.semantic.store_embedding(tenant_id, candidate, embedding)
+                indexed += 1
         return {
             "transcript_id": transcript_id,
             "revision": selected_revision,
@@ -77,9 +81,10 @@ class LocalHybridRetrievalRuntime:
             start_ms=request.get("start_ms"),
             end_ms=request.get("end_ms"),
         )
-        hits = self.hybrid.search(
-            request["query"], filters=filters, limit=request.get("limit", 20),
-        )
+        with self._model_lock:
+            hits = self.hybrid.search(
+                request["query"], filters=filters, limit=request.get("limit", 20),
+            )
         return {
             "model": self.model,
             "model_version": self.model_version,
