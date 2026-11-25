@@ -238,8 +238,10 @@ class S3CompatibleObjectStore:
         actual = response.get("ServerSideEncryption")
         if actual != self._server_side_encryption:
             raise StorageIntegrityError("stored object does not satisfy the configured encryption requirement")
-        if self._server_side_encryption == "aws:kms" and not response.get("SSEKMSKeyId"):
-            raise StorageIntegrityError("stored object is missing its required KMS key metadata")
+        if self._server_side_encryption == "aws:kms":
+            actual_key_id = response.get("SSEKMSKeyId")
+            if not actual_key_id or actual_key_id != self._kms_key_id:
+                raise StorageIntegrityError("stored object does not use the configured KMS key identifier")
 
     @staticmethod
     def _error_details(exc: Exception) -> tuple[str, int | None]:
