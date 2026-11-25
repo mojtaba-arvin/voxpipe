@@ -110,6 +110,28 @@ class FailingClaimQueue(FakeQueue):
         raise OSError("simulated database outage")
 
 
+class OneShotQueue(FakeQueue):
+    def __init__(self) -> None:
+        super().__init__()
+        self.claimed = False
+
+    def claim_next(self, tenant_id: str, worker_id: str, *, lease_seconds: int) -> dict | None:
+        if self.claimed:
+            return None
+        self.claimed = True
+        return self.job
+
+
+class SlowService(FakeService):
+    def __init__(self, started: Event, delay: float) -> None:
+        super().__init__(delay=delay)
+        self.started = started
+
+    def resume_session(self, tenant_id: str, session_id: str) -> None:
+        self.started.set()
+        super().resume_session(tenant_id, session_id)
+
+
 class IngestionJobWorkerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tenant_id = str(uuid4())
@@ -207,6 +229,38 @@ class IngestionJobWorkerTests(unittest.TestCase):
         self.assertIn((self.tenant_id, self.worker_id), queue.worker_registrations)
         self.assertGreaterEqual(queue.worker_heartbeats, 1)
         self.assertIn((self.tenant_id, self.worker_id), queue.worker_stops)
+
+    def test_process_heartbeat_continues_while_job_execution_is_busy(self) -> None:
+        queue = OneShotQueue()
+        service_started = Event()
+        worker = self.worker(queue, SlowService(service_started, delay=0.15))
+        stop = Event()
+        supervisor = Thread(
+            target=run_forever,
+            args=(worker, [self.tenant_id], stop),
+            kwargs={"poll_seconds": 0.005, "heartbeat_interval_seconds": 0.01},
+            daemon=True,
+        )
+        supervisor.start()
+        self.assertTrue(service_started.wait(2), "worker did not begin the claimed job")
+        heartbeat_count_at_start = queue.worker_heartbeats
+        deadline = time.monotonic() + 1
+        while queue.worker_heartbeats <= heartbeat_count_at_start and time.monotonic() < deadline:
+            time.sleep(0.005)
+        self.assertGreater(
+            queue.worker_heartbeats,
+            heartbeat_count_at_start,
+            "process liveness heartbeat stopped while the job was executing",
+        )
+        self.assertIn((self.tenant_id, self.worker_id, "busy"), queue.worker_states)
+        deadline = time.monotonic() + 2
+        while not queue.completed and time.monotonic() < deadline:
+            time.sleep(0.005)
+        stop.set()
+        supervisor.join(timeout=2)
+        self.assertFalse(supervisor.is_alive(), "worker supervisor did not stop")
+        self.assertTrue(queue.completed)
+        self.assertIn((self.tenant_id, self.worker_id, "idle"), queue.worker_states)
 
     def test_metrics_are_partitioned_by_tenant_and_outcome(self) -> None:
         worker = self.worker(FakeQueue(), FakeService())
