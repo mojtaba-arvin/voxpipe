@@ -30,6 +30,7 @@ type TranscriptSearchFilters struct {
 }
 
 type Store interface {
+	Ready(context.Context) error
 	CreateSession(context.Context, string, string, map[string]any, TenantLimits) (map[string]any, bool, error)
 	GetSession(context.Context, string, string) (map[string]any, error)
 	UpdateSession(context.Context, string, string, string, map[string]any) error
@@ -55,6 +56,21 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 	return &PostgresStore{pool: pool}, nil
 }
 func (s *PostgresStore) Close() { s.pool.Close() }
+
+// Ready verifies PostgreSQL connectivity and the core schema required by the API.
+// Optional capabilities such as hybrid retrieval are checked by their own endpoints.
+func (s *PostgresStore) Ready(ctx context.Context) error {
+	if err := s.pool.Ping(ctx); err != nil { return err }
+	// Execute zero-row reads so readiness also verifies the application role has
+	// the privileges required by core API queries, not merely that relations exist.
+	for _, statement := range []string{
+		"SELECT 1 FROM public.ingestion_sessions LIMIT 0",
+		"SELECT 1 FROM public.ingestion_jobs LIMIT 0",
+	} {
+		if _, err := s.pool.Exec(ctx, statement); err != nil { return err }
+	}
+	return nil
+}
 
 func (s *PostgresStore) beginTenant(ctx context.Context, tenantID string) (pgx.Tx, error) {
 	if !isUUID(tenantID) { return nil, fmt.Errorf("tenant id must be a UUID") }

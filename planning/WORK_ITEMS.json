@@ -1063,6 +1063,29 @@
         "2026-11-25: PR #144 squash-merged to main as f3538756946ec064ca3b5ebbf691390ee42170eb. Exact-head CI run 45590134481 passed all six jobs and post-merge main CI run 45590454724 passed all six jobs. Tenant-scoped operations API and CLI health view, dedicated operations:read scope, forced-RLS integration coverage, bounded seven-day window, aggregate-only output, queue/retry/dead-letter metrics, redaction and retention boundaries are verified on main."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0042",
+      "title": "Add API liveness/readiness probes and gate local worker startup",
+      "phase": 8,
+      "priority": 42,
+      "status": "done",
+      "depends_on": [
+        "VP-0039",
+        "VP-0041"
+      ],
+      "acceptance_criteria": [
+        "Unauthenticated liveness reports process availability without depending on PostgreSQL.",
+        "Readiness returns success only when PostgreSQL is reachable and the core ingestion session/job schema is installed; dependency details are never exposed.",
+        "The API image has a bounded healthcheck that uses the binary itself and probes loopback without shell tools or credentials.",
+        "The local Compose worker starts only after API readiness; the quickstart end-to-end workflow remains green.",
+        "Unit and PostgreSQL integration tests cover healthy, unavailable, and schema-ready behavior; operations and README documentation explain the limits."
+      ],
+      "evidence": [
+        "Implementation is on feat/vp-0042-health-readiness; awaiting exact-head GitHub Actions validation before completion.",
+        "2026-11-25: PR #148 exact-head CI run 45606622379 passed all six jobs on edf3758ed8ae2a9775deef3a05ea23a2421f369d. Python/PostgreSQL validation passed 474 tests; Go API/PostgreSQL readiness tests passed; Docker Compose quickstart confirmed API Healthy before worker startup and completed the sample ingestion. No external provider or paid inference was enabled."
+      ],
+      "blocked_reason": null
     }
   ]
 }
