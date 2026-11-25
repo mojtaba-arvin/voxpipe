@@ -1198,7 +1198,9 @@
         "Preserve local filesystem storage and the guided quickstart as defaults; do not select production cloud resources or credentials."
       ],
       "evidence": [
-        "2026-11-25: created issue #157 after VP-0045 proved separate-container API/worker operation. Product priority is now credential separation, lifecycle safety and recoverability before production S3 deployment claims."
+        "2026-11-25: created issue #157 after VP-0045 proved separate-container API/worker operation. Product priority is now credential separation, lifecycle safety and recoverability before production S3 deployment claims.",
+        "2026-11-25: PR #158 merged as 0ee0756fc67fea611eb59a62e43f2eca9381ff7c; exact-head CI run 45629633269 passed all seven jobs. The Go API now uses a staging-only credential pair or its own workload identity; the Python worker retains separate durable-object credentials. Disposable Silo provisioned distinct prefix-scoped identities and the E2E proved the API identity was denied read/write/delete access to durable tenant objects.",
+        "2026-11-25: continuing VP-0046 in PR #159 scope: content-free database/object-storage readiness, safe staging lifecycle validation against session/retry/recovery windows, and a separate versioned recovery bucket test. Active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions."
       ],
       "blocked_reason": null
     }
