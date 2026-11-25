@@ -24,7 +24,7 @@ class APIClient:
 
     def request(self, method: str, path: str, *, payload: dict[str, Any] | None = None,
                 body: BinaryIO | None = None, content_length: int | None = None,
-                idempotency_key: str | None = None) -> dict[str, Any]:
+                idempotency_key: str | None = None, request_timeout: float | None = None) -> dict[str, Any]:
         if not path.startswith("/") or path.startswith("//"): raise ValueError("API path must be absolute")
         headers = {"Authorization": "Bearer " + self.token, "Accept": "application/json"}
         data = None
@@ -37,7 +37,7 @@ class APIClient:
         if idempotency_key: headers["Idempotency-Key"] = idempotency_key
         request = urllib.request.Request(self.base_url + path, data=data, headers=headers, method=method)
         try:
-            with self.opener.open(request, timeout=self.timeout) as response:
+            with self.opener.open(request, timeout=request_timeout or self.timeout) as response:
                 raw = response.read(1_048_577)
                 if len(raw) > 1_048_576: raise APIError("RESPONSE_TOO_LARGE", "API response exceeded 1 MiB")
                 return json.loads(raw) if raw else {}
@@ -55,7 +55,7 @@ def sha256_file(path: Path) -> tuple[int, str]:
     return size, digest.hexdigest()
 
 def ingest(client: APIClient, path: Path, source_kind: str, external_reference: str | None,
-           wait: bool, poll_interval: float, timeout: float) -> dict[str, Any]:
+           wait: bool, poll_interval: float, timeout: float, upload_timeout: float) -> dict[str, Any]:
     if not path.is_file(): raise ValueError("audio path must be a regular file")
     size, digest = sha256_file(path)
     if size < 1: raise ValueError("audio file must not be empty")
@@ -65,7 +65,7 @@ def ingest(client: APIClient, path: Path, source_kind: str, external_reference: 
     session_id = created.get("session_id")
     if not isinstance(session_id, str): raise APIError("INVALID_API_RESPONSE", "Create response omitted session_id")
     with path.open("rb") as stream:
-        client.request("PUT", f"/v1/ingestions/{session_id}/content", body=stream, content_length=size)
+        client.request("PUT", f"/v1/ingestions/{session_id}/content", body=stream, content_length=size, request_timeout=upload_timeout)
     accepted = client.request("POST", f"/v1/ingestions/{session_id}/finalize")
     result = {"session_id": session_id, "job": accepted, "status": "queued"}
     if not wait: return result
@@ -89,7 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
     upload.add_argument("--external-reference")
     upload.add_argument("--wait", action="store_true")
     upload.add_argument("--poll-interval", type=float, default=2.0)
-    upload.add_argument("--wait-timeout", type=float, default=1800.0)
+    upload.add_argument("--wait-timeout", type=float, default=1800.0)\n    upload.add_argument("--upload-timeout", type=float, default=1800.0)
     status = commands.add_parser("status", help="Read an ingestion session status")
     status.add_argument("session_id")
     search = commands.add_parser("search", help="Search transcript segments")
@@ -102,8 +102,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         client = APIClient(args.api_url, os.environ.get("VOXPIPE_API_TOKEN", ""), args.timeout)
         if args.command == "ingest":
-            if args.poll_interval <= 0 or args.wait_timeout <= 0: raise ValueError("poll interval and wait timeout must be positive")
-            result = ingest(client, args.file, args.source_kind, args.external_reference, args.wait, args.poll_interval, args.wait_timeout)
+            if args.poll_interval <= 0 or args.wait_timeout <= 0 or args.upload_timeout <= 0: raise ValueError("poll interval, wait timeout, and upload timeout must be positive")
+            result = ingest(client, args.file, args.source_kind, args.external_reference, args.wait, args.poll_interval, args.wait_timeout, args.upload_timeout)
         elif args.command == "status":
             result = client.request("GET", f"/v1/ingestions/{uuid.UUID(args.session_id)}")
         else:
