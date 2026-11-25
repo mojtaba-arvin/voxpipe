@@ -120,6 +120,7 @@ class PostgresProviderCircuitBreaker:
                     SET consecutive_failures=GREATEST(consecutive_failures + 1, %s),
                         opened_at=now(), probe_token=NULL, probe_expires_at=NULL, updated_at=now()
                     WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s
+                      AND probe_expires_at > now()
                     RETURNING provider
                     """,
                     (self.failure_threshold, permit.provider, permit.probe_token),
