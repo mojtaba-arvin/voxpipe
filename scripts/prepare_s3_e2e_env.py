@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import stat
 import secrets
 import uuid
 from pathlib import Path
@@ -31,11 +32,12 @@ def main() -> int:
         "VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS": "5",
         "VOXPIPE_S3_READ_TIMEOUT_SECONDS": "60",
     }
-    Path(".env").write_text(
-        "".join(f"{key}={value}\n" for key, value in values.items()),
-        encoding="utf-8",
-    )
-    os.chmod(".env", 0o600)
+    env_path = Path(".env")
+    if env_path.exists():
+        raise RuntimeError("refusing to overwrite an existing .env file")
+    descriptor = os.open(env_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write("".join(f"{key}={value}\n" for key, value in values.items()))
     github_env = os.environ.get("GITHUB_ENV")
     if github_env:
         with open(github_env, "a", encoding="utf-8") as stream:
