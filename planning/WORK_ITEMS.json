@@ -951,6 +951,35 @@
         "2026-11-25: GitHub ruleset 'protect main' (ID 27601640) is active: PR required, strict Python/PostgreSQL and Go/PostgreSQL checks required, review threads must be resolved, branch deletion/non-fast-forward denied, no bypass actors. Required approving-review count is 0; runtime durable workflow approvals are the human gate. Code-review approval is not enforced by the ruleset."
       ],
       "blocked_reason": null
+    },
+    {
+      "id": "VP-0038",
+      "title": "Deliver a first-party CLI for the core audio workflow",
+      "phase": 7,
+      "priority": 38,
+      "status": "done",
+      "depends_on": [
+        "VP-0015",
+        "VP-0029",
+        "VP-0030"
+      ],
+      "acceptance_criteria": [
+        "Provide standard-library CLI commands to stream a local audio file through create/upload/finalize and to inspect ingestion status and search tenant-scoped transcript segments.",
+        "Use server-authoritative tenant identity, existing API scopes, TLS for remote endpoints, bounded responses/timeouts, and no credential arguments or secret logging.",
+        "Hash files incrementally and stream uploads without loading the entire audio file into memory; preserve durable-job semantics when the CLI exits or polling times out.",
+        "Add deterministic tests for command sequencing, streaming request construction, validation, transport safety, and bounded response handling.",
+        "Document setup, commands, required scopes, and explicit limits; validate with repository CI."
+      ],
+      "evidence": [
+        "2026-11-25: implementation started on feat/first-class-cli. Added scripts/voxpipe.py with ingest/status/search commands, incremental SHA-256, streamed upload, existing API scopes, TLS guard, response cap, and bounded optional polling.",
+        "2026-11-25: added tests/test_voxpipe_cli.py and docs/architecture/cli.md. Exact-head validation and review pending.",
+        "2026-11-25: first PR CI run exposed a Python import-shadowing regression because scripts/voxpipe.py masked the voxpipe package for unrelated scripts. Renamed the entrypoint to scripts/voxpipe_cli.py, updated tests/docs/README, and retained the standard-library-only design. Exact new-head CI rerun pending.",
+        "2026-11-25: separated ordinary API timeout from a configurable 30-minute upload timeout to match the API's bounded upload duration; this prevents large uploads being cut off by the short status/search timeout. Added an assertion for the upload timeout.",
+        "2026-11-25: final CLI scope includes a dedicated configurable upload timeout (default 30 minutes) separate from the 30-second API timeout, so large files are not cut off by status/search settings. A loopback HTTP integration test is being added to verify the standard-library client actually streams the file body.",
+        "2026-11-25: exact PR head 2a9455a4b3e127ef9014fcc279dfa107f5ef0b53 passed GitHub Actions run 45576085075: Python/PostgreSQL integration (453 tests), Go/PostgreSQL integration, OpenTelemetry runtime smoke, OpenTelemetry Collector/Prometheus integration, and PostgreSQL backup/restore rehearsal.",
+        "2026-11-25: CI caught and drove two fixes before acceptance: the initial script filename shadowed the voxpipe Python package, and a literal escaped newline broke the upload-timeout parser. The entrypoint was renamed to voxpipe_cli.py and syntax corrected; no acceptance criteria or security controls were weakened."
+      ],
+      "blocked_reason": null
     }
   ]
 }

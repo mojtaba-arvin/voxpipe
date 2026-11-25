@@ -113,3 +113,15 @@ VP-0034 is complete under this policy based on the existing CI recovery, concurr
 All 37 repository work items (VP-0001 through VP-0037) are complete. Completion means the repository implementation, contracts, deterministic tests and CI evidence meet the revised repository-scoped acceptance criteria. It does **not** mean that every model is production-quality or that deployment-specific validation has occurred.
 
 The following remain non-gating product/deployment follow-ups: frame-labelled Persian VAD data; consented natural overlapping-speech diarization data; code-switch/noisy-field language-ID evaluation; a privately sourced and adjudicated Persian extraction gold set; a human-judged Persian retrieval relevance set and selected production embedding model; live Deepgram activation (no key, USD 0 test budget); target-specific capacity and host operations; production backup/PITR/RPO/RTO; live alert delivery, staging SLOs and customer-traffic canary/rollback. Do not fabricate these data or claims to change a repository milestone status.
+
+
+## Phase 7 — Product Experience
+
+**Goal:** Turn the repository's API and worker capabilities into a practical workflow that a developer or operator can use without writing a bespoke integration.
+
+- [x] Deliver a first-party CLI for batch audio ingestion, durable job status, and transcript search (VP-0038; streamed uploads, incremental SHA-256, existing authenticated API boundaries, bounded polling, and five-job CI validation in run 45576085075).
+- [ ] Add a guided local quickstart that proves API + worker + PostgreSQL + sample audio flow end-to-end without hosted-provider credentials or paid services.
+- [ ] Expose hybrid retrieval through a versioned authenticated API/MCP contract only after deployment-time embedding configuration, model/version isolation, and safe no-model behavior are defined.
+- [ ] Add a lightweight operational view for ingestion/job failures and queue health, using tenant-safe aggregates rather than transcript content.
+
+**Product boundary:** These are additive product-experience milestones, not a reason to reopen completed repository implementation items. Do not select a production embedding model, enable remote data egress, or claim real Persian quality without the corresponding evidence and approvals.
