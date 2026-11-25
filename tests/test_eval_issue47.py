@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import unittest
+import tempfile
+import wave
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from eval.issue47.cpu_smoke import build_report, MODEL_REVISION, MODEL_ID
+from eval.issue47.cpu_smoke import audio_duration_seconds, build_report, MODEL_REVISION, MODEL_ID
 
 
 class CpuSmokeReportTests(unittest.TestCase):
@@ -35,6 +37,17 @@ class CpuSmokeReportTests(unittest.TestCase):
         )
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(report)
+
+
+    def test_audio_duration_reads_wav_frames(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.wav"
+            with wave.open(str(path), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(8000)
+                audio.writeframes(b"\x00\x00" * 8000)
+            self.assertEqual(audio_duration_seconds(path), 1.0)
 
     def test_report_rejects_empty_transcript_or_invalid_timings(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be positive"):
