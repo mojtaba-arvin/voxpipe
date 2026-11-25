@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -23,7 +24,15 @@ func TestS3StagerSiloIntegration(t *testing.T) {
 	if region == "" || bucket == "" {
 		t.Fatal("S3 integration bucket and region must be configured")
 	}
-	configuration, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
+	configuration, err := awsconfig.LoadDefaultConfig(
+		ctx,
+		awsconfig.WithRegion(region),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			os.Getenv("VOXPIPE_S3_ACCESS_KEY_ID"),
+			os.Getenv("VOXPIPE_S3_SECRET_ACCESS_KEY"),
+			"",
+		)),
+	)
 	if err != nil {
 		t.Fatalf("load integration AWS config: %v", err)
 	}
@@ -41,6 +50,7 @@ func TestS3StagerSiloIntegration(t *testing.T) {
 	if err != nil { t.Fatalf("configure S3 stager: %v", err) }
 	tenantID := "7f9b7b3c-5b5a-4b90-a1b0-9b4a7d8e2f10"
 	sessionID := "e41a2e87-b4e2-4b1c-8e3a-8c2e2b8c3e21"
+	defer func() { _ = stager.Remove(context.Background(), tenantID, sessionID) }()
 	body := []byte("cross-language staging integration fixture")
 	sum := sha256.Sum256(body)
 	digest := hex.EncodeToString(sum[:])
