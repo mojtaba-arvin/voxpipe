@@ -1118,9 +1118,7 @@
       "phase": 8,
       "priority": 44,
       "status": "in_progress",
-      "depends_on": [
-        "VP-0043"
-      ],
+      "depends_on": [],
       "acceptance_criteria": [
         "Implement an optional provider-neutral S3-compatible adapter behind ObjectStoragePort; keep local filesystem storage as the default.",
         "Derive tenant-scoped object keys only from trusted application context and preserve opaque-key validation; never accept caller-controlled tenant prefixes as authorization.",
@@ -1134,7 +1132,8 @@
       ],
       "evidence": [
         "2026-11-25: created tracking issue #150 and design ADR-0044-s3-compatible-object-storage.md. Branch feat/vp-0044-s3-object-storage contains the proposed architecture; implementation has not yet been merged or enabled by default.",
-        "Product decision: keep the local filesystem adapter as the default and do not select a cloud account, bucket, region, endpoint or secret. Use a bounded single-request PutObject for the existing 512 MiB upload limit; multipart remains out of scope until required."
+        "Product decision: keep the local filesystem adapter as the default and do not select a cloud account, bucket, region, endpoint or secret. Use a bounded single-request PutObject for the existing 512 MiB upload limit; multipart remains out of scope until required.",
+        "VP-0044 is sequenced after VP-0043 for product rollout but has no hard implementation dependency on it; the adapter can be built in parallel while post-merge CI evidence for VP-0043 is finalized."
       ],
       "blocked_reason": null
     }
