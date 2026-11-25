@@ -336,7 +336,19 @@ func (s *S3Stager) Write(
 		return 0, "", fmt.Errorf("close private upload spool: %w", closeErr)
 	}
 	existingSize, existingDigest, verifyErr := s.Verify(ctx, tenantID, sessionID)
-	if verifyErr != nil || existingSize != written || existingDigest != actualDigest {
+	if verifyErr != nil {
+		if errors.Is(verifyErr, ErrUploadIntegrity) {
+			return 0, "", ErrUploadIntegrity
+		}
+		if errors.Is(verifyErr, ErrStagingNotFound) {
+			return 0, "", fmt.Errorf("verify staged upload: object was not found after write")
+		}
+		// A successful PutObject followed by a failed verification is an
+		// operationally ambiguous result, not proof of corrupt content. Keep
+		// the staging object and let the caller retry/reconcile it.
+		return 0, "", fmt.Errorf("verify staged upload: S3-compatible provider request failed")
+	}
+	if existingSize != written || existingDigest != actualDigest {
 		return 0, "", ErrUploadIntegrity
 	}
 	return written, reference, nil
