@@ -21,7 +21,7 @@ A field with no match is `null`. Multiple distinct matches are `ambiguous` and r
 
 Run `python -m eval.issue32.metrics`. Exact-match counts are calculated per field. A wrong non-null value contributes one false positive and one false negative. A missing or ambiguous prediction for a non-null reference contributes a false negative. A prediction for a null reference contributes a false positive. Undefined precision, recall, or F1 denominators produce zero.
 
-The report includes per-field precision/recall/F1, overall micro metrics, overall macro averages, split counts/ratios, seed, and dataset count. Output is validated against `eval/issue32/metrics.schema.json`.
+The label output is validated against `eval/issue32/labels.schema.json`. The report includes per-field precision/recall/F1, overall micro metrics, overall macro averages, split counts/ratios, seed, and dataset count. Output is validated against `eval/issue32/metrics.schema.json`.
 
 ## Interpretation boundary
 
