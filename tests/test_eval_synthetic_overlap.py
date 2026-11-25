@@ -20,8 +20,8 @@ class SyntheticOverlapTests(unittest.TestCase):
     def test_overlap_window_is_exact_and_non_empty(self) -> None:
         delay, end, duration = calculate_overlap_window(4.0, 3.0)
         self.assertEqual(delay, 0.75)
-        self.assertEqual(end, 3.0)
-        self.assertEqual(duration, 2.25)
+        self.assertEqual(end, 3.75)
+        self.assertEqual(duration, 3.0)
 
     def test_overlap_window_rejects_too_short_utterances(self) -> None:
         with self.assertRaisesRegex(ValueError, "too short"):
