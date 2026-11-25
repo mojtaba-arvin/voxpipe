@@ -158,7 +158,9 @@ func TestAuthenticatedUploadLifecycle(t *testing.T) {
 	created:=httptest.NewRecorder(); handler.ServeHTTP(created,create)
 	if created.Code!=http.StatusCreated { t.Fatalf("create: got %d: %s",created.Code,created.Body.String()) }
 	session:=decodeResponse(t,created); sessionID:=session["session_id"].(string)
-	if session["staging_backend"] != "local" { t.Fatalf("expected local staging backend, got %#v", session["staging_backend"]) }
+	if session["staging_backend"] != "local" {
+		t.Fatalf("expected local staging backend, got %#v", session["staging_backend"])
+	}
 
 	upload:=httptest.NewRequest(http.MethodPut,"/v1/ingestions/"+sessionID+"/content",bytes.NewReader(content))
 	upload.Header.Set("Authorization","Bearer "+token)
