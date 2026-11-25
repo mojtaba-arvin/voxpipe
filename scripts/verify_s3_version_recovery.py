@@ -20,7 +20,7 @@ def main() -> int:
         aws_secret_access_key=env["SILO_ROOT_SECRET_ACCESS_KEY"],
         config=Config(s3={"addressing_style": env.get("VOXPIPE_S3_ADDRESSING_STYLE", "path")}),
     )
-    bucket = env["VOXPIPE_S3_BUCKET"]
+    bucket = env["VOXPIPE_S3_RECOVERY_BUCKET"]
     key = f"tenant/_system/version-recovery/{uuid.uuid4()}"
     original = b"voxpipe-version-recovery-v1"
     client.put_object(Bucket=bucket, Key=key, Body=original, ServerSideEncryption="AES256")
