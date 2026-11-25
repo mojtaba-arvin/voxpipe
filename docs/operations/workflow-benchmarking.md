@@ -37,9 +37,30 @@ Each invocation creates a new isolated synthetic tenant. Preserve the JSON
 output and record PostgreSQL version, host CPU/RAM, storage class, connection
 limits, network topology and competing workload. Run each configuration at
 least three times after one warm-up; report median throughput and the range.
+For a repeatable matrix, use `scripts/benchmark_workflow_matrix.py`:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_workflow_matrix.py \
+  --workflows 1000 --workers 1,4,8,16 --repetitions 3 \
+  --confirm-disposable \
+  --host-label target-like-linux \
+  --storage-class 'document the actual volume type' \
+  --network-topology 'document the actual database path'
+```
+
+The matrix performs one warm-up and three measured runs for each worker count,
+then emits raw JSON, median throughput, min/max throughput, median p95 queue
+wait and median p95 claim-to-complete. It records PostgreSQL version,
+`max_connections`, `shared_buffers`, host platform, CPU count and available
+memory; storage class and network topology must be supplied by the operator.
+The required `--confirm-disposable` flag is an explicit acknowledgement, not
+an automatic safety check. The default total-workflow budget caps the full
+matrix at 100,000 created workflows; increase it only deliberately.
+
 Increase worker counts gradually and stop when database saturation, lock waits,
 connection exhaustion or error rates rise. A timeout or incomplete drain is
-a failed run, not a capacity result.
+a failed run, not a capacity result. Matrix rows from warm-ups and repetitions
+are retained in the disposable database.
 
 ## Interpretation
 
