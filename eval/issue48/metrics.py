@@ -82,6 +82,15 @@ def compute_metrics(
     run_by_id = {item["query_id"]: item for item in run["results"]}
     if len(run_by_id) != len(run["results"]):
         raise ValueError("run contains duplicate query IDs")
+    if set(run_by_id) != set(query_by_id):
+        raise ValueError("run query IDs must exactly match generated query IDs")
+    qrels_query_ids = {item["query_id"] for item in qrels["qrels"]}
+    if qrels_query_ids != set(query_by_id):
+        raise ValueError("qrels query IDs must exactly match generated query IDs")
+    if qrels["query_count"] != len(queries) or run["query_count"] != len(queries):
+        raise ValueError("query counts must match across queries, qrels and run")
+    if qrels["corpus_count"] != run["corpus_count"]:
+        raise ValueError("corpus counts must match across qrels and run")
 
     test_ids = {identifier for identifier, query in query_by_id.items() if query["split"] == "test"}
     if not test_ids:
