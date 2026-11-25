@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -70,6 +73,12 @@ class SizeMismatchInspector(FakeMediaInspector):
             bit_depth=metadata.bit_depth,
             channel_layout=metadata.channel_layout,
         )
+
+
+class RecordingMediaInspector(FakeMediaInspector):
+    def inspect(self, path: Path) -> MediaMetadata:
+        self.last_path = path
+        return super().inspect(path)
 
 
 class FakeDecodeValidator:
@@ -220,6 +229,57 @@ class BatchIngestionServiceTests(unittest.TestCase):
         stored = self.object_store.head(result.asset["storage"]["object_key"])
         self.assertEqual(stored.sha256, result.asset["integrity"]["digest"])
         self.assertEqual(stored.size_bytes, result.asset["media"]["size_bytes"])
+
+    def test_resume_session_reads_s3_staging_without_shared_root(self) -> None:
+        payload = b"synthetic staged audio fixture"
+        session_id = str(uuid4())
+        staging_key = f"staging/v1/{self.tenant_id}/{session_id}/source"
+        digest = hashlib.sha256(payload).hexdigest()
+        self.object_store.put(staging_key, io.BytesIO(payload), expected_sha256=digest)
+
+        now = datetime.now(timezone.utc)
+        timestamp = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        expires_at = (now + timedelta(hours=1)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        asset_id = str(uuid4())
+        session = {
+            "schema_version": "1.0.0",
+            "session_id": session_id,
+            "tenant_id": self.tenant_id,
+            "mode": "batch",
+            "source": self.source,
+            "state": "created",
+            "idempotency_key": "s3-staging-session-0001",
+            "asset_id": asset_id,
+            "staging_reference": staging_key,
+            "staging_backend": "s3_compatible",
+            "upload": {
+                "expected_size_bytes": len(payload),
+                "received_size_bytes": len(payload),
+                "expected_sha256": digest,
+            },
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "expires_at": expires_at,
+        }
+        self.repository.create_or_get_session(session)
+        inspector = RecordingMediaInspector()
+        service = IngestionService(
+            staging_root=None,
+            repository=self.repository,
+            object_store=self.object_store,
+            media_inspector=inspector,
+            decode_validator=self.decoder,
+            storage_provider="s3_compatible",
+            max_file_size_bytes=1024 * 1024,
+        )
+
+        result = service.resume_session(self.tenant_id, session_id)
+
+        self.assertEqual(result.session["state"], "completed")
+        self.assertEqual(self.object_store.head(staging_key).sha256, digest)
+        durable_key = f"tenant/{self.tenant_id}/assets/{asset_id}/source"
+        self.assertEqual(self.object_store.head(durable_key).sha256, digest)
+        self.assertFalse(inspector.last_path.exists())
 
     def test_idempotent_replay_returns_existing_asset_without_reprocessing(self) -> None:
         first = self.service.ingest(self.request())
