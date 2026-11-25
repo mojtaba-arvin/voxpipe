@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "transport": "stdio",
   "authorization": {
     "tenant_source": "verified bearer-token principal",
@@ -582,6 +582,241 @@
           },
           "offset": {
             "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "name": "search_hybrid_transcripts",
+      "description": "Search transcript segments with authenticated lexical and local-vector retrieval, deterministic rank fusion, and source/time/speaker filters.",
+      "scope": "transcript:read",
+      "method": "POST",
+      "path": "/v1/retrieval/hybrid-search",
+      "retry": "Read-only; retry transient service failures with bounded backoff.",
+      "errors": [
+        {
+          "code": "INVALID_RETRIEVAL_REQUEST",
+          "retryable": false
+        },
+        {
+          "code": "RETRIEVAL_NOT_CONFIGURED",
+          "retryable": false
+        },
+        {
+          "code": "RETRIEVAL_SERVICE_UNAVAILABLE",
+          "retryable": true
+        },
+        {
+          "code": "UNAUTHENTICATED",
+          "retryable": false
+        },
+        {
+          "code": "FORBIDDEN",
+          "retryable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "transcript_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "asset_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,34}$"
+          },
+          "speaker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "items",
+          "model",
+          "model_version"
+        ],
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "transcript_id",
+                "revision",
+                "asset_id",
+                "segment_id",
+                "start_ms",
+                "end_ms",
+                "text",
+                "language",
+                "fused_score"
+              ],
+              "properties": {
+                "transcript_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "asset_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "segment_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "start_ms": {
+                  "type": "integer"
+                },
+                "end_ms": {
+                  "type": "integer"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "speaker_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fused_score": {
+                  "type": "number"
+                },
+                "lexical_rank": {
+                  "type": "integer"
+                },
+                "semantic_rank": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "index_transcript",
+      "description": "Idempotently index one immutable transcript revision with the deployment-configured local embedding model.",
+      "scope": "transcript:index",
+      "method": "POST",
+      "path": "/v1/transcripts/{transcript_id}/index",
+      "retry": "Idempotent upsert by tenant, transcript revision, segment, model and model version.",
+      "errors": [
+        {
+          "code": "INVALID_RETRIEVAL_REQUEST",
+          "retryable": false
+        },
+        {
+          "code": "RETRIEVAL_NOT_CONFIGURED",
+          "retryable": false
+        },
+        {
+          "code": "TRANSCRIPT_NOT_FOUND",
+          "retryable": false
+        },
+        {
+          "code": "RETRIEVAL_SERVICE_UNAVAILABLE",
+          "retryable": true
+        },
+        {
+          "code": "UNAUTHENTICATED",
+          "retryable": false
+        },
+        {
+          "code": "FORBIDDEN",
+          "retryable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transcript_id"
+        ],
+        "properties": {
+          "transcript_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "transcript_id",
+          "revision",
+          "indexed_segments",
+          "model",
+          "model_version"
+        ],
+        "properties": {
+          "transcript_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "indexed_segments": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "model": {
+            "type": "string"
+          },
+          "model_version": {
+            "type": "string"
           }
         }
       }
