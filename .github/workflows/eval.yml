@@ -77,7 +77,7 @@ jobs:
               "The reference slots are template-generated, not human-reviewed; this is not a human gold set, production accuracy claim, natural-conversation evaluation, or medical-readiness claim.",
               "No real customer data or paid inference API is used.",
           ])
-          print("\\n".join(lines))
+          print("\n".join(lines))
           PY
           )"
           bash scripts/comment_issue.sh
