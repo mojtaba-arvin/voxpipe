@@ -1,0 +1,24 @@
+rule_files:
+  - /etc/prometheus/rules/voxpipe-speech.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'voxpipe_stt_operations_total{outcome="failed"}'
+        values: '0+1x20'
+      - series: 'voxpipe_stt_operations_total{outcome="succeeded"}'
+        values: '0+1x20'
+      - series: 'up{job="otel-collector"}'
+        values: '1+0x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: VoxPipeSpeechFailureRatioHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: voxpipe
+            exp_annotations:
+              summary: "VoxPipe speech failure ratio is above 5%"
+              description: "Inspect provider availability, bounded error_code dimensions, and the speech reliability runbook. Confirm adequate request volume before mitigation."

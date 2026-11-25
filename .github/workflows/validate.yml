@@ -155,3 +155,19 @@ jobs:
           PYTHONPATH: src
           VOXPIPE_TEST_POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
         run: python scripts/verify_postgres_backup_restore.py
+
+  telemetry-stack:
+    name: OpenTelemetry Collector and Prometheus integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Install optional OpenTelemetry dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-observability.txt
+      - name: Validate and exercise disposable Collector/Prometheus stack
+        run: bash scripts/verify_telemetry_stack.sh
