@@ -7,8 +7,6 @@ import os
 import unittest
 from uuid import uuid4
 
-import boto3
-
 from voxpipe.storage.factory import build_object_store
 from voxpipe.storage.ports import ObjectConflictError, ObjectNotFoundError
 
@@ -17,6 +15,8 @@ from voxpipe.storage.ports import ObjectConflictError, ObjectNotFoundError
 class S3CompatibleObjectStoreIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        import boto3
+
         cls.env = dict(os.environ)
         cls.bucket = cls.env["VOXPIPE_S3_BUCKET"]
         cls.client = boto3.client(
