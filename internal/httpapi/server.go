@@ -645,11 +645,13 @@ func sameCreateRequest(session, upload map[string]any, request CreateIngestionRe
 	sourceBytes, _ := json.Marshal(session["source"])
 	requestSourceBytes, _ := json.Marshal(sourceMap(request.Source))
 	contentType, _ := upload["content_type_hint"].(string)
+	storedBackend, _ := session["staging_backend"].(string)
+	if storedBackend == "" { storedBackend = "local" }
 	return sizeOK && digestOK && size == request.ExpectedSizeBytes &&
 		digest == strings.ToLower(request.ExpectedSHA256) &&
 		string(sourceBytes) == string(requestSourceBytes) &&
 		contentType == request.ContentTypeHint &&
-		session["staging_backend"] == stagingBackend
+		storedBackend == stagingBackend
 }
 
 func numberInt64(value any) (int64, bool) {
