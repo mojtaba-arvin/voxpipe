@@ -61,12 +61,14 @@ func (s *PostgresStore) Close() { s.pool.Close() }
 // Optional capabilities such as hybrid retrieval are checked by their own endpoints.
 func (s *PostgresStore) Ready(ctx context.Context) error {
 	if err := s.pool.Ping(ctx); err != nil { return err }
-	var schemaReady bool
-	if err := s.pool.QueryRow(ctx, `
-		SELECT to_regclass('public.ingestion_sessions') IS NOT NULL
-		   AND to_regclass('public.ingestion_jobs') IS NOT NULL
-	`).Scan(&schemaReady); err != nil { return err }
-	if !schemaReady { return fmt.Errorf("required ingestion schema is not installed") }
+	// Execute zero-row reads so readiness also verifies the application role has
+	// the privileges required by core API queries, not merely that relations exist.
+	for _, statement := range []string{
+		"SELECT 1 FROM public.ingestion_sessions LIMIT 0",
+		"SELECT 1 FROM public.ingestion_jobs LIMIT 0",
+	} {
+		if _, err := s.pool.Exec(ctx, statement); err != nil { return err }
+	}
 	return nil
 }
 
