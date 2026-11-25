@@ -33,6 +33,9 @@ class ProviderCapabilityRegistryTests(unittest.TestCase):
         remote = self.capability(
             provider="remote", model="hosted-model", model_version="v2",
             local=False, estimated_cost_per_minute_usd=0.02,
+            data_egress_allowed=True,
+            data_handling=frozenset({"audio-egress", "transcript-egress"}),
+            deployment_requirements=frozenset({"api-key", "network-egress"}),
             features=frozenset({"word_timestamps", "diarization"}),
         )
         registry = ProviderCapabilityRegistry([remote, local])
@@ -57,6 +60,52 @@ class ProviderCapabilityRegistryTests(unittest.TestCase):
         registry = ProviderCapabilityRegistry([unknown])
         self.assertEqual(registry.find(audio_duration_ms=60_000), ())
         self.assertEqual(registry.find(audio_bytes=1024), ())
+
+    def test_remote_capabilities_require_explicit_egress_metadata(self):
+        with self.assertRaisesRegex(ValueError, "data_egress_allowed"):
+            self.capability(local=False, data_egress_allowed="yes")
+        with self.assertRaisesRegex(ValueError, "explicit data_handling"):
+            self.capability(
+                local=False, data_egress_allowed=True,
+                deployment_requirements=frozenset({"api-key"}),
+            )
+        remote = self.capability(
+            local=False, data_egress_allowed=True,
+            data_handling=frozenset({"audio-egress"}),
+            deployment_requirements=frozenset({"api-key"}),
+        )
+        registry = ProviderCapabilityRegistry([remote])
+        self.assertEqual(registry.find(require_local=False), (remote,))
+
+    def test_remote_egress_is_not_discovered_without_operator_metadata(self):
+        remote = self.capability(local=False, data_egress_allowed=False)
+        registry = ProviderCapabilityRegistry([remote])
+        self.assertEqual(registry.find(require_local=False), ())
+
+    def test_deprecated_capabilities_are_hidden_unless_explicitly_requested(self):
+        retired = self.capability(
+            deprecated=True,
+            deprecation_reason="Provider version is retired",
+            replacement=("local", "whisper-small", "2026-02"),
+            rollback_model_version="2026-01",
+        )
+        registry = ProviderCapabilityRegistry([retired])
+        self.assertEqual(registry.find(), ())
+        self.assertEqual(registry.find(include_deprecated=True), (retired,))
+        self.assertEqual(retired.replacement, ("local", "whisper-small", "2026-02"))
+        self.assertEqual(retired.rollback_model_version, "2026-01")
+
+    def test_rejects_incomplete_deprecation_and_rollback_metadata(self):
+        with self.assertRaisesRegex(ValueError, "deprecation_reason"):
+            self.capability(deprecated=True)
+        with self.assertRaisesRegex(ValueError, "only for deprecated"):
+            self.capability(deprecation_reason="retired")
+        with self.assertRaisesRegex(ValueError, "replacement"):
+            self.capability(replacement=["local", "model", "v2"])
+        with self.assertRaisesRegex(ValueError, "same capability"):
+            self.capability(replacement=("local", "whisper-small", "2026-01"))
+        with self.assertRaisesRegex(ValueError, "rollback_model_version"):
+            self.capability(rollback_model_version=" " )
 
     def test_rejects_non_frozenset_capability_claims(self):
         with self.assertRaisesRegex(ValueError, "supported_languages"):

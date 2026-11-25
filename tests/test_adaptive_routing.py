@@ -8,10 +8,18 @@ from voxpipe.speech.routing import (AdaptiveModelRouter, ModelQualityEvidence, N
 NOW = datetime(2026, 11, 22, 12, tzinfo=timezone.utc)
 
 
-def capability(provider, model, version, *, local=True, cost=0.0, languages=frozenset({"fa-IR"}), features=frozenset({"transcription"})):
-    return ProviderCapability(provider, model, version, languages, features, local,
+def capability(provider, model, version, *, local=True, cost=0.0,
+               data_egress_allowed=False, data_handling=frozenset(),
+               deployment_requirements=frozenset(),
+               languages=frozenset({"fa-IR"}), features=frozenset({"transcription"})):
+    return ProviderCapability(
+        provider, model, version, languages, features, local,
         max_audio_duration_ms=600_000, max_audio_bytes=10_000_000,
-        estimated_cost_per_minute_usd=cost)
+        estimated_cost_per_minute_usd=cost,
+        data_egress_allowed=data_egress_allowed,
+        data_handling=data_handling,
+        deployment_requirements=deployment_requirements,
+    )
 
 
 def evidence(provider, model, version, *, quality=.9, latency=100, available=True, age=60):
@@ -51,7 +59,12 @@ class AdaptiveRoutingTests(unittest.TestCase):
             AdaptiveModelRouter(self.registry, low).route(self.policy, language="fa-IR", now=NOW)
 
     def test_allowlist_privacy_cost_and_open_circuit_are_enforced(self):
-        remote = capability("remote", "hosted", "v1", local=False, cost=.01)
+        remote = capability(
+            "remote", "hosted", "v1", local=False, cost=.01,
+            data_egress_allowed=True,
+            data_handling=frozenset({"audio-egress", "transcript-egress"}),
+            deployment_requirements=frozenset({"api-key", "network-egress"}),
+        )
         registry = ProviderCapabilityRegistry([self.local_a, remote])
         ev = self.evidence + [evidence("remote", "hosted", "v1", quality=.99, latency=10)]
         with self.assertRaises(NoEligibleModel):
