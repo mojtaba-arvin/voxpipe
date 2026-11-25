@@ -91,7 +91,8 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	if encryption == "" {
 		encryption = "AES256"
 	}
-	endpoint, accessKey, secretKey := env("VOXPIPE_S3_ENDPOINT_URL"), env("VOXPIPE_S3_ACCESS_KEY_ID"), env("VOXPIPE_S3_SECRET_ACCESS_KEY")
+	endpoint := env("VOXPIPE_S3_ENDPOINT_URL")
+	stagingAccessKey, stagingSecretKey := env("VOXPIPE_S3_STAGING_ACCESS_KEY_ID"), env("VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY")
 	addressingStyle := strings.ToLower(env("VOXPIPE_S3_ADDRESSING_STYLE"))
 	if addressingStyle == "" {
 		addressingStyle = "path"
@@ -99,8 +100,8 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 	if bucket == "" || region == "" {
 		return nil, fmt.Errorf("VOXPIPE_S3_BUCKET and VOXPIPE_S3_REGION are required")
 	}
-	if (accessKey == "") != (secretKey == "") {
-		return nil, fmt.Errorf("VOXPIPE_S3_ACCESS_KEY_ID and VOXPIPE_S3_SECRET_ACCESS_KEY must be configured together")
+	if (stagingAccessKey == "") != (stagingSecretKey == "") {
+		return nil, fmt.Errorf("VOXPIPE_S3_STAGING_ACCESS_KEY_ID and VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY must be configured together")
 	}
 	if addressingStyle != "path" && addressingStyle != "virtual" {
 		return nil, fmt.Errorf("VOXPIPE_S3_ADDRESSING_STYLE must be path or virtual")
@@ -147,8 +148,8 @@ func NewS3StagerFromEnv(ctx context.Context, maxSize int64) (*S3Stager, error) {
 		awsconfig.WithRetryMaxAttempts(maxAttempts),
 		awsconfig.WithHTTPClient(httpClient),
 	}
-	if accessKey != "" {
-		options = append(options, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")))
+	if stagingAccessKey != "" {
+		options = append(options, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(stagingAccessKey, stagingSecretKey, "")))
 	}
 	configuration, err := awsconfig.LoadDefaultConfig(ctx, options...)
 	if err != nil {

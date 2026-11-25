@@ -40,6 +40,15 @@ The storage adapter returns a content digest; the asset metadata stores that dig
 Deletion is one operation in a larger asset lifecycle. The application layer must coordinate deletion of object bytes, database metadata, transcripts, embeddings, caches, and provider copies. A local object delete does not imply that derived data has been deleted.
 
 
+## Runtime credential separation
+
+The Go API and Python worker must not share one long-lived S3 credential pair:
+
+- Go API staging credentials: `VOXPIPE_S3_STAGING_ACCESS_KEY_ID` and `VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY`. Configure this pair only in the API process. If omitted, the Go SDK uses that process's workload/default credential chain; it never falls back to the worker pair.
+- Python worker durable-object credentials: `VOXPIPE_S3_ACCESS_KEY_ID` and `VOXPIPE_S3_SECRET_ACCESS_KEY`. Configure this pair only in the worker process, or use the worker's own workload/default credential chain.
+
+Reject half-configured static pairs. The API identity should be restricted to `staging/v1/*`; the worker identity needs staging read/cleanup and durable `tenant/*` object operations. Bucket lifecycle, versioning and policy administration belong to a separate provisioning identity, not either runtime process. See [ADR-0046](../decisions/ADR-0046-s3-deployment-recovery.md).
+
 ## S3-compatible adapter
 
 `S3CompatibleObjectStore` implements the same opaque-key port for shared object bytes. It is optional and never selected implicitly:

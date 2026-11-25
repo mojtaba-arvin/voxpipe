@@ -14,6 +14,10 @@ import urllib.error
 import urllib.request
 import wave
 
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
+
 
 def sample_audio() -> bytes:
     sample_rate = 16_000
@@ -59,6 +63,41 @@ def api_request(
     return json.loads(raw) if raw else {}
 
 
+
+def verify_api_identity_cannot_access_durable(
+    tenant_id: str, session_id: str, asset_id: str
+) -> None:
+    env = os.environ
+    client = boto3.client(
+        "s3",
+        endpoint_url=env["VOXPIPE_S3_ENDPOINT_URL"],
+        region_name=env["VOXPIPE_S3_REGION"],
+        aws_access_key_id=env["VOXPIPE_S3_STAGING_ACCESS_KEY_ID"],
+        aws_secret_access_key=env["VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY"],
+        config=Config(s3={"addressing_style": env.get("VOXPIPE_S3_ADDRESSING_STYLE", "path")}),
+    )
+    bucket = env["VOXPIPE_S3_BUCKET"]
+    staging_key = f"staging/v1/{tenant_id}/{session_id}/source"
+    durable_key = f"tenant/{tenant_id}/assets/{asset_id}/source"
+    client.head_object(Bucket=bucket, Key=staging_key)
+    for operation in (client.head_object, client.delete_object):
+        try:
+            operation(Bucket=bucket, Key=durable_key)
+        except ClientError as error:
+            code = error.response.get("Error", {}).get("Code")
+            if code not in {"AccessDenied", "403"}:
+                raise
+        else:
+            raise RuntimeError("API staging identity accessed a durable tenant object")
+    try:
+        client.put_object(Bucket=bucket, Key=durable_key, Body=b"")
+    except ClientError as error:
+        code = error.response.get("Error", {}).get("Code")
+        if code not in {"AccessDenied", "403"}:
+            raise
+    else:
+        raise RuntimeError("API staging identity wrote a durable tenant object")
+
 def main() -> int:
     token = os.environ["VOXPIPE_API_TOKEN"]
     tenant_id = os.environ["TENANT_ID"]
@@ -100,6 +139,7 @@ def main() -> int:
             asset_id = last_status.get("asset_id")
             if not asset_id:
                 raise RuntimeError("completed ingestion did not return an asset_id")
+            verify_api_identity_cannot_access_durable(tenant_id, session_id, asset_id)
             print(json.dumps({
                 "tenant_id": tenant_id,
                 "session_id": session_id,

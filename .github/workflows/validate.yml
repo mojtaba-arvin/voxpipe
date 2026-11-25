@@ -233,6 +233,8 @@ jobs:
           VOXPIPE_S3_ENDPOINT_URL: http://127.0.0.1:9000
           VOXPIPE_S3_ACCESS_KEY_ID: voxpipe-ci
           VOXPIPE_S3_SECRET_ACCESS_KEY: voxpipe-ci-secret-password
+          VOXPIPE_S3_STAGING_ACCESS_KEY_ID: voxpipe-ci
+          VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY: voxpipe-ci-secret-password
           VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: AES256
           VOXPIPE_S3_ADDRESSING_STYLE: path
           VOXPIPE_S3_MAX_ATTEMPTS: "3"
@@ -247,6 +249,8 @@ jobs:
           VOXPIPE_S3_ENDPOINT_URL: http://127.0.0.1:9000
           VOXPIPE_S3_ACCESS_KEY_ID: voxpipe-ci
           VOXPIPE_S3_SECRET_ACCESS_KEY: voxpipe-ci-secret-password
+          VOXPIPE_S3_STAGING_ACCESS_KEY_ID: voxpipe-ci
+          VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY: voxpipe-ci-secret-password
           VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: AES256
           VOXPIPE_S3_ADDRESSING_STYLE: path
           VOXPIPE_S3_MAX_ATTEMPTS: "3"
@@ -276,8 +280,35 @@ jobs:
         run: python scripts/prepare_s3_e2e_env.py
       - name: Validate isolated deployment Compose configuration
         run: docker compose -f compose.s3-e2e.yaml config --quiet
+      - name: Start PostgreSQL and disposable Silo for identity provisioning
+        run: |
+          docker compose -f compose.s3-e2e.yaml up --build --detach postgres bootstrap silo silo-init
+          docker compose -f compose.s3-e2e.yaml wait bootstrap silo-init
+      - name: Provision distinct least-privilege S3 runtime identities
+        env:
+          SILO_ROOT_ACCESS_KEY_ID: ${{ env.SILO_ROOT_ACCESS_KEY_ID }}
+          SILO_ROOT_SECRET_ACCESS_KEY: ${{ env.SILO_ROOT_SECRET_ACCESS_KEY }}
+          VOXPIPE_S3_STAGING_ACCESS_KEY_ID: ${{ env.VOXPIPE_S3_STAGING_ACCESS_KEY_ID }}
+          VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY: ${{ env.VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY }}
+          VOXPIPE_S3_ACCESS_KEY_ID: ${{ env.VOXPIPE_S3_ACCESS_KEY_ID }}
+          VOXPIPE_S3_SECRET_ACCESS_KEY: ${{ env.VOXPIPE_S3_SECRET_ACCESS_KEY }}
+        run: |
+          mc_image=docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
+          mc_host="http://$SILO_ROOT_ACCESS_KEY_ID:$SILO_ROOT_SECRET_ACCESS_KEY@127.0.0.1:9000"
+          run_mc() {
+            docker run --rm --network host --entrypoint mc \
+              -e "MC_HOST_local=$mc_host" \
+              -v "$GITHUB_WORKSPACE/deploy/s3/policies:/policies:ro" \
+              "$mc_image" "$@"
+          }
+          run_mc admin policy create local voxpipe-api-staging /policies/api-staging.json
+          run_mc admin policy create local voxpipe-worker-storage /policies/worker-storage.json
+          run_mc admin user add local "$VOXPIPE_S3_STAGING_ACCESS_KEY_ID" "$VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY"
+          run_mc admin user add local "$VOXPIPE_S3_ACCESS_KEY_ID" "$VOXPIPE_S3_SECRET_ACCESS_KEY"
+          run_mc admin policy attach local voxpipe-api-staging --user "$VOXPIPE_S3_STAGING_ACCESS_KEY_ID"
+          run_mc admin policy attach local voxpipe-worker-storage --user "$VOXPIPE_S3_ACCESS_KEY_ID"
       - name: Start Go API and Python worker without shared staging storage
-        run: docker compose -f compose.s3-e2e.yaml up --build --detach --wait --wait-timeout 180
+        run: docker compose -f compose.s3-e2e.yaml up --build --detach --wait --wait-timeout 180 api worker
       - name: Upload and process generated audio through Go API and Python queue worker
         id: s3-deployment-e2e
         env:
@@ -285,6 +316,13 @@ jobs:
           VOXPIPE_API_URL: http://127.0.0.1:8080
           VOXPIPE_API_TOKEN: ${{ env.VOXPIPE_API_TOKEN }}
           TENANT_ID: ${{ env.TENANT_ID }}
+          VOXPIPE_S3_BUCKET: ${{ env.VOXPIPE_S3_BUCKET }}
+          VOXPIPE_S3_REGION: ${{ env.VOXPIPE_S3_REGION }}
+          VOXPIPE_S3_ENDPOINT_URL: ${{ env.VOXPIPE_S3_ENDPOINT_URL }}
+          VOXPIPE_S3_STAGING_ACCESS_KEY_ID: ${{ env.VOXPIPE_S3_STAGING_ACCESS_KEY_ID }}
+          VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY: ${{ env.VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY }}
+          VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: ${{ env.VOXPIPE_S3_SERVER_SIDE_ENCRYPTION }}
+          VOXPIPE_S3_ADDRESSING_STYLE: ${{ env.VOXPIPE_S3_ADDRESSING_STYLE }}
         run: |
           python scripts/verify_s3_staging_deployment.py > /tmp/voxpipe-s3-deployment-e2e.json
           cat /tmp/voxpipe-s3-deployment-e2e.json
