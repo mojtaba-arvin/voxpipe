@@ -1069,7 +1069,7 @@
       "title": "Add API liveness/readiness probes and gate local worker startup",
       "phase": 8,
       "priority": 42,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0039",
         "VP-0041"
@@ -1082,7 +1082,8 @@
         "Unit and PostgreSQL integration tests cover healthy, unavailable, and schema-ready behavior; operations and README documentation explain the limits."
       ],
       "evidence": [
-        "Implementation is on feat/vp-0042-health-readiness; awaiting exact-head GitHub Actions validation before completion."
+        "Implementation is on feat/vp-0042-health-readiness; awaiting exact-head GitHub Actions validation before completion.",
+        "2026-11-25: PR #148 exact-head CI run 45606622379 passed all six jobs on edf3758ed8ae2a9775deef3a05ea23a2421f369d. Python/PostgreSQL validation passed 474 tests; Go API/PostgreSQL readiness tests passed; Docker Compose quickstart confirmed API Healthy before worker startup and completed the sample ingestion. No external provider or paid inference was enabled."
       ],
       "blocked_reason": null
     }
