@@ -519,6 +519,28 @@ func (s *PostgresStore) GetOperationalSummary(ctx context.Context, tenantID stri
 		&queuePending,&pendingDepthAge,&activeLeases,&expiredLeases,&deadLetters,
 	)
 	if err != nil { return nil, err }
+
+	// Worker rows are already tenant-filtered by this transaction's forced-RLS context.
+	// Only bounded counts and ages leave the store; process and tenant identifiers stay private.
+	var workersActive, workersStale, workersIdle, workersBusy, workersStaleBusy int64
+	var workersOldestBusySeconds float64
+	err = tx.QueryRow(ctx, `
+		SELECT
+			count(*) FILTER (WHERE state IN ('idle','busy') AND heartbeat_at >= now() - interval '45 seconds'),
+			count(*) FILTER (WHERE state IN ('idle','busy') AND heartbeat_at < now() - interval '45 seconds'),
+			count(*) FILTER (WHERE state = 'idle' AND heartbeat_at >= now() - interval '45 seconds'),
+			count(*) FILTER (WHERE state = 'busy' AND heartbeat_at >= now() - interval '45 seconds'),
+			count(*) FILTER (WHERE state = 'busy' AND heartbeat_at < now() - interval '45 seconds'),
+			COALESCE(max(extract(epoch FROM (now() - last_job_started_at)))
+				FILTER (WHERE state = 'busy' AND last_job_started_at IS NOT NULL), 0)
+		FROM ingestion_worker_heartbeats
+		WHERE tenant_id = $1::uuid
+		  AND heartbeat_at >= now() - interval '7 days'
+	`, tenantID).Scan(
+		&workersActive, &workersStale, &workersIdle, &workersBusy,
+		&workersStaleBusy, &workersOldestBusySeconds,
+	)
+	if err != nil { return nil, err }
 	if err := tx.Commit(ctx); err != nil { return nil, err }
 	return map[string]any{
 		"window_hours": windowHours,
@@ -546,6 +568,16 @@ func (s *PostgresStore) GetOperationalSummary(ctx context.Context, tenantID stri
 			"active_leases":activeLeases,
 			"expired_leases":expiredLeases,
 			"dead_letter_count":deadLetters,
+		},
+		"workers": map[string]any{
+			"active": workersActive,
+			"stale": workersStale,
+			"idle": workersIdle,
+			"busy": workersBusy,
+			"stale_busy": workersStaleBusy,
+			"oldest_busy_seconds": roundMetric(workersOldestBusySeconds),
+			"heartbeat_interval_seconds": 15,
+			"stale_after_seconds": 45,
 		},
 	}, nil
 }
