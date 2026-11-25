@@ -69,7 +69,7 @@ class StorageFactoryTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "KMS_KEY_ID"):
             build_object_store(base, local_root=None, local_root_env="VOXPIPE_OBJECT_ROOT", max_object_size_bytes=1024)
-        base["VOXPIPE_S3_KMS_KEY_ID"] = "alias/voxpipe"
+        base["VOXPIPE_S3_KMS_KEY_ID"] = "key-id-123"
         base["VOXPIPE_S3_ACCESS_KEY_ID"] = "only-half"
         with self.assertRaisesRegex(ValueError, "must be configured together"):
             build_object_store(base, local_root=None, local_root_env="VOXPIPE_OBJECT_ROOT", max_object_size_bytes=1024)
