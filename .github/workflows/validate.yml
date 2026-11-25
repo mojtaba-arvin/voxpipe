@@ -203,21 +203,21 @@ jobs:
           python-version-file: ".python-version"
       - name: Install optional S3 SDK
         run: python -m pip install --disable-pip-version-check -r requirements-s3.txt
-      - name: Start disposable MinIO with server-side encryption
+      - name: Start disposable Silo with server-side encryption
         run: |
-          docker run --detach --name voxpipe-minio \
+          docker run --detach --name voxpipe-silo \
             --publish 9000:9000 \
             --env MINIO_ROOT_USER=voxpipe-ci \
             --env MINIO_ROOT_PASSWORD=voxpipe-ci-secret-password \
             --env MINIO_KMS_SECRET_KEY=voxpipe-ci:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= \
-            minio/minio:RELEASE.2025-02-07T23-21-09Z server /data
+            docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z server /data
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:9000/minio/health/ready >/dev/null; then
               exit 0
             fi
             sleep 2
           done
-          docker logs voxpipe-minio
+          docker logs voxpipe-silo
           exit 1
       - name: Verify shared S3-compatible object lifecycle
         env:
@@ -231,6 +231,6 @@ jobs:
           VOXPIPE_S3_SERVER_SIDE_ENCRYPTION: AES256
           VOXPIPE_S3_ADDRESSING_STYLE: path
         run: python -m unittest discover -s tests -p 'test_s3_storage_integration.py' -v
-      - name: Stop disposable MinIO
+      - name: Stop disposable Silo
         if: always()
-        run: docker rm -f voxpipe-minio || true
+        run: docker rm -f voxpipe-silo || true
