@@ -54,7 +54,7 @@ def load_corpus(path: str | Path | None = None) -> list[dict[str, Any]]:
                 passage = json.loads(raw_line)
             except json.JSONDecodeError as exc:
                 raise ValueError(f"invalid JSON on corpus line {line_number}: {exc.msg}") from exc
-            errors = sorted(validator.iter_errors(passage), key=lambda error: list(error.path))
+            errors = sorted(validator.iter_errors(passage), key=lambda error: tuple(str(part) for part in error.path))
             if errors:
                 error = errors[0]
                 location = ".".join(str(part) for part in error.path) or "<root>"
