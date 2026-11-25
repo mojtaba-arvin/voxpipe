@@ -1,6 +1,6 @@
 # MCP Capability Contract
 
-Contract version: 1.2.0. Transport: stdio
+Contract version: 1.2.0. Transport: stdio.
 
 The MCP server is a thin authenticated adapter over the Go HTTP API. Tenant identity is derived from the bearer token; callers cannot supply tenant IDs.
 
