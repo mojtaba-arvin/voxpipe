@@ -903,7 +903,8 @@
         "2026-11-22: added a release-candidate workflow that verifies tag ancestry on main, runs independent Python and Go validation, builds Linux amd64/arm64 Go API binaries and a source archive, generates a CycloneDX 1.6 dependency SBOM from Go/Python inventories, and publishes checksummed artifacts. No production deployment or canary is attempted.",
         "2026-11-24 audit correction: PR #45 was merged on 2026-11-23 (merge commit 9cd629f97e70cbfd5885d5f90c751bbd787f07df); the earlier wording that described it as open/unmerged was stale. Build-only release artifacts and SBOM are in main; signing, deployment, canary and rollback gates remain open.",
         "2026-11-24: preparing a pinned actions/attest v4.2.2 GitHub artifact provenance step for all release-candidate outputs, including binaries, source archive, SBOM, manifest and checksum file. This is not counted as complete until exact-head CI and a real release workflow run confirm successful attestation.",
-        "2026-11-24: PR #82 merged as commit ce0c815af44052ab2ae108e0e925fdad5b520ecb. The workflow pins actions/attest v4.2.2 by immutable commit and attests all files in dist/ (binaries, source archive, SBOM, manifest, inventories and checksums); least additional permissions are id-token:write and attestations:write. Exact-head PR CI run 45332518545 passed both Python/PostgreSQL and Go/PostgreSQL. Actual tag/manual release workflow execution is still required to prove the attestation service path."
+        "2026-11-24: PR #82 merged as commit ce0c815af44052ab2ae108e0e925fdad5b520ecb. The workflow pins actions/attest v4.2.2 by immutable commit and attests all files in dist/ (binaries, source archive, SBOM, manifest, inventories and checksums); least additional permissions are id-token:write and attestations:write. Exact-head PR CI run 45332518545 passed both Python/PostgreSQL and Go/PostgreSQL. Actual tag/manual release workflow execution is still required to prove the attestation service path.",
+        "2026-11-25: first one-shot reusable release proof run 45563179846 exposed that the release workflow prepared the disposable database before setting PYTHONPATH=src. Fixing the workflow environment so repository scripts import the package before integration validation."
       ],
       "blocked_reason": "Build-only release-candidate workflow, Linux amd64/arm64 artifacts, CycloneDX SBOM, release manifest, checksums and GitHub artifact attestation are implemented. The remaining repository gate is a one-shot main-branch GitHub Actions execution of the reusable release-candidate workflow and verification of its artifact/provenance output. Production canary, customer traffic and live rollback are explicitly outside repository scope."
     },
@@ -912,13 +913,13 @@
       "title": "Add bounded autonomous maintenance workflows",
       "phase": 6,
       "priority": 37,
-      "status": "done",
+      "status": "in_progress",
       "depends_on": [],
       "acceptance_criteria": [
-        "Run grouped dependency updates and vulnerability checks through PR/scheduled GitHub Actions workflows; do not push remediation directly to main or auto-merge.",
-        "Protect main with PR-only changes, strict required Python/Go checks, review-thread resolution, no deletion/force-push and no bypass; require recorded human approval for sensitive durable workflow actions before they resume.",
-        "Keep workflow permissions least-privilege, do not expose secrets to untrusted pull-request code, and keep paid providers and third-party autonomous agents disabled.",
-        "Test SIGTERM/SIGINT safe-stop, durable workflow cancellation/lease fencing, approval actor audit fields and the documented PR-based revert path."
+        "Automate only allowlisted dependency, security and regression checks through PR-based GitHub Actions workflows.",
+        "Enforce high-impact changes through protected-branch required checks and human review; never auto-approve or auto-merge them.",
+        "Keep workflow permissions least-privilege, avoid exposing secrets to untrusted code, and document spend and blast-radius limits.",
+        "Test safe-stop and rollback/revert behavior with deterministic repository/CI tests and an auditable PR trail."
       ],
       "evidence": [
         "2026-11-22: added grouped weekly Dependabot updates for Go, Python and GitHub Actions; added scheduled/PR-triggered pip-audit and govulncheck workflows with pinned tool versions and read-only permissions; documented no-auto-merge, human approval for high-impact changes, PR-only remediation, free-tier/no-paid-inference and rollback-by-revert policy.",
@@ -931,11 +932,9 @@
         "2026-11-24 audit correction: PR #46 was merged on 2026-11-23 (merge commit b11396f671546f3dca36f864c7f10f7612f3116b); the earlier wording that described its foundation as an open PR was stale. Dependency/security automation is in main; broader autonomous maintenance controls remain incomplete.",
         "2026-11-24: merged dependency-maintenance PRs #54, #55, #56, #57, #58, #60 and #61 after exact-head CI passed. These cover pinned GitHub Actions updates (checkout/setup-python, setup-go, cache and upload-artifact) plus soundfile, webrtcvad-wheels and jsonschema floors. PR #84 then merged pgx v5.13.0/puddle v2.2.3 and updated the dependency-policy assertion; its exact-head Python/PostgreSQL, Go/PostgreSQL, pip-audit and govulncheck gates all passed.",
         "2026-11-24: PR #86 is the single current mainline candidate for the coupled fsspec 2026.9.0 and huggingface_hub 2.4.0 floors across benchmark/SpeechBrain/VAD sets. Dependency audit demonstrated that fsspec 2026.9.0 does not resolve with the previous huggingface_hub<1 constraint. Original Dependabot PRs #59 and #62 were closed as superseded; PR #86 exact-head runtime and security checks are pending.",
-        "2026-11-24: PR #86 merged as a6d11279ace1bb590ac20f2d1b0afb8444cc3398. Updated fsspec>=2026.9.0,<2027 and compatible huggingface_hub>=2.4.0,<3 constraints across optional benchmark/LID/VAD requirement sets; pinned benchmark set now uses datasets==5.2.0, fsspec==2026.9.0 and huggingface-hub==2.4.0. Exact-head Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry smoke, Python dependency audit, Go vulnerability audit and FLEURS calibration all passed (FLEURS run 45367567174).",
-        "2026-11-25: GitHub ruleset 'protect main' (ID 27601640) is active: pull requests required, strict Python/PostgreSQL and Go/PostgreSQL checks required, review threads must be resolved, branch deletion and non-fast-forward updates denied, and no bypass actors configured. Required approving review count is 0; the repository's human-approval gate is the durable workflow approval mechanism, not a mandatory PR review approval.",
-        "2026-11-25: durable workflow approval stores approval_actor_id and approval_decided_at; integration tests cover pause, approval/resume, rejection and cancellation fencing. Added entrypoint tests for both SIGTERM and SIGINT safe-stop. Maintenance remains PR-only and revert is performed through a new auditable PR; no automatic agent or auto-merge is enabled."
+        "2026-11-24: PR #86 merged as a6d11279ace1bb590ac20f2d1b0afb8444cc3398. Updated fsspec>=2026.9.0,<2027 and compatible huggingface_hub>=2.4.0,<3 constraints across optional benchmark/LID/VAD requirement sets; pinned benchmark set now uses datasets==5.2.0, fsspec==2026.9.0 and huggingface-hub==2.4.0. Exact-head Python/PostgreSQL, Go/PostgreSQL, OpenTelemetry smoke, Python dependency audit, Go vulnerability audit and FLEURS calibration all passed (FLEURS run 45367567174)."
       ],
-      "blocked_reason": null
+      "blocked_reason": "Dependency/security automation and PR-only remediation are merged. Remaining repository acceptance is verification of protected-branch review/check requirements and deterministic safe-stop/rollback tests. Production deployment controls and any paid/third-party autonomous agent remain out of scope."
     }
   ]
 }
