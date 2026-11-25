@@ -26,7 +26,7 @@ def main() -> int:
     client.put_object(Bucket=bucket, Key=key, Body=original, ServerSideEncryption="AES256")
     versions = client.list_object_versions(Bucket=bucket, Prefix=key)
     version = next(
-        (item for item in versions.get("Versions", []) if item.get("Key") == key and not item.get("IsLatest")),
+        (item for item in versions.get("Versions", []) if item.get("Key") == key),
         None,
     )
     if version is None:
