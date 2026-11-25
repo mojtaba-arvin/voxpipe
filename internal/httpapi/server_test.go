@@ -599,7 +599,6 @@ func TestOperationalSummaryRequiresDedicatedScopeAndReturnsOnlyAggregates(t *tes
 		"jobs":map[string]any{"total":4,"retry_count":2,"processing_failure_count":1},
 		"queue":map[string]any{"pending_depth":1,"oldest_pending_age_seconds":12.5},
 		"workers":map[string]any{"active":2,"stale":1,"idle":1,"busy":1,"stale_busy":1,"oldest_busy_seconds":180.0},
-		"workers":map[string]any{"active":2,"stale":1,"idle":1,"busy":1,"stale_busy":1,"oldest_busy_seconds":180.0},
 	}
 	response := request(server.Handler(), http.MethodGet, "/v1/operations/ingestion/summary?window_hours=12", token, nil)
 	if response.Code != http.StatusOK { t.Fatalf("summary failed: %d %s", response.Code, response.Body.String()) }
