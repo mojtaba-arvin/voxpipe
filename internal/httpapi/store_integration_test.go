@@ -213,3 +213,74 @@ func TestPostgresStoreUploadLifecycle(t *testing.T) {
 	cancelled,err:=store.GetSession(ctx,tenantID,sessionID)
 	if err!=nil || cancelled["state"]!="cancelled" { t.Fatalf("session was not cancelled: %#v %v",cancelled,err) }
 }
+
+
+func TestPostgresStoreOperationalSummaryIsTenantScopedAndAggregateOnly(t *testing.T) {
+	dsn := os.Getenv("VOXPIPE_TEST_POSTGRES_APP_DSN")
+	if dsn == "" { t.Skip("PostgreSQL application DSN is not configured") }
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	store, err := NewPostgresStore(ctx, dsn)
+	if err != nil { t.Fatal(err) }
+	defer store.Close()
+	tenant, err := newUUID(); if err != nil { t.Fatal(err) }
+	otherTenant, err := newUUID(); if err != nil { t.Fatal(err) }
+
+	insert := func(tenantID, state string, attempts int, lastError string, lease bool, started bool) {
+		t.Helper()
+		sessionID, err := newUUID(); if err != nil { t.Fatal(err) }
+		jobID, err := newUUID(); if err != nil { t.Fatal(err) }
+		tx, err := store.beginTenant(ctx, tenantID); if err != nil { t.Fatal(err) }
+		defer tx.Rollback(ctx)
+		_, err = tx.Exec(ctx, "INSERT INTO ingestion_sessions (session_id,tenant_id,idempotency_key,state,payload,updated_at) VALUES ($1::uuid,$2::uuid,$3,$4,'{}'::jsonb,now()-interval '1 hour')",
+			sessionID,tenantID,"ops-summary-"+jobID,"queued")
+		if err != nil { t.Fatal(err) }
+		var leaseOwner any
+		var leaseExpiry any
+		if lease {
+			owner, err := newUUID(); if err != nil { t.Fatal(err) }
+			leaseOwner, leaseExpiry = owner, time.Now().UTC().Add(time.Hour)
+		}
+		var startedAt any
+		if started { startedAt = time.Now().UTC().Add(-10*time.Minute) }
+		_, err = tx.Exec(ctx, "INSERT INTO ingestion_jobs (job_id,tenant_id,session_id,state,attempts,max_attempts,lease_owner,lease_expires_at,last_error_code,started_at,created_at,updated_at) VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,5,$6,$7,$8,$9,now()-interval '2 hours',now()-interval '5 minutes')",
+			jobID,tenantID,sessionID,state,attempts,leaseOwner,leaseExpiry,nullIfEmpty(lastError),startedAt)
+		if err != nil { t.Fatal(err) }
+		if err := tx.Commit(ctx); err != nil { t.Fatal(err) }
+	}
+	insert(tenant,"pending",0,"",false,false)
+	insert(tenant,"leased",1,"",true,true)
+	insert(tenant,"completed",2,"",false,true)
+	insert(tenant,"dead",3,"STT_FAILED",false,true)
+	insert(otherTenant,"pending",0,"",false,false)
+
+	summary, err := store.GetOperationalSummary(ctx,tenant,24)
+	if err != nil { t.Fatal(err) }
+	ingestions := summary["ingestions"].(map[string]any)
+	jobs := summary["jobs"].(map[string]any)
+	queue := summary["queue"].(map[string]any)
+	if ingestions["total"] != int64(4) || jobs["total"] != int64(4) {
+		t.Fatalf("summary must include only four rows from the authenticated tenant: %#v",summary)
+	}
+	if jobs["retry_count"] != int64(3) || jobs["processing_failure_count"] != int64(1) {
+		t.Fatalf("retry/failure aggregates are incorrect: %#v",jobs)
+	}
+	if queue["pending_depth"] != int64(1) || queue["active_leases"] != int64(1) || queue["dead_letter_count"] != int64(1) {
+		t.Fatalf("queue aggregates are incorrect: %#v",queue)
+	}
+	if _, exists := jobs["last_error_code"]; exists { t.Fatal("raw error codes must not be returned") }
+	if _, exists := summary["tenant_id"]; exists { t.Fatal("tenant identity must not be echoed") }
+	other, err := store.GetOperationalSummary(ctx,otherTenant,24)
+	if err != nil { t.Fatal(err) }
+	if other["jobs"].(map[string]any)["total"] != int64(1) {
+		t.Fatalf("cross-tenant aggregate leaked rows: %#v",other)
+	}
+	if _, err := store.GetOperationalSummary(ctx,tenant,169); err == nil {
+		t.Fatal("summary window above 168 hours must be rejected")
+	}
+}
+
+func nullIfEmpty(value string) any {
+	if value == "" { return nil }
+	return value
+}

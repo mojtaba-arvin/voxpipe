@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -37,6 +38,7 @@ type Store interface {
 	GetAsset(context.Context, string, string) (map[string]any, error)
 	SearchAssets(context.Context, string, string, int) ([]map[string]any, error)
 	SearchTranscriptSegments(context.Context, string, string, TranscriptSearchFilters, int, int) ([]map[string]any, error)
+	GetOperationalSummary(context.Context, string, int) (map[string]any, error)
 	BeginUpload(context.Context, string, string, string, int, int) error
 	EndUpload(context.Context, string, string, string, string, string) error
 	RecordAuditEvent(context.Context, string, string, string, string, string, string, map[string]any) error
@@ -447,4 +449,91 @@ func (s *PostgresStore) Cancel(ctx context.Context, tenantID, sessionID string) 
 	if err!=nil { return "",err }
 	if err := insertAuditEvent(ctx, tx, tenantID, sessionID, "", "ingestion.cancelled", "succeeded", "", nil); err != nil { return "", err }
 	if err:=tx.Commit(ctx); err!=nil { return "",err }; return state,nil
+}
+
+
+// GetOperationalSummary returns bounded tenant-scoped aggregates only. It never
+// selects payloads, transcript text, storage references, tokens or raw errors.
+func (s *PostgresStore) GetOperationalSummary(ctx context.Context, tenantID string, windowHours int) (map[string]any, error) {
+	if !isUUID(tenantID) {
+		return nil, fmt.Errorf("tenant id must be a UUID")
+	}
+	if windowHours < 1 || windowHours > 168 {
+		return nil, fmt.Errorf("operations summary window must be between 1 and 168 hours")
+	}
+	tx, err := s.beginTenant(ctx, tenantID)
+	if err != nil { return nil, err }
+	defer tx.Rollback(ctx)
+
+	var observedAt time.Time
+	var ingestionTotal, ingestionCreated, ingestionReceiving, ingestionFinalizing, ingestionQueued, ingestionProcessing, ingestionCompleted, ingestionFailed, ingestionCancelled, ingestionExpired int64
+	var jobsTotal, jobsPending, jobsLeased, jobsCompleted, jobsDead, jobsCancelled, retryCount, processingFailures int64
+	var completedAverage, pendingDepthAge float64
+	var queuePending, activeLeases, expiredLeases, deadLetters int64
+	err = tx.QueryRow(ctx, "WITH session_window AS ("+
+		" SELECT count(*) AS total, count(*) FILTER (WHERE state='created') AS created,"+
+		" count(*) FILTER (WHERE state='receiving') AS receiving, count(*) FILTER (WHERE state='finalizing') AS finalizing,"+
+		" count(*) FILTER (WHERE state='queued') AS queued, count(*) FILTER (WHERE state='processing') AS processing,"+
+		" count(*) FILTER (WHERE state='completed') AS completed, count(*) FILTER (WHERE state='failed') AS failed,"+
+		" count(*) FILTER (WHERE state='cancelled') AS cancelled, count(*) FILTER (WHERE state='expired') AS expired"+
+		" FROM ingestion_sessions WHERE tenant_id=$1::uuid AND updated_at >= now()-make_interval(hours => $2)"+
+		"), job_window AS ("+
+		" SELECT count(*) AS total, count(*) FILTER (WHERE state='pending') AS pending,"+
+		" count(*) FILTER (WHERE state='leased') AS leased, count(*) FILTER (WHERE state='completed') AS completed,"+
+		" count(*) FILTER (WHERE state='dead') AS dead, count(*) FILTER (WHERE state='cancelled') AS cancelled,"+
+		" COALESCE(sum(GREATEST(attempts-1,0)),0) AS retry_count,"+
+		" count(*) FILTER (WHERE last_error_code IS NOT NULL AND updated_at >= now()-make_interval(hours => $2)) AS processing_failures,"+
+		" COALESCE(avg(extract(epoch FROM (updated_at-started_at))) FILTER (WHERE state='completed' AND started_at IS NOT NULL),0) AS completed_average"+
+		" FROM ingestion_jobs WHERE tenant_id=$1::uuid AND created_at >= now()-make_interval(hours => $2)"+
+		"), queue_now AS ("+
+		" SELECT"+
+		" (SELECT count(*) FROM ingestion_jobs WHERE tenant_id=$1::uuid AND state='pending') AS pending,"+
+		" COALESCE((SELECT extract(epoch FROM (now()-min(created_at))) FROM ingestion_jobs WHERE tenant_id=$1::uuid AND state='pending'),0) AS pending_age,"+
+		" (SELECT count(*) FROM ingestion_jobs WHERE tenant_id=$1::uuid AND state='leased' AND lease_expires_at>now()) AS active_leases,"+
+		" (SELECT count(*) FROM ingestion_jobs WHERE tenant_id=$1::uuid AND state='leased' AND lease_expires_at<=now()) AS expired_leases,"+
+		" (SELECT count(*) FROM ingestion_jobs WHERE tenant_id=$1::uuid AND state='dead') AS dead_letters"+
+		") SELECT now(),s.total,s.created,s.receiving,s.finalizing,s.queued,s.processing,s.completed,s.failed,s.cancelled,s.expired,"+
+		"j.total,j.pending,j.leased,j.completed,j.dead,j.cancelled,j.retry_count,j.processing_failures,j.completed_average,"+
+		"q.pending,q.pending_age,q.active_leases,q.expired_leases,q.dead_letters"+
+		" FROM session_window s CROSS JOIN job_window j CROSS JOIN queue_now q",
+		tenantID, windowHours).Scan(
+		&observedAt,
+		&ingestionTotal,&ingestionCreated,&ingestionReceiving,&ingestionFinalizing,&ingestionQueued,&ingestionProcessing,&ingestionCompleted,&ingestionFailed,&ingestionCancelled,&ingestionExpired,
+		&jobsTotal,&jobsPending,&jobsLeased,&jobsCompleted,&jobsDead,&jobsCancelled,&retryCount,&processingFailures,&completedAverage,
+		&queuePending,&pendingDepthAge,&activeLeases,&expiredLeases,&deadLetters,
+	)
+	if err != nil { return nil, err }
+	if err := tx.Commit(ctx); err != nil { return nil, err }
+	return map[string]any{
+		"window_hours": windowHours,
+		"observed_at": observedAt.UTC(),
+		"ingestions": map[string]any{
+			"total": ingestionTotal,
+			"by_state": map[string]int64{
+				"created":ingestionCreated,"receiving":ingestionReceiving,"finalizing":ingestionFinalizing,
+				"queued":ingestionQueued,"processing":ingestionProcessing,"completed":ingestionCompleted,
+				"failed":ingestionFailed,"cancelled":ingestionCancelled,"expired":ingestionExpired,
+			},
+		},
+		"jobs": map[string]any{
+			"total":jobsTotal,
+			"by_state":map[string]int64{
+				"pending":jobsPending,"leased":jobsLeased,"completed":jobsCompleted,"dead":jobsDead,"cancelled":jobsCancelled,
+			},
+			"retry_count":retryCount,
+			"processing_failure_count":processingFailures,
+			"completed_processing_seconds_avg":roundMetric(completedAverage),
+		},
+		"queue":map[string]any{
+			"pending_depth":queuePending,
+			"oldest_pending_age_seconds":roundMetric(pendingDepthAge),
+			"active_leases":activeLeases,
+			"expired_leases":expiredLeases,
+			"dead_letter_count":deadLetters,
+		},
+	}, nil
+}
+
+func roundMetric(value float64) float64 {
+	return math.Round(value*1000) / 1000
 }

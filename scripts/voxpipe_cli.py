@@ -91,6 +91,8 @@ def build_parser() -> argparse.ArgumentParser:
     upload.add_argument("--poll-interval", type=float, default=2.0)
     upload.add_argument("--wait-timeout", type=float, default=1800.0)
     upload.add_argument("--upload-timeout", type=float, default=1800.0)
+    health = commands.add_parser("health", help="Read tenant-scoped ingestion and queue aggregates")
+    health.add_argument("--window-hours", type=int, default=24)
     status = commands.add_parser("status", help="Read an ingestion session status")
     status.add_argument("session_id")
     search = commands.add_parser("search", help="Search transcript segments")
@@ -105,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "ingest":
             if args.poll_interval <= 0 or args.wait_timeout <= 0 or args.upload_timeout <= 0: raise ValueError("poll interval, wait timeout, and upload timeout must be positive")
             result = ingest(client, args.file, args.source_kind, args.external_reference, args.wait, args.poll_interval, args.wait_timeout, args.upload_timeout)
+        elif args.command == "health":
+            if not 1 <= args.window_hours <= 168: raise ValueError("window hours must be between 1 and 168")
+            result = client.request("GET", "/v1/operations/ingestion/summary?window_hours=" + str(args.window_hours))
         elif args.command == "status":
             result = client.request("GET", f"/v1/ingestions/{uuid.UUID(args.session_id)}")
         else:

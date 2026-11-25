@@ -36,3 +36,14 @@ Search returns tenant-scoped transcript segments with source and timing provenan
 - Upload streams from disk with a declared content length and is not loaded wholesale into memory.
 - Process exit or wait timeout does not cancel an already queued workflow.
 - Audio is sent only to the configured VoxPipe API. The CLI does not activate hosted STT or incur provider spend.
+
+
+## Operational health
+
+Use the tenant-scoped aggregate view when a token has the dedicated `operations:read` capability:
+
+```bash
+PYTHONPATH=src python scripts/voxpipe_cli.py health --window-hours 24
+```
+
+The window is bounded to 1–168 hours (default 24). The response includes ingestion/job state counts, retry and recent processing-failure counts, completed processing duration, pending queue age, active/expired leases, and dead-letter depth. It contains no transcript/audio content, storage paths, token values, or raw error details. This is a point-in-time operational summary, not an alerting/SLO system or a cross-tenant administrator view.

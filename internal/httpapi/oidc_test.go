@@ -78,10 +78,10 @@ func TestOIDCAuthenticatorValidatesClaimsAndRevocation(t *testing.T) {
 		if signErr != nil { t.Fatal(signErr) }
 		return token
 	}
-	valid := makeToken(issuer, "voxpipe-api", tenant, "ingestion:read ingestion:write transcript:read", now+300, now-10)
+	valid := makeToken(issuer, "voxpipe-api", tenant, "ingestion:read ingestion:write transcript:read operations:read", now+300, now-10)
 	principal, err := auth.Authenticate(valid)
 	if err != nil { t.Fatalf("valid token rejected: %v", err) }
-	if principal.TenantID != tenant || !principal.Allows(scopeIngestionRead) || !principal.Allows(scopeIngestionWrite) || !principal.Allows(scopeTranscriptRead) {
+	if principal.TenantID != tenant || !principal.Allows(scopeIngestionRead) || !principal.Allows(scopeIngestionWrite) || !principal.Allows(scopeTranscriptRead) || !principal.Allows(scopeOperationsRead) {
 		t.Fatalf("unexpected principal: %#v", principal)
 	}
 
