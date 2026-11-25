@@ -59,6 +59,11 @@ Document:
 - Fault-injection tests cover transient object-store outage, ambiguous write, denied permissions and cleanup retry.
 - All CI uses disposable Silo and generated credentials. No production cloud account, live customer data, paid resource, RPO/RTO or multi-region durability claim is implied.
 
+## Implementation progress
+
+- PR #158 merged as `0ee0756fc67fea611eb59a62e43f2eca9381ff7c`; exact-head CI run `45629633269` passed all seven jobs. The Go API uses a staging-only credential pair or its own workload identity, the Python worker uses separate durable-object credentials, and disposable Silo policies prove the API identity cannot read, write or delete durable tenant objects.
+- PR #159 continues the milestone with separate database/object-storage readiness, staging lifecycle safety validation, and a dedicated versioned recovery-bucket test. The active tenant-object bucket remains unversioned until hard-delete semantics cover historical versions.
+
 ## Consequences and limits
 
 - Separate credentials reduce the blast radius of a compromised API process and make the staging/durable boundary enforceable by the storage provider.
