@@ -389,17 +389,28 @@ func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "Ingestion session was not found")
 		return
 	}
+	// Staging backend is immutable within a session. Read it before the
+	// cancellation transaction so cleanup can be routed to the correct adapter.
+	session, err := s.store.GetSession(r.Context(), principal.TenantID, sessionID)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	stagingBackend, _ := session["staging_backend"].(string)
+	if stagingBackend == "" { stagingBackend = "local" }
 	// The store returns the state observed while holding the session row lock.
-	// This prevents deleting a staging file if finalization won the race.
+	// This prevents deleting a staging object if finalization won the race.
 	priorState, err := s.store.Cancel(r.Context(), principal.TenantID, sessionID)
 	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	if priorState == "created" || priorState == "receiving" {
+	if (priorState == "created" || priorState == "receiving") && stagingBackend == s.stager.Backend() {
 		// Cancellation is already durable. Cleanup failure is left for the
 		// staging-retention reconciler rather than reversing the state change.
-		_ = s.stager.Remove(principal.TenantID, sessionID)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = s.stager.Remove(cleanupCtx, principal.TenantID, sessionID)
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
