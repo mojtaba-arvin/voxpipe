@@ -36,6 +36,28 @@ class RetrievalSilverEvaluationTests(unittest.TestCase):
         validator = Draft202012Validator(schema)
         self.assertTrue(all(validator.is_valid(item) for item in first))
 
+
+    def test_query_generator_accepts_an_explicit_validated_corpus(self) -> None:
+        external_corpus = [
+            {
+                "passage_id": "external-passage-001",
+                "text": "نمونه مصنوعی برای درخواست تغییر نشانی و شماره سفارش ORD-9001.",
+                "language": "fa-IR",
+                "source_kind": "synthetic_template",
+                "split": "train",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            corpus_path = Path(directory) / "corpus.jsonl"
+            corpus_path.write_text(
+                json.dumps(external_corpus[0], ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            from eval._shared.corpus_loader import load_corpus
+            corpus = load_corpus(corpus_path)
+            queries = generate_queries(corpus, count=100, seed=9)
+        self.assertEqual(len(queries), 100)
+        self.assertTrue(all(item["source_passage_id"] == "external-passage-001" for item in queries))
+
     def test_query_generator_rejects_out_of_range_counts(self) -> None:
         with self.assertRaisesRegex(ValueError, "between 100 and 200"):
             generate_queries(load_corpus(), count=99, seed=1)
