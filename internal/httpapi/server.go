@@ -235,6 +235,10 @@ func (s *Server) uploadContent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
 		return
 	}
+	if !s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
+		writeError(w, http.StatusConflict, "STAGING_REFERENCE_MISMATCH", "Session staging reference is invalid")
+		return
+	}
 	state, _ := session["state"].(string)
 	if state != "created" && state != "receiving" {
 		writeError(w, http.StatusConflict, "INVALID_SESSION_STATE", "Session is not accepting upload bytes")
@@ -335,6 +339,10 @@ func (s *Server) finalizeIngestion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "STAGING_BACKEND_MISMATCH", "Session staging backend differs from this API instance")
 		return
 	}
+	if !s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
+		writeError(w, http.StatusConflict, "STAGING_REFERENCE_MISMATCH", "Session staging reference is invalid")
+		return
+	}
 	state, _ := session["state"].(string)
 	if state != "receiving" && state != "finalizing" && state != "queued" && state != "processing" && state != "completed" {
 		writeError(w, http.StatusConflict, "UPLOAD_NOT_READY", "A complete upload is required before finalization")
@@ -414,7 +422,7 @@ func (s *Server) cancelIngestion(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
-	if (priorState == "created" || priorState == "receiving") && stagingBackend == s.stager.Backend() {
+	if (priorState == "created" || priorState == "receiving") && stagingBackend == s.stager.Backend() && s.sessionStagingReferenceMatches(session, principal.TenantID, sessionID) {
 		// Cancellation is already durable. Cleanup failure is left for the
 		// staging-retention reconciler rather than reversing the state change.
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -646,6 +654,15 @@ func sourceMap(source SourceMetadata) map[string]any {
 	if source.RecordedAt != "" { result["recorded_at"] = source.RecordedAt }
 	if source.DeclaredBy != "" { result["declared_by"] = source.DeclaredBy }
 	return result
+}
+
+func (s *Server) sessionStagingReferenceMatches(session map[string]any, tenantID, sessionID string) bool {
+	expected, err := s.stager.Reference(tenantID, sessionID)
+	if err != nil {
+		return false
+	}
+	actual, _ := session["staging_reference"].(string)
+	return actual == expected
 }
 
 func sameCreateRequest(session, upload map[string]any, request CreateIngestionRequest, stagingBackend string) bool {
