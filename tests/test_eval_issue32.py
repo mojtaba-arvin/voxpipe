@@ -52,8 +52,12 @@ class ExtractionSilverEvaluationTests(unittest.TestCase):
 
     def test_rules_extract_all_reference_slots_across_scenarios(self) -> None:
         records = generate_conversations(count=100, seed=31)
+        labels_schema = json.loads((ROOT / "eval" / "issue32" / "labels.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(labels_schema)
+        label_validator = Draft202012Validator(labels_schema)
         for record in records:
             labels = label_conversation(record)
+            label_validator.validate(labels)
             for field in ("date", "amount", "order_id", "customer_name"):
                 self.assertEqual(labels["fields"][field]["status"], "matched", (record["scenario"], field))
                 self.assertEqual(
