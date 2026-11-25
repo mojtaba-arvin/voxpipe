@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import hashlib
 import os
-import stat
 import secrets
+import stat
 import uuid
 from pathlib import Path
 
