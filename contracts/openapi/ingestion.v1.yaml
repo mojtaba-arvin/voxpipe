@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VoxPipe Ingestion API
-  version: 1.1.0
+  version: 1.2.0
   description: Authenticated, tenant-scoped batch media ingestion. Production uses OIDC JWTs with introspection; audio bytes are streamed separately from JSON metadata.
 servers:
   - url: https://api.example.invalid
