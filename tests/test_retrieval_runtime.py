@@ -33,9 +33,9 @@ class FakeEmbeddings:
     def __init__(self):
         self.documents = []
 
-    def embed_document(self, text):
-        self.documents.append(text)
-        return ("embedding", text)
+    def embed_documents(self, texts):
+        self.documents.extend(texts)
+        return tuple(("embedding", text) for text in texts)
 
 
 class FakeSemantic:
