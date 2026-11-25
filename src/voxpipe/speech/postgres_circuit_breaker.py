@@ -148,7 +148,8 @@ class PostgresProviderCircuitBreaker:
             return False
         with self._connection() as connection:
             row = connection.execute(
-                "UPDATE provider_circuit_breakers SET probe_token=NULL, updated_at=now() "
+                "UPDATE provider_circuit_breakers "
+                "SET probe_token=NULL, probe_expires_at=NULL, updated_at=now() "
                 "WHERE provider=%s AND opened_at IS NOT NULL AND probe_token=%s "
                 "RETURNING provider",
                 (permit.provider, permit.probe_token),
@@ -162,7 +163,7 @@ class PostgresProviderCircuitBreaker:
                 SELECT provider FROM provider_circuit_breakers
                 WHERE opened_at IS NOT NULL
                   AND (opened_at + (%s * interval '1 second') > now()
-                       OR probe_token IS NOT NULL)
+                       OR (probe_token IS NOT NULL AND probe_expires_at > now()))
                 ORDER BY provider
                 """,
                 (self.cooldown_seconds,),
