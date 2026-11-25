@@ -21,6 +21,7 @@ from voxpipe.ingestion import (
     JobLeaseLost,
     PostgresIngestionJobQueue,
     PostgresIngestionRepository,
+    WorkerHeartbeatMissing,
     apply_migrations,
 )
 from voxpipe.ingestion.postgres import sanitize_audit_error_code, sanitize_audit_metadata
@@ -74,6 +75,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         cls.migrations_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgres"
 
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
+            connection.execute("DROP TABLE IF EXISTS ingestion_worker_heartbeats CASCADE")
             connection.execute("DROP TABLE IF EXISTS workflow_steps CASCADE")
             connection.execute("DROP TABLE IF EXISTS provider_circuit_breakers CASCADE")
             connection.execute("DROP TABLE IF EXISTS workflow_runs CASCADE")
@@ -115,7 +117,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         with psycopg.connect(cls.admin_dsn, autocommit=True) as connection:
             connection.execute("GRANT USAGE ON SCHEMA public TO voxpipe_app")
             connection.execute(
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events TO voxpipe_app"
+                "GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sessions, audio_assets, ingestion_jobs, ingestion_upload_leases, ingestion_audit_events, ingestion_worker_heartbeats TO voxpipe_app"
             )
             connection.execute(
                 "GRANT SELECT, INSERT ON transcripts, transcript_speakers, transcript_segments, transcript_words, structured_extractions TO voxpipe_app"
@@ -137,7 +139,7 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
         import psycopg
 
         with psycopg.connect(self.admin_dsn) as connection:
-            connection.execute("TRUNCATE TABLE provider_circuit_breakers, workflow_steps, workflow_runs, transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
+            connection.execute("TRUNCATE TABLE ingestion_worker_heartbeats, provider_circuit_breakers, workflow_steps, workflow_runs, transcript_segment_embeddings, structured_extractions, transcript_words, transcript_segments, transcript_speakers, transcripts, ingestion_audit_events, ingestion_upload_leases, ingestion_jobs, audio_assets, ingestion_sessions")
 
     def test_migration_runner_preserves_semicolons_in_literals_and_dollar_blocks(self) -> None:
         import psycopg
@@ -823,6 +825,47 @@ class PostgresIngestionRepositoryTests(unittest.TestCase):
             rows = connection.execute("SELECT job_id FROM ingestion_jobs").fetchall()
         self.assertEqual(rows, [])
 
+
+    def test_worker_heartbeats_are_tenant_scoped_and_support_graceful_stop(self) -> None:
+        import psycopg
+
+        tenant_a, tenant_b = str(uuid4()), str(uuid4())
+        worker_a, worker_b = str(uuid4()), str(uuid4())
+        self.queue.register_worker(tenant_a, worker_a)
+        self.queue.register_worker(tenant_b, worker_b)
+        self.queue.set_worker_state(tenant_a, worker_a, "busy")
+        self.queue.heartbeat_worker(tenant_a, worker_a)
+
+        with psycopg.connect(self.app_dsn) as connection:
+            self.assertEqual(
+                connection.execute("SELECT worker_id FROM ingestion_worker_heartbeats").fetchall(),
+                [],
+                "forced RLS must hide worker rows without tenant context",
+            )
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            row = connection.execute(
+                "SELECT state, last_job_started_at, stopped_at FROM ingestion_worker_heartbeats WHERE worker_id=%s",
+                (worker_a,),
+            ).fetchone()
+            self.assertEqual(row[0], "busy")
+            self.assertIsNotNone(row[1])
+            self.assertIsNone(row[2])
+
+        self.queue.set_worker_state(tenant_a, worker_a, "idle")
+        self.queue.stop_worker(tenant_a, worker_a)
+        with psycopg.connect(self.app_dsn) as connection:
+            connection.execute("SELECT set_config('voxpipe.tenant_id', %s, true)", (tenant_a,))
+            row = connection.execute(
+                "SELECT state, stopped_at FROM ingestion_worker_heartbeats WHERE worker_id=%s",
+                (worker_a,),
+            ).fetchone()
+            self.assertEqual(row[0], "stopped")
+            self.assertIsNotNone(row[1])
+
+        with self.assertRaises(WorkerHeartbeatMissing):
+            self.queue.heartbeat_worker(tenant_a, worker_a)
+        with self.assertRaises(WorkerHeartbeatMissing):
+            self.queue.heartbeat_worker(tenant_b, worker_a)
 
     def test_structured_extraction_persistence_is_idempotent_tenant_scoped_and_append_only(self) -> None:
         import psycopg
