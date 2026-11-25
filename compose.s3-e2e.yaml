@@ -67,33 +67,6 @@ services:
         condition: service_started
     restart: "no"
 
-  silo-provision:
-    image: docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
-    network_mode: host
-    entrypoint: ["/bin/sh", "-c"]
-    command: |
-      set -eu
-      mc alias set local http://127.0.0.1:9000 "$$SILO_ROOT_ACCESS_KEY_ID" "$$SILO_ROOT_SECRET_ACCESS_KEY" >/dev/null
-      mc admin policy create local voxpipe-api-staging /policies/api-staging.json
-      mc admin policy create local voxpipe-worker-storage /policies/worker-storage.json
-      mc admin user add local "$$VOXPIPE_S3_STAGING_ACCESS_KEY_ID" "$$VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY"
-      mc admin user add local "$$VOXPIPE_S3_ACCESS_KEY_ID" "$$VOXPIPE_S3_SECRET_ACCESS_KEY"
-      mc admin policy attach local voxpipe-api-staging --user "$$VOXPIPE_S3_STAGING_ACCESS_KEY_ID"
-      mc admin policy attach local voxpipe-worker-storage --user "$$VOXPIPE_S3_ACCESS_KEY_ID"
-    environment:
-      SILO_ROOT_ACCESS_KEY_ID: ${SILO_ROOT_ACCESS_KEY_ID}
-      SILO_ROOT_SECRET_ACCESS_KEY: ${SILO_ROOT_SECRET_ACCESS_KEY}
-      VOXPIPE_S3_STAGING_ACCESS_KEY_ID: ${VOXPIPE_S3_STAGING_ACCESS_KEY_ID}
-      VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY: ${VOXPIPE_S3_STAGING_SECRET_ACCESS_KEY}
-      VOXPIPE_S3_ACCESS_KEY_ID: ${VOXPIPE_S3_ACCESS_KEY_ID}
-      VOXPIPE_S3_SECRET_ACCESS_KEY: ${VOXPIPE_S3_SECRET_ACCESS_KEY}
-    volumes:
-      - ./deploy/s3/policies:/policies:ro
-    depends_on:
-      silo-init:
-        condition: service_completed_successfully
-    restart: "no"
-
   api:
     build:
       context: .
@@ -113,7 +86,7 @@ services:
     depends_on:
       bootstrap:
         condition: service_completed_successfully
-      silo-provision:
+      silo-init:
         condition: service_completed_successfully
     restart: "no"
 
