@@ -13,7 +13,7 @@ The current upload limit is 512 MiB. S3-compatible single-request `PutObject` su
 ## Proposed decision
 
 - Implement an optional `S3CompatibleObjectStore` behind the existing `ObjectStoragePort`; retain the local adapter as the default.
-- Use the S3 API through an optional, pinned boto3/botocore dependency. SDK objects, bucket names, endpoint URLs, credentials and signed URLs must not escape the adapter.
+- Use the S3 API through an optional boto3/botocore dependency constrained to the supported major version and covered by the dependency audit. SDK objects, bucket names, endpoint URLs, credentials and signed URLs must not escape the adapter.
 - Support standard AWS S3 and S3-compatible endpoints through explicit endpoint, region, bucket and addressing configuration. Do not select a provider, account, region, bucket or endpoint by default.
 - Keep object keys opaque and tenant-scoped by trusted application code. The adapter validates keys but does not accept tenant identity as an authorization decision.
 - Spool each incoming stream to a bounded, private temporary file while computing byte count and SHA-256. This keeps memory bounded and supplies a known Content-Length for the single-request upload.
