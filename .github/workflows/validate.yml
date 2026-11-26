@@ -230,7 +230,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Explain opt-in boundary
-        run: echo "Skipped: live Common Voice sample acquisition is manual and is not a pull-request gate."
+        run: |
+          echo "Skipped: live Common Voice sample acquisition is manual and is not a pull-request gate."
 
   uv-install-benchmark:
     name: uv cold and warm dependency install benchmark
