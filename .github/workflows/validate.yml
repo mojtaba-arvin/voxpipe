@@ -112,7 +112,7 @@ jobs:
           go-version: '1.26.11'
           cache: true
       - name: Lint the evaluation workflow
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/eval.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/eval.yml .github/workflows/validate.yml
       - name: Validate Go API, formatting, vet, race safety, and PostgreSQL integration
         run: make go-check
 
@@ -307,7 +307,7 @@ jobs:
             --env MINIO_ROOT_PASSWORD=voxpipe-ci-secret-password \
             --env MINIO_KMS_SECRET_KEY=voxpipe-ci:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= \
             docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z server /data
-          for attempt in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:9000/minio/health/ready >/dev/null; then
               exit 0
             fi
