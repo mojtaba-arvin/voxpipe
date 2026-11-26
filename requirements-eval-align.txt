@@ -1,0 +1,8 @@
+# WhisperX forced-alignment runtime is isolated from the pinned Qwen ASR runtime.
+# WhisperX 3.8.6 requires the PyTorch 2.8 / torchvision 0.23 ABI family.
+torch==2.8.0+cpu
+torchaudio==2.8.0+cpu
+torchvision==0.23.0+cpu
+whisperx==3.8.6
+transformers==5.20.1
+huggingface_hub==0.36.0

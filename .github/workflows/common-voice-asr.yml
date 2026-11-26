@@ -18,7 +18,7 @@ jobs:
   persian-asr:
     name: Bounded Qwen3-ASR Persian read-speech evaluation
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
@@ -42,6 +42,13 @@ jobs:
         run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
       - name: Install native Transformers ASR and Mozilla SDK dependencies
         run: uv pip install --system -r requirements-eval-asr.txt -r requirements-eval-mdc.txt
+      - name: Install isolated WhisperX CPU alignment runtime
+        run: |
+          uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
+            -r requirements-eval-align.txt
       - name: Install FFmpeg for bounded audio duration probing
         run: |
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
@@ -78,14 +85,28 @@ jobs:
         run: |
           python -m eval.issue47.qwen_transcription \
             --archive "${{ steps.sample.outputs.archive }}" \
+            --max-clips 50 \
+            --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
+      - name: Run Persian WhisperX forced alignment on temporary Qwen hypotheses
+        run: |
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \
+            --manifest "$RUNNER_TEMP/voxpipe-qwen-alignment-input/alignment_input.jsonl" \
+            --output eval/artifacts/issue47/alignment_cv.json \
+            --speaker-output eval/artifacts/issue47/speaker_segments.json \
+            --cache-dir "$HOME/.cache/huggingface" \
             --max-clips 50
       - name: Upload aggregate metrics and provenance only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: qwen3-asr-persian-read-speech
-          path: eval/artifacts/issue47/qwen3_asr_persian.json
+          name: persian-read-speech-evaluation
+          path: |
+            eval/artifacts/issue47/qwen3_asr_persian.json
+            eval/artifacts/issue47/alignment_cv.json
+            eval/artifacts/issue47/speaker_segments.json
           if-no-files-found: warn
       - name: Remove temporary publisher sample
         if: always()
-        run: rm -rf "$RUNNER_TEMP/voxpipe-common-voice-sample"
+        run: |
+          rm -rf "$RUNNER_TEMP/voxpipe-common-voice-sample"
+          rm -rf "$RUNNER_TEMP/voxpipe-qwen-alignment-input"

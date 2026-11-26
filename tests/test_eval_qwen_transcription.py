@@ -76,6 +76,18 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             serialized = report_path.read_text(encoding="utf-8").lower()
             self.assertNotIn("سلام دنیا", serialized)
             self.assertNotIn("private-client", serialized)
+            intermediate_dir = root / "alignment-input"
+            with patch("eval.issue47.qwen_transcription._transcribe_audio", return_value="سلام دنیا"):
+                intermediate_report = run_evaluation(
+                    archive_path, root / "intermediate-result.json", root / "cache",
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    intermediate_dir=intermediate_dir,
+                )
+            manifest_rows = [json.loads(line) for line in (intermediate_dir / "alignment_input.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(manifest_rows), 1)
+            self.assertEqual(manifest_rows[0]["transcript"], "سلام دنیا")
+            self.assertTrue(Path(manifest_rows[0]["audio_path"]).is_file())
+            self.assertFalse(intermediate_report["transcript_text_uploaded"])
             schema = json.loads(
                 (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "qwen3_asr_persian.schema.json").read_text(encoding="utf-8")
             )
