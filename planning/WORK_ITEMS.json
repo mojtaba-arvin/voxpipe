@@ -1509,7 +1509,7 @@
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "in_progress",
+      "status": "blocked",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1521,9 +1521,9 @@
       ],
       "evidence": [
         "PR #208 (rebuilt on current main; PR #207 closed as superseded): replaces vulnerable qwen-asr==0.0.6 stack with native Transformers 5.20.1 Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0; CPU-only PyTorch 2.15.0+cpu; HF Hub 1.31.0. Exact model inference succeeded on publisher English sample in run #45757007838: 15.0512s audio, 17.2307s inference, RTF 1.144805, peak RSS 5,372,149,760 bytes (~5,122 MiB), 4 CPU cores / 4 threads. CPU batch-feasible, not real-time, not Persian WER.",
-        "Native Persian evaluator uses automatic language detection and rejects outputs not identified as Persian; forced-language prompting was removed after Transformers 5.20.1 chat-template incompatibility. No raw audio/transcript/speaker IDs are persisted. Exact-head CI for the final code is pending."
+        "Exact-head PR validation run #45773614018 exposed a work-ledger state error: VP-0060 was marked in_progress while VP-0059 was not done. make check stopped in the ledger validator before Python tests; PR evaluation checks #45773614229 and dependency audit #45773613993 passed. Status corrected to blocked until the dataset prerequisite is resolved."
       ],
-      "blocked_reason": "Actual Persian WER cannot be produced until VP-0059 downloads a real bounded Common Voice Persian sample. The native inference/evaluation implementation and offline tests can be completed independently; do not report CPU English smoke as Persian quality evidence."
+      "blocked_reason": "VP-0059 (the real bounded Common Voice Persian sample) is still incomplete because Mozilla Data Collective returns HTTP 403 from download_sample() after the repository secret and dataset-terms action were confirmed. Keep the native Transformers evaluator and offline tests in PR #208, but do not claim Persian WER or mark this dependent work in progress until the source sample is actually downloaded. Do not request the MDC key again, repeat terms acceptance, or fall back to the full archive."
     },
     {
       "id": "VP-0061",
