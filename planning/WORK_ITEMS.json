@@ -1267,10 +1267,9 @@
         "Use the result as a CI feasibility gate, not a production-quality claim."
       ],
       "evidence": [
-        "PR #201 exact-head Qwen CPU smoke run #45748074666 passed with the pinned Qwen/Qwen3-ASR-0.6B revision 5eb144179a02acc5e5ba31e748d22b0cf3e303b0.",
-        "Audio sample 15.0512s; CPU 4 cores / 4 Torch threads; inference 11.6581s; RTF 0.774559; model load 1.2291s; download 15.601s.",
-        "Peak RSS 6,499,180,544 bytes (6,198.1 MiB) is recorded in the validated JSON report and qwen3-asr-cpu-smoke artifact.",
-        "Publisher-provided English sample only; this is CPU feasibility, not Persian WER or production-quality evidence."
+        "PR #201 merged to main as b49786668741e6ef4015b27f47a8357ebe4ad855.",
+        "Exact-head Qwen CPU smoke run #45748520630 passed on 4 CPU cores / 4 Torch threads using Qwen3-ASR-0.6B revision 5eb144179a02acc5e5ba31e748d22b0cf3e303b0 and a 15.0512s publisher English sample: download 15.8708s, load 1.4651s, inference 7.6520s, RTF 0.508397, peak RSS 6,501,400,576 bytes (~6,202.3 MiB). Artifact qwen3-asr-cpu-smoke uploaded.",
+        "This is CPU runtime feasibility only; it does not establish Persian WER, diarization, natural-conversation quality or production accuracy."
       ],
       "blocked_reason": null
     },
