@@ -1,0 +1,48 @@
+name: Common Voice Persian sample
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: common-voice-sample-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample-download:
+    name: Download bounded publisher sample and record provenance
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
+      - name: Install pinned Mozilla Data Collective SDK
+        run: uv pip install --system -r requirements-dev.txt -r requirements-eval-mdc.txt
+      - name: Run offline unit tests
+        run: python -m unittest discover -s tests -p "test_eval_common_voice.py"
+      - name: Download only the publisher-provided sample
+        env:
+          MDC_API_KEY: ${{ secrets.MDC_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$MDC_API_KEY" || { echo "MDC_API_KEY repository secret is required." >&2; exit 1; }
+          python -m eval.issue47.common_voice_sample
+      - name: Upload audio-free dataset provenance
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: common-voice-persian-sample-provenance
+          path: eval/artifacts/issue47/common_voice_sample.json
+          if-no-files-found: warn
