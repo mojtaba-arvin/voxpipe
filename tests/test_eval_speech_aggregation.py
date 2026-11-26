@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from eval.issue47.aggregate_speech import build_report
 
@@ -105,14 +106,15 @@ class SpeechAggregateTests(unittest.TestCase):
     def test_sample_provenance_mismatch_rejects_read_speech(self) -> None:
         qwen = qwen_report()
         qwen["dataset_version"] = "unexpected-release"
-        report = build_report(
-            read_speech_job_status="success", synthetic_job_status="success",
-            qwen_report=qwen, alignment_report=alignment_report(),
-            speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
-            overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
-            sample_report=sample_report(),
-            run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
-        )
+        with patch("eval.issue47.aggregate_speech._validate_document"):
+            report = build_report(
+                read_speech_job_status="success", synthetic_job_status="success",
+                qwen_report=qwen, alignment_report=alignment_report(),
+                speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
+                overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
+                sample_report=sample_report(),
+                run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
+            )
         self.assertEqual(report["status"], "failure")
         self.assertEqual(report["read_speech"]["status"], "failure")
         self.assertTrue(any("dataset provenance mismatch" in warning for warning in report["warnings"]))
