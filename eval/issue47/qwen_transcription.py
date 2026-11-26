@@ -222,7 +222,6 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
-    processor = None
     with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
