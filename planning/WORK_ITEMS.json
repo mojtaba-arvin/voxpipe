@@ -1485,7 +1485,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "in_progress",
+      "status": "blocked",
       "depends_on": [
         "VP-0047"
       ],
@@ -1499,10 +1499,9 @@
         "PR #205 merged to main as 9221eeac4d45871bc2c01eee08eaced6b6f2cd39 after exact-head validation run #45752595027 passed all 9 jobs and dependency audit run #45752594998 passed both jobs.",
         "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
         "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
-        "PR #205 is the current-mainline implementation; exact-head CI run #45752466423 is in progress. The previous authenticated attempt reached the protected sample-download endpoint with MDC_API_KEY present and received HTTP 403; no sample archive was downloaded.",
         "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret."
       ],
-      "blocked_reason": "The repository owner has configured MDC_API_KEY and confirmed accepting the Common Voice Persian dataset terms. The protected download_sample endpoint still returns HTTP 403. The remaining blocker is MDC-side organization ownership/profile completeness/access approval; do not ask for the key again, do not repeat terms acceptance, and do not fall back to the 10.46 GB full archive."
+      "blocked_reason": "Mozilla Data Collective still returns HTTP 403 from the protected download_sample() endpoint after the repository secret was configured and the owner completed dataset-terms acceptance. This is an MDC-side organization/profile/access-approval blocker, not a missing GitHub secret. Do not request or expose the key again, repeat terms acceptance, or fall back to the 10.46 GB full archive. Keep the item open until a bounded publisher sample is actually downloaded and provenance records status=downloaded."
     },
     {
       "id": "VP-0060",
@@ -1516,14 +1515,17 @@
       ],
       "acceptance_criteria": [
         "Use a pinned local model revision with no external inference API.",
-        "Measure CPU runtime/real-time factor and emit reproducible transcript artifacts.",
+        "Measure CPU runtime/real-time factor and record model/runtime provenance.",
+        "Produce aggregate-only Persian WER/CER from a real bounded publisher sample; keep audio, references and hypotheses temporary and never upload transcript rows.",
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
       "evidence": [
-        "PR #208 (rebuilt on current main; PR #207 closed as superseded): replaces vulnerable qwen-asr==0.0.6 stack with native Transformers 5.20.1 Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0; CPU-only PyTorch 2.15.0+cpu; HF Hub 1.31.0. Exact model inference succeeded on publisher English sample in run #45757007838: 15.0512s audio, 17.2307s inference, RTF 1.144805, peak RSS 5,372,149,760 bytes (~5,122 MiB), 4 CPU cores / 4 threads. CPU batch-feasible, not real-time, not Persian WER.",
-        "Exact-head PR validation run #45773614018 exposed a work-ledger state error: VP-0060 was marked in_progress while VP-0059 was not done. make check stopped in the ledger validator before Python tests; PR evaluation checks #45773614229 and dependency audit #45773613993 passed. Status corrected to blocked until the dataset prerequisite is resolved."
+        "PR #208 merged to main as 54dc9c7124d0d04c2ba821be46e851460d5437a8. It replaces vulnerable qwen-asr==0.0.6 with native Transformers 5.20.1, Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0, and CPU-only PyTorch 2.15.0+cpu.",
+        "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
+        "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
+        "The Persian evaluator and offline tests are merged. The Common Voice ASR workflow is manual-only; reusable workflow_call integration into eval.yml and end-to-end Persian WER remain outstanding. No raw audio, transcript rows, speaker IDs or per-utterance predictions are persisted."
       ],
-      "blocked_reason": "VP-0059 (the real bounded Common Voice Persian sample) is still incomplete because Mozilla Data Collective returns HTTP 403 from download_sample() after the repository secret and dataset-terms action were confirmed. Keep the native Transformers evaluator and offline tests in PR #208, but do not claim Persian WER or mark this dependent work in progress until the source sample is actually downloaded. Do not request the MDC key again, repeat terms acceptance, or fall back to the full archive."
+      "blocked_reason": "VP-0059 remains blocked because no real bounded Common Voice Persian sample has been downloaded (MDC HTTP 403). The native Transformers evaluator is merged and its offline tests/English CPU smoke pass, but Persian WER cannot be produced without the real sample. The remaining issue #177 also requires reusable workflow_call integration into eval.yml. Do not treat English smoke or access_denied as Persian evaluation."
     },
     {
       "id": "VP-0061",
@@ -1535,9 +1537,9 @@
         "VP-0060"
       ],
       "acceptance_criteria": [
-        "Pin WhisperX and model dependencies.",
-        "Produce word-level alignment and diarization artifacts on the approved read-speech subset.",
-        "Report limitations for overlap and natural conversation explicitly."
+        "Pin WhisperX and the Persian wav2vec2 forced-aligner model revision.",
+        "Produce validated word-level alignment for the approved Persian read-speech subset.",
+        "Explicitly set diarization_status=not_evaluated_read_speech and emit no speaker segments or overlap claims for isolated Common Voice clips; natural diarization remains M2."
       ],
       "evidence": [],
       "blocked_reason": null
@@ -1598,8 +1600,10 @@
         "VP-0063"
       ],
       "acceptance_criteria": [
-        "Aggregate group outcomes even when one or more jobs fail or are skipped.",
-        "Publish a single status summary with exact run provenance.",
+        "Aggregate all three evaluation-group outcomes even when one or more jobs fail or are skipped.",
+        "Publish summary.json with exact run provenance, artifact references and explicit success/failure/skipped status for each group.",
+        "Post truthful summaries to umbrella issues #32, #47 and #48.",
+        "Apply silver-baseline-complete to all three umbrella issues only when every evaluation group succeeds; otherwise leave the label absent.",
         "Never report skipped or missing evidence as a pass."
       ],
       "evidence": [],
