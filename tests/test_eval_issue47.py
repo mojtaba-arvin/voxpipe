@@ -16,6 +16,7 @@ class CpuSmokeReportTests(unittest.TestCase):
         report = build_report(
             model_download_seconds=1.25,
             model_size_bytes=1880000000,
+            peak_rss_bytes=2200000000,
             model_load_seconds=12.5,
             inference_seconds=4.0,
             audio_seconds=8.0,
@@ -54,6 +55,7 @@ class CpuSmokeReportTests(unittest.TestCase):
             build_report(
                 model_download_seconds=0,
                 model_size_bytes=1,
+                peak_rss_bytes=1,
                 model_load_seconds=1,
                 inference_seconds=0,
                 audio_seconds=2,
