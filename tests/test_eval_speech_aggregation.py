@@ -19,7 +19,8 @@ def sample_report():
         "dataset_archive_checksum": "a" * 64,
         "downloaded_at": "2026-11-26T14:00:00Z", "sdk_version": "0.2.0",
         "sample_archive_name": "common-voice-fa-sample.tar.gz",
-        "sample_archive_size_bytes": 1000000, "sample_audio_file_count": 50,
+        "sample_archive_size_bytes": 1000000, "sample_archive_checksum": "b" * 64,
+        "sample_audio_file_count": 50,
         "sample_metadata_file_count": 1, "sample_download_seconds": 5.0,
         "warnings": ["bounded sample only"],
     }
