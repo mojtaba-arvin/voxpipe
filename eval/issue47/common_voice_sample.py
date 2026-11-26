@@ -212,7 +212,7 @@ def main() -> int:
         print("MDC access denied; verify profile completeness and dataset terms acceptance in Mozilla Data Collective.", file=sys.stderr)
         return 1
     except Exception as exc:
-        print(f"Common Voice sample download failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(f"Common Voice sample download failed: {type(exc).__name__}", file=sys.stderr)
         return 1
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if report["status"] == "downloaded" else 2
