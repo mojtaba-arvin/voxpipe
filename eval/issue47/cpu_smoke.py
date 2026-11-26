@@ -137,7 +137,7 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
 
         started = time.perf_counter()
         inputs = processor.apply_transcription_request(
-            audio=str(audio_path), language="English"
+            audio=str(audio_path)
         ).to("cpu", model.dtype)
         with torch.inference_mode():
             output_ids = model.generate(**inputs, max_new_tokens=128, do_sample=False)
