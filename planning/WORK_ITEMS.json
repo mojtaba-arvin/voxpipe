@@ -1252,7 +1252,7 @@
       "title": "Add CPU model smoke benchmark (issue #166)",
       "phase": 9,
       "priority": 49,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0047"
       ],
@@ -1261,7 +1261,12 @@
         "Record model revision, hardware/runtime details, wall time and real-time factor.",
         "Use the result as a CI feasibility gate, not a production-quality claim."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #201 exact-head Qwen CPU smoke run #45748074666 passed with the pinned Qwen/Qwen3-ASR-0.6B revision 5eb144179a02acc5e5ba31e748d22b0cf3e303b0.",
+        "Audio sample 15.0512s; CPU 4 cores / 4 Torch threads; inference 11.6581s; RTF 0.774559; model load 1.2291s; download 15.601s.",
+        "Peak RSS 6,499,180,544 bytes (6,198.1 MiB) is recorded in the validated JSON report and qwen3-asr-cpu-smoke artifact.",
+        "Publisher-provided English sample only; this is CPU feasibility, not Persian WER or production-quality evidence."
+      ],
       "blocked_reason": null
     },
     {
