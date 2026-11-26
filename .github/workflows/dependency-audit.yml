@@ -38,11 +38,11 @@ jobs:
           for requirements in requirements-dev.txt requirements-benchmark.txt requirements-vad.txt requirements-lid.txt requirements-eval-mdc.txt requirements-eval-asr.txt; do
             if [[ -f "$requirements" ]]; then
               if [[ "$requirements" == "requirements-eval-asr.txt" ]]; then
-      # The pinned +cpu Torch wheel is hosted on the official PyTorch CPU index.
-      pip-audit --strict --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -r "$requirements"
-    else
-      pip-audit --strict -r "$requirements"
-    fi
+                # The pinned +cpu Torch wheel is hosted on the official PyTorch CPU index.
+                pip-audit --strict --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -r "$requirements"
+              else
+                pip-audit --strict -r "$requirements"
+              fi
             fi
           done
 
