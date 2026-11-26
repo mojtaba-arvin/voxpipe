@@ -1234,7 +1234,7 @@
       "title": "Speed up CI installs and cache evaluation models (issue #165)",
       "phase": 9,
       "priority": 48,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0047"
       ],
@@ -1248,7 +1248,9 @@
         "PR #199 merged to main as 1aac955993fd95e7bfbd78876c2c681fea615f14; pinned setup-uv v6.8.0 and uv pip installs are active in validation/evaluation workflows.",
         "Exact-head validation run #45747546087 passed all seven validation jobs; Group A/B and aggregate evaluation passed in run #45747546133.",
         "Warm-cache observation: uv 0.13.10 restored the setup-uv cache (cache hit); `uv pip install --system -r requirements-dev.txt` completed in approximately 0.31s for 20 packages in the Python/PostgreSQL job.",
-        "Cold-cache installation timing has not yet been captured; do not claim measured speedup or close #165 until cold/warm measurements are recorded."
+        "Cold-cache installation timing has not yet been captured; do not claim measured speedup or close #165 until cold/warm measurements are recorded.",
+        "PR #204 merged to main as aeb26ae9cfa2e68eede18db4c55392c87417347a; issue #165 closed.",
+        "Exact-head validation run #45751421748 passed all 8 jobs, including isolated uv cold/warm benchmark: uv 0.13.10, Python 3.12.16, 20 packages, cold 0.6080s, warm 0.0793s, 7.6671x. This measures install cache effects, not total CI duration."
       ],
       "blocked_reason": null
     },
@@ -1493,8 +1495,10 @@
         "Cache only immutable dataset revisions and avoid committing audio data.",
         "Keep read-speech clearly distinguished from natural conversation."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #205 is the current-mainline implementation; exact-head CI run #45752466423 is in progress. The previous authenticated attempt reached the protected sample-download endpoint with MDC_API_KEY present and received HTTP 403; no sample archive was downloaded."
+      ],
+      "blocked_reason": "MDC HTTP 403 is an entitlement response, not a missing GitHub secret. Need confirm the same MDC account/organization that owns the API key has accepted the Common Voice Persian dataset terms and that the dataset is accessible to that organization. Do not ask for the key again or fall back to the full archive."
     },
     {
       "id": "VP-0060",
