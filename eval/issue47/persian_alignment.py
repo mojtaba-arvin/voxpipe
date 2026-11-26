@@ -138,7 +138,8 @@ def run_alignment(
 ) -> dict[str, Any]:
     rows = _read_manifest(manifest_path, max_clips)
     if model_loader is None:
-        import whisperx
+        from whisperx.alignment import align as whisperx_align, load_align_model
+        from whisperx.audio import load_audio as whisperx_load_audio
 
         import torch
         from huggingface_hub import snapshot_download
@@ -149,14 +150,14 @@ def run_alignment(
             revision=MODEL_REVISION,
             cache_dir=str(cache_dir),
         )
-        model, metadata = whisperx.load_align_model(
+        model, metadata = load_align_model(
             language_code="fa",
             device="cpu",
             model_name=str(pinned_model_path),
             model_dir=str(cache_dir),
         )
-        align_function = whisperx.align
-        audio_loader = whisperx.load_audio
+        align_function = whisperx_align
+        audio_loader = whisperx_load_audio
         try:
             whisperx_version = version("whisperx")
         except PackageNotFoundError:
