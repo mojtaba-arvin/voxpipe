@@ -109,10 +109,8 @@ def build_summary(
     speech_artifact = _artifact_reference(artifact_catalog, "speech-evaluation-group", repository, run_id)
 
     extraction_values = None
-    if extraction_status == "success":
+    if extraction_metrics is not None:
         try:
-            if extraction_metrics is None or extraction_artifact is None:
-                raise ValueError("successful extraction job is missing its metrics or exact artifact reference")
             _validate_document(extraction_metrics, ROOT / "eval" / "issue32" / "metrics.schema.json", "extraction metrics")
             extraction_values = {
                 "dataset_count": extraction_metrics["dataset_count"],
@@ -122,12 +120,13 @@ def build_summary(
         except (KeyError, TypeError, ValueError) as exc:
             extraction_status = "failure"
             warnings.append(f"Extraction group evidence rejected: {exc}")
+    if extraction_status == "success" and (extraction_values is None or extraction_artifact is None):
+        extraction_status = "failure"
+        warnings.append("Extraction group reported success without validated metrics and an exact artifact reference.")
 
     retrieval_values = None
-    if retrieval_status == "success":
+    if retrieval_metrics is not None:
         try:
-            if retrieval_metrics is None or retrieval_artifact is None:
-                raise ValueError("successful retrieval job is missing its metrics or exact artifact reference")
             _validate_document(retrieval_metrics, ROOT / "eval" / "issue48" / "metrics.schema.json", "retrieval metrics")
             retrieval_values = {
                 "query_count": retrieval_metrics["query_count"],
@@ -140,25 +139,31 @@ def build_summary(
         except (KeyError, TypeError, ValueError) as exc:
             retrieval_status = "failure"
             warnings.append(f"Retrieval group evidence rejected: {exc}")
+    if retrieval_status == "success" and (retrieval_values is None or retrieval_artifact is None):
+        retrieval_status = "failure"
+        warnings.append("Retrieval group reported success without validated metrics and an exact artifact reference.")
 
     speech_values = None
-    if speech_status == "success":
+    if speech_report is not None:
         try:
-            if speech_report is None or speech_artifact is None:
-                raise ValueError("successful speech group is missing its report or exact artifact reference")
             _validate_document(speech_report, ROOT / "eval" / "issue47" / "report_47.schema.json", "speech aggregate")
-            if speech_report.get("status") != "success":
-                raise ValueError("speech aggregate report does not record success")
             speech_values = {
+                "report_status": speech_report["status"],
                 "read_speech_status": speech_report["read_speech"]["status"],
                 "synthetic_overlap_status": speech_report["synthetic_overlap"]["status"],
                 "read_speech_metrics": speech_report["read_speech"]["metrics"],
                 "synthetic_overlap_metrics": speech_report["synthetic_overlap"]["metrics"],
                 "natural_conversation_evidence": False,
             }
+            if speech_status == "success" and speech_report.get("status") != "success":
+                speech_status = "failure"
+                warnings.append("Speech group job output claimed success but report_47.json did not.")
         except (KeyError, TypeError, ValueError) as exc:
             speech_status = "failure"
             warnings.append(f"Speech group evidence rejected: {exc}")
+    if speech_status == "success" and (speech_values is None or speech_artifact is None):
+        speech_status = "failure"
+        warnings.append("Speech group reported success without a validated report and an exact artifact reference.")
 
     groups = {
         "extraction": {"status": extraction_status, "artifact": extraction_artifact, "metrics": extraction_values},
