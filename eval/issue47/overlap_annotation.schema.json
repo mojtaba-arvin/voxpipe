@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:overlap-annotation:v1",
+  "title": "VoxPipe synthetic overlap annotation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "conversation_id",
+    "scenario",
+    "source_kind",
+    "sample_rate",
+    "leading_silence_seconds",
+    "noise_snr_db",
+    "noise_seed",
+    "segments",
+    "overlap"
+  ],
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scenario": {
+      "enum": [
+        "order_confirmation",
+        "address_change",
+        "refund",
+        "callback"
+      ]
+    },
+    "source_kind": {
+      "const": "synthetic_template"
+    },
+    "sample_rate": {
+      "const": 22050
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "voice_model",
+          "start_seconds",
+          "end_seconds"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "customer",
+              "agent"
+            ]
+          },
+          "voice_model": {
+            "enum": [
+              "fa_IR-amir-medium-int8",
+              "fa_IR-ganji-medium-int8"
+            ]
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    "overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_seconds",
+        "end_seconds",
+        "duration_seconds"
+      ],
+      "properties": {
+        "start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "leading_silence_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "noise_snr_db": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "noise_seed": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
