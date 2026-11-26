@@ -52,7 +52,7 @@ on:
         type: boolean
         default: true
       run_eval_47:
-        description: "Run Group C Qwen3-ASR CPU feasibility smoke"
+        description: "Run Qwen3-ASR CPU feasibility smoke (not the Group C aggregate)"
         required: false
         type: boolean
         default: true
@@ -87,8 +87,16 @@ on:
       - "requirements-eval-tts.txt"
       - "tests/test_eval_synthetic_overlap.py"
       - "eval/issue32/templates.py"
+      - ".github/workflows/eval.yml"
+      - "eval/issue47/aggregate_speech.py"
+      - "eval/issue47/report_47.schema.json"
+      - "eval/post_results.py"
+      - "eval/post_results.schema.json"
+      - "tests/test_eval_speech_aggregation.py"
+      - "tests/test_post_results.py"
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
