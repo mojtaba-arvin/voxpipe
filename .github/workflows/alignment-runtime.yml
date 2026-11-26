@@ -1,0 +1,72 @@
+name: Persian alignment runtime smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/alignment-runtime.yml"
+      - ".github/workflows/common-voice-asr.yml"
+      - "eval/issue47/persian_alignment.py"
+      - "requirements-eval-align.txt"
+      - "requirements-eval-align-audit.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  whisperx-cpu-runtime:
+    name: Install and inspect pinned WhisperX CPU runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements-eval-align.txt"
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+      - name: Install isolated WhisperX CPU environment
+        run: |
+          uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
+            -r requirements-eval-align.txt
+      - name: Verify installed versions and WhisperX alignment API
+        run: |
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" - <<'PY'
+          import inspect
+          from importlib.metadata import version
+
+          import huggingface_hub
+          import torch
+          import transformers
+          import whisperx
+
+          assert version("whisperx") == "3.8.6"
+          assert torch.__version__.startswith("2.8.0+cpu"), torch.__version__
+          assert transformers.__version__ == "4.57.3", transformers.__version__
+          assert huggingface_hub.__version__ == "0.36.0", huggingface_hub.__version__
+          assert not torch.cuda.is_available()
+          assert "model_name" in inspect.signature(whisperx.load_align_model).parameters
+          assert "return_char_alignments" in inspect.signature(whisperx.align).parameters
+          assert "print_progress" in inspect.signature(whisperx.align).parameters
+          assert callable(whisperx.load_audio)
+          print({
+              "whisperx": version("whisperx"),
+              "torch": torch.__version__,
+              "transformers": transformers.__version__,
+              "huggingface_hub": huggingface_hub.__version__,
+              "device": "cpu",
+          })
+          PY
