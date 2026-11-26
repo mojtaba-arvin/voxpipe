@@ -4,6 +4,7 @@ import json
 import tarfile
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -36,15 +37,19 @@ class QwenPersianEvaluationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive_path = root / "sample.tar.gz"
-            audio_path = root / "clip.mp3"
-            audio_path.write_bytes(b"test-audio-bytes")
+            audio_path = root / "clip.wav"
+            with wave.open(str(audio_path), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(16000)
+                audio.writeframes(b"\\x00\\x00" * 16000)
             tsv_path = root / "validated.tsv"
             tsv_path.write_text(
                 "client_id\tpath\tsentence\nprivate-client\tclip.mp3\tسلام دنیا\n",
                 encoding="utf-8",
             )
             with tarfile.open(archive_path, "w:gz") as archive:
-                archive.add(audio_path, arcname="clips/clip.mp3")
+                archive.add(audio_path, arcname="clips/clip.wav")
                 archive.add(tsv_path, arcname="validated.tsv")
             model = SimpleNamespace(
                 transcribe=lambda **kwargs: [SimpleNamespace(text="سلام دنیا", language="Persian")]
