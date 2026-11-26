@@ -13,7 +13,7 @@
   ],
   "properties": {
     "schema_version": {"const": 1},
-    "status": {"enum": ["downloaded", "sample_unavailable"]},
+    "status": {"enum": ["downloaded", "sample_unavailable", "access_denied"]},
     "dataset_id": {"const": "cmu5xazgy00finq074vaqo1b3"},
     "dataset_name": {"const": "Common Voice Scripted Speech 27.0 - Persian"},
     "dataset_version": {"const": "cv-corpus-27.0-2026-09-11"},
