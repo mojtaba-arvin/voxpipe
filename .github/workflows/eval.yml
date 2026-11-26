@@ -87,13 +87,6 @@ on:
       - "requirements-eval-tts.txt"
       - "tests/test_eval_synthetic_overlap.py"
       - "eval/issue32/templates.py"
-      - ".github/workflows/eval.yml"
-      - "eval/issue47/aggregate_speech.py"
-      - "eval/issue47/report_47.schema.json"
-      - "eval/post_results.py"
-      - "eval/post_results.schema.json"
-      - "tests/test_eval_speech_aggregation.py"
-      - "tests/test_post_results.py"
 
 permissions:
   actions: read
