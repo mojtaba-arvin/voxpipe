@@ -245,12 +245,16 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     shutil.copyfileobj(extracted, output, length=1024 * 1024)
                 duration = _audio_duration_seconds(audio_path)
                 started_inference = time.perf_counter()
-                results = model.transcribe(audio=str(audio_path), language="Persian")
+                if processor is None:
+                    results = model.transcribe(audio=str(audio_path), language="Persian")
+                    hypothesis = str(results[0].text) if results else ""
+                else:
+                    hypothesis = _transcribe_audio(model, processor, audio_path)
                 inference_seconds += time.perf_counter() - started_inference
-                if not results or not str(getattr(results[0], "text", "")).strip():
+                if not hypothesis.strip():
                     raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
                 references.append(reference)
-                hypotheses.append(str(results[0].text))
+                hypotheses.append(hypothesis)
                 audio_seconds += duration
 
         metrics = corpus_error_rates(references, hypotheses)
