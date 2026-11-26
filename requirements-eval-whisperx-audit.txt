@@ -1,0 +1,8 @@
+# Audit against upstream PyPI source releases; runtime uses the matching +cpu
+# wheels from the official PyTorch CPU index.
+torch==2.8.0
+torchaudio==2.8.0
+torchvision==0.23.0
+whisperx==3.8.6
+huggingface_hub==0.36.0
+jsonschema==4.25.1
