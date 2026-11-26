@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import tarfile
@@ -65,6 +66,14 @@ def _validate_dataset_details(details: Any) -> dict[str, Any]:
     }
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _inspect_sample_archive(archive_path: Path) -> tuple[int, int, int]:
     if not archive_path.is_file():
         raise ValueError("MDC SDK did not return a sample archive file")
@@ -105,6 +114,7 @@ def build_report(
     dataset_archive_checksum: str | None,
     sample_archive_name: str | None = None,
     sample_archive_size_bytes: int | None = None,
+    sample_archive_checksum: str | None = None,
     sample_audio_file_count: int | None = None,
     sample_metadata_file_count: int | None = None,
     sample_download_seconds: float | None = None,
@@ -145,6 +155,7 @@ def build_report(
         if (
             not sample_archive_name
             or sample_archive_size_bytes is None
+            or sample_archive_checksum is None
             or sample_audio_file_count is None
             or sample_metadata_file_count is None
             or sample_download_seconds is None
@@ -154,6 +165,7 @@ def build_report(
             {
                 "sample_archive_name": sample_archive_name,
                 "sample_archive_size_bytes": sample_archive_size_bytes,
+                "sample_archive_checksum": sample_archive_checksum,
                 "sample_audio_file_count": sample_audio_file_count,
                 "sample_metadata_file_count": sample_metadata_file_count,
                 "sample_download_seconds": round(sample_download_seconds, 4),
@@ -210,6 +222,7 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
             **dataset_metadata,
             sample_archive_name=archive_path.name,
             sample_archive_size_bytes=archive_size,
+            sample_archive_checksum=_sha256_file(archive_path),
             sample_audio_file_count=audio_count,
             sample_metadata_file_count=metadata_count,
             sample_download_seconds=download_seconds,
