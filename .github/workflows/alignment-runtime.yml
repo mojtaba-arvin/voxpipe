@@ -55,12 +55,19 @@ jobs:
           import inspect
           import os
           from importlib.metadata import version
+          from types import SimpleNamespace
 
           import huggingface_hub
           import torch
           import torchaudio
           import transformers
           from huggingface_hub import snapshot_download
+
+          # WhisperX 3.8.6 only uses this legacy collection to select bundled models.
+          # The pinned custom Persian HF model always uses the Transformers branch.
+          if not hasattr(torchaudio, "pipelines"):
+              torchaudio.pipelines = SimpleNamespace(__all__=[])
+
           from whisperx.alignment import align, load_align_model
           from whisperx.audio import load_audio
 
@@ -70,7 +77,6 @@ jobs:
           assert transformers.__version__ == "5.20.1", transformers.__version__
           assert huggingface_hub.__version__ == "1.31.0", huggingface_hub.__version__
           assert not torch.cuda.is_available()
-          assert hasattr(torchaudio, "pipelines")
           assert "model_name" in inspect.signature(load_align_model).parameters
           assert "model_cache_only" in inspect.signature(load_align_model).parameters
           assert "return_char_alignments" in inspect.signature(align).parameters
