@@ -1542,10 +1542,11 @@
         "Explicitly set diarization_status=not_evaluated_read_speech and emit no speaker segments or overlap claims for isolated Common Voice clips; natural diarization remains M2."
       ],
       "evidence": [
-        "PR #212 implements WhisperX 3.8.6 forced alignment with jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
+        "PR #212 is merged as a6453b165bb2dab20acf90d91537e5935dbd9a39. Exact-head repository validation run 45843691779 passed all 9 jobs; dependency security audit run 45843691753 passed.",
+        "The merged implementation uses WhisperX 3.8.6 and jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
         "Qwen hypotheses and audio are handed off only through a temporary JSONL manifest and temporary runner files; per-word alignment JSONL is created in a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
         "WhisperX runs in an isolated CPU environment with PyTorch 2.8.0+cpu and huggingface_hub 0.36.0, separate from the Qwen runtime (PyTorch 2.15.0+cpu). The actual aligner model dtype is recorded; WhisperX --compute_type is not misrepresented as aligner quantization.",
-        "PR #212 exact-head validation is pending. Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it."
+        "Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it."
       ],
       "blocked_reason": "Acceptance requires running forced alignment over the same real bounded Persian Common Voice sample used by #177. VP-0060 remains blocked by Mozilla Data Collective HTTP 403, so no approved audio/transcript input is available. Do not mark this item done from schema/unit tests alone."
     },
@@ -1591,7 +1592,7 @@
         "Disclose that read-speech and TTS do not establish natural conversational performance."
       ],
       "evidence": [
-        "PR #213 (stacked on PR #212) implements the Group C eval-47 aggregator: separate read-speech and synthetic-overlap branches, explicit success/failure/skipped states, schema validation, audio-free report_47.json, and a truthful issue #47 disclosure.",
+        "PR #213 is open against main and implements the Group C eval-47 aggregator: separate read-speech and synthetic-overlap branches, explicit success/failure/skipped states, schema validation, audio-free report_47.json, and a truthful issue #47 disclosure.",
         "The aggregate intentionally marks Group C incomplete unless both read-speech ASR/alignment and synthetic overlap have validated artifacts. Read-speech diarization is not evaluated; natural-conversation and medical-readiness claims are explicitly false.",
         "Offline aggregation tests and exact-head CI are pending; no Common Voice sample was available for a real end-to-end speech run."
       ],
@@ -1616,7 +1617,7 @@
         "Never report skipped or missing evidence as a pass."
       ],
       "evidence": [
-        "PR #213 (stacked on PR #212) implements a cross-group summary.json with workflow run ID/attempt/commit, exact GitHub artifact IDs and URLs, per-group metrics, and explicit success/failure/skipped outcomes.",
+        "PR #213 is open against main and implements a cross-group summary.json with workflow run ID/attempt/commit, exact GitHub artifact IDs and URLs, per-group metrics, and explicit success/failure/skipped outcomes.",
         "The post-results workflow posts separate truthful summaries to issues #32, #47 and #48. It adds silver-baseline-complete only on workflow_dispatch when all three groups have validated metrics and exact artifact references; otherwise it removes any stale completion label.",
         "Offline summary tests and exact-head CI are pending; the real Group C input remains blocked by MDC access."
       ],
