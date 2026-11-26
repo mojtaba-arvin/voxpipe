@@ -112,7 +112,7 @@ jobs:
           go-version: '1.26.11'
           cache: true
       - name: Lint the evaluation workflow
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/eval.yml .github/workflows/validate.yml .github/workflows/common-voice-sample.yml .github/workflows/common-voice-asr.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/eval.yml .github/workflows/validate.yml .github/workflows/common-voice-sample.yml .github/workflows/common-voice-asr.yml .github/workflows/dependency-audit.yml
       - name: Validate Go API, formatting, vet, race safety, and PostgreSQL integration
         run: make go-check
 
