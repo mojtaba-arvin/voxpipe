@@ -283,6 +283,52 @@ jobs:
           path: eval/artifacts/issue47/common_voice_sample.json
           if-no-files-found: warn
 
+  uv-install-benchmark:
+    name: uv cold and warm dependency install benchmark
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Detect dependency or benchmark changes
+        id: path-filter
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          changed_files="$(git diff --name-only "origin/$BASE_REF...HEAD")"
+          while IFS= read -r path; do
+            case "$path" in
+              requirements*.txt|scripts/benchmark_uv_install.py|.github/workflows/validate.yml)
+                echo "run=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+          done <<< "$changed_files"
+      - name: Set up Python
+        if: ${{ steps.path-filter.outputs.run == 'true' }}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        if: ${{ steps.path-filter.outputs.run == 'true' }}
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: false
+      - name: Measure cold and warm installs from clean environments
+        if: ${{ steps.path-filter.outputs.run == 'true' }}
+        run: python scripts/benchmark_uv_install.py
+      - name: Upload cold and warm install timings
+        if: ${{ always() && steps.path-filter.outputs.run == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: uv-install-cold-warm-benchmark
+          path: eval/artifacts/ci/uv_install_benchmark.json
+          if-no-files-found: warn
+
   s3-storage:
     name: S3-compatible storage integration
     runs-on: ubuntu-latest
