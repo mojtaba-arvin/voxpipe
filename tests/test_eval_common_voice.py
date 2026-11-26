@@ -95,6 +95,29 @@ class CommonVoiceSampleTests(unittest.TestCase):
                 sample_download.assert_called_once()
                 self.assertEqual(sample_download.call_args.kwargs["extract"], False)
 
+    def test_access_denied_is_reported_without_failing_repository_validation(self) -> None:
+        details = {
+            "id": DATASET_ID,
+            "name": "Common Voice Scripted Speech 27.0 - Persian",
+            "locale": "fa",
+            "task": "ASR",
+            "licenseAbbreviation": "CC0-1.0",
+            "sizeBytes": None,
+            "checksum": None,
+        }
+        sdk = SimpleNamespace(
+            download_sample=Mock(side_effect=PermissionError("403")),
+            get_dataset_details=Mock(return_value=details),
+        )
+        with patch.dict(sys.modules, {"datacollective": sdk}):
+            with tempfile.TemporaryDirectory() as temporary:
+                report_path = Path(temporary) / "report.json"
+                report = run_download(report_path)
+                self.assertEqual(report["status"], "access_denied")
+                self.assertTrue(report_path.is_file())
+                self.assertTrue(any("HTTP 403" in item for item in report["warnings"]))
+                sdk.download_sample.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
