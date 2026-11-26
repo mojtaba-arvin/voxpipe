@@ -34,8 +34,10 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: voxpipe-qwen3-asr-persian-v1-${{ hashFiles('requirements-eval-asr.txt') }}
-      - name: Install CPU-only ASR and Mozilla SDK dependencies
-        run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt -r requirements-eval-mdc.txt
+      - name: Install pinned CPU-only PyTorch wheel from the official index
+        run: uv pip install --system --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
+      - name: Install native Transformers ASR and Mozilla SDK dependencies
+        run: uv pip install --system -r requirements-eval-asr.txt -r requirements-eval-mdc.txt
       - name: Install FFmpeg for bounded audio duration probing
         run: |
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
