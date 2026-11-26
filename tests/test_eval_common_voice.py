@@ -15,6 +15,7 @@ from eval.issue47.common_voice_sample import (
     _inspect_sample_archive,
     _validate_dataset_details,
     run_download,
+    main,
 )
 
 
@@ -94,6 +95,19 @@ class CommonVoiceSampleTests(unittest.TestCase):
                 self.assertTrue(report_path.is_file())
                 sample_download.assert_called_once()
                 self.assertEqual(sample_download.call_args.kwargs["extract"], False)
+
+    def test_cli_can_keep_archive_in_job_local_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.json"
+            download_directory = Path(temporary) / "sample"
+            with patch("eval.issue47.common_voice_sample.run_download") as download:
+                download.return_value = {"status": "downloaded"}
+                with patch(
+                    "sys.argv",
+                    ["common_voice_sample", "--output", str(output), "--download-directory", str(download_directory)],
+                ):
+                    self.assertEqual(main(), 0)
+                download.assert_called_once_with(output, download_directory)
 
     def test_access_denied_is_reported_without_failing_repository_validation(self) -> None:
         details = {
