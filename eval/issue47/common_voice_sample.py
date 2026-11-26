@@ -8,7 +8,7 @@ import tarfile
 import tempfile
 import time
 from datetime import UTC, datetime
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +26,13 @@ MAX_SAMPLE_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_SAMPLE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_SAMPLE_MEMBERS = 50_000
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
+
+
+def _sdk_version() -> str:
+    try:
+        return version("datacollective")
+    except PackageNotFoundError:
+        return "not-installed"
 
 
 def _value(details: Any, key: str) -> Any:
@@ -181,7 +188,7 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
             report = build_report(
                 status="sample_unavailable",
                 **dataset_metadata,
-                sdk_version=version("datacollective"),
+                sdk_version=_sdk_version(),
             )
             output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             return report
@@ -196,7 +203,7 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
             sample_audio_file_count=audio_count,
             sample_metadata_file_count=metadata_count,
             sample_download_seconds=download_seconds,
-            sdk_version=version("datacollective"),
+            sdk_version=_sdk_version(),
         )
         output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return report
@@ -209,7 +216,7 @@ def main() -> int:
     try:
         report = run_download(args.output)
     except PermissionError:
-        print("MDC access denied; verify profile completeness and dataset terms acceptance in Mozilla Data Collective.", file=sys.stderr)
+        print("MDC sample-download returned HTTP 403. The GitHub secret is present; the SDK maps this response to PermissionError. Check that the MDC account which owns the API key has accepted this dataset's terms and that the dataset is accessible to that same organization. The public dataset-details endpoint does not verify download permission.", file=sys.stderr)
         return 1
     except Exception as exc:
         print(f"Common Voice sample download failed: {type(exc).__name__}", file=sys.stderr)
