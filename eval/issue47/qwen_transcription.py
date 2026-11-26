@@ -183,7 +183,7 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
         "compute_type": compute_type,
         "sample_count": sample_count,
         "audio_duration_seconds": round(audio_seconds, 4),
-        "inference_seconds": round(inference_seconds, 4),
+        "inference_seconds": round(inference_seconds, 6),
         "real_time_factor": round(inference_seconds / audio_seconds, 6),
         "word_errors": metrics["word_errors"],
         "character_errors": metrics["character_errors"],
@@ -221,8 +221,6 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
-    import time
-    started = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
