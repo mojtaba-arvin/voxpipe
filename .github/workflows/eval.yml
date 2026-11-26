@@ -274,6 +274,7 @@ jobs:
               "",
               f"- Model revision: {result['model_revision']}",
               f"- Model size: {result['model_size_bytes']} bytes",
+              f"- Peak RSS: {result['peak_rss_bytes'] / (1024 ** 2):.1f} MiB",
               f"- Download time: {result['model_download_seconds']:.2f}s",
               f"- Load time: {result['model_load_seconds']:.2f}s",
               f"- Audio duration: {result['audio_duration_seconds']:.2f}s",
