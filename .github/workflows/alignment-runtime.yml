@@ -8,7 +8,6 @@ on:
       - ".github/workflows/common-voice-asr.yml"
       - "eval/issue47/persian_alignment.py"
       - "requirements-eval-align.txt"
-      - "requirements-eval-align-audit.txt"
   workflow_dispatch:
 
 permissions:
