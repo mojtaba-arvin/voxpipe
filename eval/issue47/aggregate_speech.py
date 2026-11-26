@@ -74,9 +74,32 @@ def build_report(
             if alignment_report.get("audio_uploaded") is not False or alignment_report.get("transcript_text_uploaded") is not False:
                 raise ValueError("alignment report indicates private sample content was uploaded")
             read_metrics = {
+                "dataset": {
+                    "id": qwen_report["dataset_id"],
+                    "version": qwen_report["dataset_version"],
+                    "source_kind": qwen_report["source_kind"],
+                    "locale": qwen_report["locale"],
+                    "license": qwen_report["license"],
+                },
+                "asr_model": {
+                    "id": qwen_report["model_id"],
+                    "revision": qwen_report["model_revision"],
+                    "license": qwen_report["model_license"],
+                    "device": qwen_report["device"],
+                    "compute_type": qwen_report["compute_type"],
+                },
                 "sample_count": qwen_report["sample_count"],
                 "wer": qwen_report["wer"],
                 "cer": qwen_report["cer"],
+                "alignment_model": {
+                    "id": alignment_report["model_id"],
+                    "revision": alignment_report["model_revision"],
+                    "license": alignment_report["model_license"],
+                    "whisperx_version": alignment_report["whisperx_version"],
+                    "device": alignment_report["device"],
+                    "model_dtype": alignment_report["model_dtype"],
+                    "batch_size": alignment_report["batch_size"],
+                },
                 "alignment_coverage": alignment_report["alignment_coverage"],
                 "aligned_clip_count": alignment_report["aligned_clip_count"],
                 "failed_clip_count": alignment_report["failed_clip_count"],
