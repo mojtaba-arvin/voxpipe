@@ -7,7 +7,6 @@ on:
       - "eval/issue47/cpu_smoke.schema.json"
       - "requirements-eval-asr.txt"
       - "requirements-eval-asr-audit.txt"
-      - "tests/test_eval_issue47.py"
       - ".github/workflows/qwen-cpu-smoke.yml"
   workflow_dispatch:
 
