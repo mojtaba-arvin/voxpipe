@@ -55,7 +55,11 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 transcribe=lambda **kwargs: [SimpleNamespace(text="سلام دنیا", language="Persian")]
             )
             report_path = root / "result.json"
-            report = run_evaluation(archive_path, report_path, root / "cache", model=model)
+            intermediates_path = root / "temporary" / "transcripts.jsonl"
+            report = run_evaluation(
+                archive_path, report_path, root / "cache", model=model,
+                intermediates_output=intermediates_path,
+            )
             self.assertEqual(report["sample_count"], 1)
             self.assertEqual(report["wer"], 0.0)
             self.assertFalse(report["transcript_text_uploaded"])
@@ -63,6 +67,11 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             serialized = report_path.read_text(encoding="utf-8").lower()
             self.assertNotIn("سلام دنیا", serialized)
             self.assertNotIn("private-client", serialized)
+            intermediate = json.loads(intermediates_path.read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(intermediate["sample_id"], "sample-001")
+            self.assertEqual(intermediate["reference"], "سلام دنیا")
+            self.assertEqual(intermediate["hypothesis"], "سلام دنیا")
+            self.assertTrue(Path(intermediate["audio_path"]).is_file())
             schema = json.loads(
                 (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "qwen3_asr_persian.schema.json").read_text(encoding="utf-8")
             )
