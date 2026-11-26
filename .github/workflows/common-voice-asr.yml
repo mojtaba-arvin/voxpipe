@@ -45,9 +45,9 @@ jobs:
       - name: Install isolated WhisperX CPU alignment runtime
         run: |
           uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
-          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \\
-            --index-url https://download.pytorch.org/whl/cpu \\
-            --extra-index-url https://pypi.org/simple \\
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
             -r requirements-eval-align.txt
       - name: Install FFmpeg for bounded audio duration probing
         run: |
@@ -85,15 +85,15 @@ jobs:
         run: |
           python -m eval.issue47.qwen_transcription \
             --archive "${{ steps.sample.outputs.archive }}" \
-            --max-clips 50 \\
+            --max-clips 50 \
             --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
       - name: Run Persian WhisperX forced alignment on temporary Qwen hypotheses
         run: |
-          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \\
-            --manifest "$RUNNER_TEMP/voxpipe-qwen-alignment-input/alignment_input.jsonl" \\
-            --output eval/artifacts/issue47/alignment_cv.json \\
-            --speaker-output eval/artifacts/issue47/speaker_segments.json \\
-            --cache-dir "$HOME/.cache/huggingface" \\
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \
+            --manifest "$RUNNER_TEMP/voxpipe-qwen-alignment-input/alignment_input.jsonl" \
+            --output eval/artifacts/issue47/alignment_cv.json \
+            --speaker-output eval/artifacts/issue47/speaker_segments.json \
+            --cache-dir "$HOME/.cache/huggingface" \
             --max-clips 50
       - name: Upload aggregate metrics and provenance only
         if: always()
