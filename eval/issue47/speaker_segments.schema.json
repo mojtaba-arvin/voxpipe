@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:speaker-segments:v1",
+  "title": "VoxPipe Common Voice read-speech diarization boundary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "diarization_status",
+    "source_kind",
+    "speaker_segments",
+    "speaker_ids_used",
+    "overlap_claims",
+    "warning"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "diarization_status": {
+      "const": "not_evaluated_read_speech"
+    },
+    "source_kind": {
+      "const": "scripted_read_speech"
+    },
+    "speaker_segments": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "speaker_ids_used": {
+      "const": false
+    },
+    "overlap_claims": {
+      "const": false
+    },
+    "warning": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
