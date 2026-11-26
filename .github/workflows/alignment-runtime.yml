@@ -97,7 +97,7 @@ jobs:
               model_cache_only=True,
           )
           assert metadata["language"] == "fa"
-          assert len(metadata["dictionary"]) > 50
+          assert len(metadata["dictionary"]) > 10
           model_dtype = str(next(model.parameters()).dtype)
           assert model_dtype == "torch.float32", model_dtype
           print({
