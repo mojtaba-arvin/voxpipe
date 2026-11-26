@@ -192,7 +192,7 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
                 **dataset_metadata,
                 sdk_version=_sdk_version(),
             )
-            output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+            output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             return report
         except FileNotFoundError:
             report = build_report(
