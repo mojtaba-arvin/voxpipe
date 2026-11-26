@@ -26,7 +26,7 @@
     "transcript_characters",
     "timestamps_returned",
     "torch_version",
-    "qwen_asr_version",
+    "transformers_version",
     "python_version",
     "warnings",
     "peak_rss_bytes"
@@ -39,10 +39,10 @@
       "const": "passed"
     },
     "model_id": {
-      "const": "Qwen/Qwen3-ASR-0.6B"
+      "const": "Qwen/Qwen3-ASR-0.6B-hf"
     },
     "model_revision": {
-      "const": "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+      "const": "40946090cac63fc01d723a83174e16515073d7c0"
     },
     "model_license": {
       "const": "Apache-2.0"
@@ -95,8 +95,8 @@
       "type": "string",
       "minLength": 1
     },
-    "qwen_asr_version": {
-      "const": "0.0.6"
+    "transformers_version": {
+      "const": "5.20.1"
     },
     "python_version": {
       "type": "string",

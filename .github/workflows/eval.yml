@@ -247,9 +247,11 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/huggingface
-          key: voxpipe-qwen3-asr-model-v1
-      - name: Install CPU-only ASR dependencies
-        run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
+          key: voxpipe-qwen3-asr-model-v2
+      - name: Install pinned CPU-only PyTorch wheel from the official index
+        run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
+      - name: Install patched native Transformers and audio dependencies
+        run: uv pip install --system -r requirements-eval-asr.txt
       - name: Run pinned Qwen3-ASR CPU smoke
         run: python -m eval.issue47.cpu_smoke
       - name: Upload CPU smoke metadata only

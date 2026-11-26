@@ -18,8 +18,8 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_ID = "Qwen/Qwen3-ASR-0.6B"
-MODEL_REVISION = "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+MODEL_ID = "Qwen/Qwen3-ASR-0.6B-hf"
+MODEL_REVISION = "40946090cac63fc01d723a83174e16515073d7c0"
 MODEL_LICENSE = "Apache-2.0"
 SAMPLE_URL = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3-ASR-Repo/asr_en.wav"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "cpu_smoke.json"
@@ -48,7 +48,7 @@ def build_report(
     detected_language: str,
     transcript: str,
     torch_version: str,
-    qwen_asr_version: str,
+    transformers_version: str,
 ) -> dict[str, Any]:
     if min(model_load_seconds, inference_seconds, audio_seconds) <= 0:
         raise ValueError("model load, inference and audio durations must be positive")
@@ -79,7 +79,7 @@ def build_report(
         "transcript_characters": len(transcript),
         "timestamps_returned": False,
         "torch_version": torch_version,
-        "qwen_asr_version": qwen_asr_version,
+        "transformers_version": transformers_version,
         "python_version": platform.python_version(),
         "warnings": [
             "This smoke uses the model publisher's English sample to measure CPU feasibility.",
@@ -105,7 +105,7 @@ def _download_sample(destination: Path) -> None:
 def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = None) -> dict[str, Any]:
     import torch
     from huggingface_hub import snapshot_download
-    from qwen_asr import Qwen3ASRModel
+    from transformers import AutoModelForMultimodalLM, AutoProcessor
 
     torch.set_num_threads(max(1, min(os.cpu_count() or 1, 4)))
     download_started = time.perf_counter()
@@ -127,24 +127,27 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
         duration = audio_duration_seconds(audio_path)
 
         started = time.perf_counter()
-        model = Qwen3ASRModel.from_pretrained(
-            str(model_dir),
-            dtype=torch.float32,
-            device_map="cpu",
-            max_inference_batch_size=1,
-            max_new_tokens=128,
+        processor = AutoProcessor.from_pretrained(str(model_dir), local_files_only=True)
+        model = AutoModelForMultimodalLM.from_pretrained(
+            str(model_dir), dtype=torch.float32, local_files_only=True
         )
+        model.to("cpu")
+        model.eval()
         model_load_seconds = time.perf_counter() - started
 
         started = time.perf_counter()
-        results = model.transcribe(audio=str(audio_path), language="English")
+        inputs = processor.apply_transcription_request(
+            audio=str(audio_path)
+        ).to("cpu", model.dtype)
+        with torch.inference_mode():
+            output_ids = model.generate(**inputs, max_new_tokens=128, do_sample=False)
+        generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+        decoded = processor.decode(generated_ids, return_format="parsed")[0]
         inference_seconds = time.perf_counter() - started
         peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak_rss if sys.platform == "darwin" else peak_rss * 1024)
-        if not results:
-            raise RuntimeError("Qwen3-ASR returned no transcription result")
-        transcript = str(results[0].text or "")
-        detected_language = str(results[0].language or "")
+        transcript = str(decoded.get("transcription", ""))
+        detected_language = str(decoded.get("language", ""))
 
     report = build_report(
         model_download_seconds=model_download_seconds,
@@ -158,7 +161,7 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
         detected_language=detected_language,
         transcript=transcript,
         torch_version=torch.__version__,
-        qwen_asr_version=version("qwen-asr"),
+        transformers_version=version("transformers"),
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

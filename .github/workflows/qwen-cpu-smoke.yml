@@ -1,0 +1,79 @@
+name: Qwen3-ASR native Transformers CPU smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: qwen-cpu-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-smoke:
+    name: Native Transformers Qwen3-ASR CPU feasibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements-eval-asr.txt"
+      - name: Cache pinned Qwen3-ASR model
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/huggingface
+          key: voxpipe-qwen3-asr-native-cpu-v2-${{ hashFiles('requirements-eval-asr.txt') }}
+      - name: Install pinned CPU-only PyTorch wheel from the official index
+        run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
+      - name: Install patched native Transformers runtime
+        run: uv pip install --system -r requirements-eval-asr.txt
+      - name: Run publisher English sample CPU smoke
+        run: python -m eval.issue47.cpu_smoke --output eval/artifacts/issue47/cpu_smoke.json
+      - name: Disclose CPU feasibility results on issue 166
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: "166"
+        run: |
+          COMMENT_BODY="$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("eval/artifacts/issue47/cpu_smoke.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Native Transformers Qwen3-ASR CPU feasibility smoke",
+              "",
+              f"- Model revision: {result['model_revision']}",
+              f"- Model size: {result['model_size_bytes']} bytes",
+              f"- Peak RSS: {result['peak_rss_bytes'] / (1024 ** 2):.1f} MiB",
+              f"- Download time: {result['model_download_seconds']:.2f}s",
+              f"- Load time: {result['model_load_seconds']:.2f}s",
+              f"- Audio duration: {result['audio_duration_seconds']:.2f}s",
+              f"- Inference time: {result['inference_seconds']:.2f}s",
+              f"- Real-time factor: {result['real_time_factor']:.4f}",
+              f"- CPU cores / Torch threads: {result['cpu_count']} / {result['torch_num_threads']}",
+              "",
+              "This uses the publisher's English sample to measure CPU feasibility only. It is not Persian WER or production-quality evidence; no transcript text, audio or timestamps are uploaded.",
+          ]
+          print("\n".join(lines))
+          PY
+          )"
+          export COMMENT_BODY
+          bash scripts/comment_issue.sh
+      - name: Upload aggregate CPU feasibility report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: qwen3-asr-native-cpu-smoke
+          path: eval/artifacts/issue47/cpu_smoke.json
+          if-no-files-found: warn

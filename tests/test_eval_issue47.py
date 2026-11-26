@@ -12,6 +12,7 @@ from eval.issue47.cpu_smoke import audio_duration_seconds, build_report, MODEL_R
 
 
 class CpuSmokeReportTests(unittest.TestCase):
+
     def test_report_is_reproducible_and_discloses_english_only_scope(self) -> None:
         report = build_report(
             model_download_seconds=1.25,
@@ -24,8 +25,8 @@ class CpuSmokeReportTests(unittest.TestCase):
             torch_num_threads=4,
             detected_language="English",
             transcript="short sample transcription",
-            torch_version="2.8.0+cpu",
-            qwen_asr_version="0.0.6",
+            torch_version="2.15.0+cpu",
+            transformers_version="5.20.1",
         )
         self.assertEqual(report["model_id"], MODEL_ID)
         self.assertEqual(report["model_revision"], MODEL_REVISION)
@@ -63,8 +64,8 @@ class CpuSmokeReportTests(unittest.TestCase):
                 torch_num_threads=2,
                 detected_language="English",
                 transcript="x",
-                torch_version="2.8.0",
-                qwen_asr_version="0.0.6",
+                torch_version="2.15.0+cpu",
+                transformers_version="5.20.1",
             )
         with self.assertRaisesRegex(ValueError, "must be non-empty"):
             build_report(
@@ -78,8 +79,8 @@ class CpuSmokeReportTests(unittest.TestCase):
                 torch_num_threads=2,
                 detected_language="English",
                 transcript="",
-                torch_version="2.8.0",
-                qwen_asr_version="0.0.6",
+                torch_version="2.15.0+cpu",
+                transformers_version="5.20.1",
             )
 
 
