@@ -151,6 +151,8 @@ def build_report(
     }
     if status == "access_denied":
         result["warnings"].append("MDC denied the authenticated sample-download request with HTTP 403; no dataset bytes were downloaded. Check dataset terms and organization access before retrying.")
+    if status == "sample_unavailable":
+        result["warnings"].append("MDC SDK returned FileNotFoundError for the bounded sample endpoint; no sample or release bytes were downloaded. Confirm sample publication with MDC; never fall back to the full release archive.")
     if status == "downloaded":
         if (
             not sample_archive_name
