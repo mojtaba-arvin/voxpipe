@@ -1523,7 +1523,6 @@
         "PR #208 merged to main as 54dc9c7124d0d04c2ba821be46e851460d5437a8. It replaces vulnerable qwen-asr==0.0.6 with native Transformers 5.20.1, Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0, and CPU-only PyTorch 2.15.0+cpu.",
         "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
         "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
-        "The Persian evaluator and offline tests are merged. The Common Voice ASR workflow is manual-only; reusable workflow_call integration into eval.yml and end-to-end Persian WER remain outstanding. No raw audio, transcript rows, speaker IDs or per-utterance predictions are persisted. (Historical state; superseded by the subsequent integration evidence.)",
         "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced."
       ],
       "blocked_reason": "VP-0059 remains blocked because no real bounded Common Voice Persian sample has been downloaded (MDC HTTP 403). The reusable workflow_call integration is implemented, but Persian WER/CER still cannot be produced without the publisher sample. Do not treat English smoke or access_denied as Persian evaluation."
@@ -1543,12 +1542,12 @@
         "Explicitly set diarization_status=not_evaluated_read_speech and emit no speaker segments or overlap claims for isolated Common Voice clips; natural diarization remains M2."
       ],
       "evidence": [
-        "2026-11-26 implementation prepared on branch feat/persian-whisperx-alignment: WhisperX 3.8.6 forced alignment uses jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
-        "The Qwen-to-aligner handoff is an ephemeral JSONL manifest and temporary audio under RUNNER_TEMP; per-word alignment JSONL is created inside a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
-        "WhisperX runs in an isolated CPU environment with PyTorch 2.8.0+cpu, separate from the Qwen runtime, which pins PyTorch 2.15.0+cpu. The actual aligner model dtype is recorded; WhisperX --compute_type is not misrepresented as an aligner quantization setting.",
-        "Implementation and offline tests are awaiting exact-head CI. Real alignment remains unverified until #177 obtains the bounded Common Voice sample."
+        "PR #212 implements WhisperX 3.8.6 forced alignment with jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
+        "Qwen hypotheses and audio are handed off only through a temporary JSONL manifest and temporary runner files; per-word alignment JSONL is created in a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
+        "WhisperX runs in an isolated CPU environment with PyTorch 2.8.0+cpu and huggingface_hub 0.36.0, separate from the Qwen runtime (PyTorch 2.15.0+cpu). The actual aligner model dtype is recorded; WhisperX --compute_type is not misrepresented as aligner quantization.",
+        "PR #212 exact-head validation is pending. Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it."
       ],
-      "blocked_reason": "The implementation can be developed and tested offline, but acceptance requires running forced alignment over the same real bounded Persian Common Voice sample used by #177. VP-0060 is still blocked by Mozilla Data Collective HTTP 403, so there is no approved audio/transcript input on which to verify actual alignment. Do not mark this item done from schema/unit tests alone."
+      "blocked_reason": "Acceptance requires running forced alignment over the same real bounded Persian Common Voice sample used by #177. VP-0060 remains blocked by Mozilla Data Collective HTTP 403, so no approved audio/transcript input is available. Do not mark this item done from schema/unit tests alone."
     },
     {
       "id": "VP-0062",
@@ -1579,7 +1578,7 @@
       "title": "Wire speech evaluation job (issue #180)",
       "phase": 9,
       "priority": 63,
-      "status": "planned",
+      "status": "blocked",
       "depends_on": [
         "VP-0059",
         "VP-0060",
@@ -1591,15 +1590,19 @@
         "Upload audio-free summaries and required reproducibility metadata; keep raw audio artifact access bounded.",
         "Disclose that read-speech and TTS do not establish natural conversational performance."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #213 (stacked on PR #212) implements the Group C eval-47 aggregator: separate read-speech and synthetic-overlap branches, explicit success/failure/skipped states, schema validation, audio-free report_47.json, and a truthful issue #47 disclosure.",
+        "The aggregate intentionally marks Group C incomplete unless both read-speech ASR/alignment and synthetic overlap have validated artifacts. Read-speech diarization is not evaluated; natural-conversation and medical-readiness claims are explicitly false.",
+        "Offline aggregation tests and exact-head CI are pending; no Common Voice sample was available for a real end-to-end speech run."
+      ],
+      "blocked_reason": "The aggregation path can be exercised with fixtures, but the acceptance gate requires a validated Persian read-speech ASR/alignment artifact as well as the synthetic overlap artifact. VP-0060 and VP-0061 remain blocked on MDC bounded-sample access."
     },
     {
       "id": "VP-0064",
       "title": "Aggregate all silver evaluation groups (issue #181)",
       "phase": 9,
       "priority": 64,
-      "status": "planned",
+      "status": "blocked",
       "depends_on": [
         "VP-0054",
         "VP-0058",
@@ -1612,8 +1615,12 @@
         "Apply silver-baseline-complete to all three umbrella issues only when every evaluation group succeeds; otherwise leave the label absent.",
         "Never report skipped or missing evidence as a pass."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #213 (stacked on PR #212) implements a cross-group summary.json with workflow run ID/attempt/commit, exact GitHub artifact IDs and URLs, per-group metrics, and explicit success/failure/skipped outcomes.",
+        "The post-results workflow posts separate truthful summaries to issues #32, #47 and #48. It adds silver-baseline-complete only on workflow_dispatch when all three groups have validated metrics and exact artifact references; otherwise it removes any stale completion label.",
+        "Offline summary tests and exact-head CI are pending; the real Group C input remains blocked by MDC access."
+      ],
+      "blocked_reason": "This item depends on VP-0063 and requires validated artifacts from all three groups. The report/label implementation is not evidence that the underlying Persian speech group has passed."
     },
     {
       "id": "VP-0065",
