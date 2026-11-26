@@ -51,8 +51,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install Python dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+        run: uv pip install --system -r requirements-dev.txt
       - name: Ensure FFmpeg integration-test binaries are available
         run: |
           if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
@@ -92,8 +97,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install PostgreSQL test driver
-        run: python -m pip install --disable-pip-version-check -r requirements-postgres.txt
+        run: uv pip install --system -r requirements-postgres.txt
       - name: Prepare isolated PostgreSQL schema and RLS role
         run: PYTHONPATH=src python scripts/prepare_test_database.py
       - name: Set up Go
@@ -117,8 +127,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install optional OpenTelemetry dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-observability.txt
+        run: uv pip install --system -r requirements-observability.txt
       - name: Validate OTLP SDK bootstrap and safe shutdown
         env:
           PYTHONPATH: src
@@ -154,8 +169,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install Python PostgreSQL driver
-        run: python -m pip install --disable-pip-version-check -r requirements-postgres.txt
+        run: uv pip install --system -r requirements-postgres.txt
       - name: Prepare disposable PostgreSQL database
         env:
           PYTHONPATH: src
@@ -177,8 +197,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install optional OpenTelemetry dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-observability.txt
+        run: uv pip install --system -r requirements-observability.txt
       - name: Validate and exercise disposable Collector/Prometheus stack
         run: bash scripts/verify_telemetry_stack.sh
 
@@ -193,6 +218,11 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Verify the guided local stack and sample ingestion
         run: python scripts/dev_quickstart.py up
       - name: Stop the disposable stack
@@ -211,13 +241,18 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Set up Go
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "1.26.11"
           cache: true
       - name: Install optional S3 SDK
-        run: python -m pip install --disable-pip-version-check -r requirements-s3.txt
+        run: uv pip install --system -r requirements-s3.txt
       - name: Start disposable Silo with server-side encryption
         run: |
           docker run --detach --name voxpipe-silo \

@@ -1373,10 +1373,10 @@
         "State clearly that synthetic-template metrics are not human gold or production accuracy."
       ],
       "evidence": [
-        "PR #196 exact-head evaluation run #45742501316 completed successfully; the reusable workflow ran this group end-to-end.",
-        "Artifact extraction-silver-baseline uploaded and verified in run #45742501316.",
+        "PR #197 exact-head evaluation run #45747200458 completed successfully; the reusable workflow ran this group end-to-end.",
+        "Artifact extraction-silver-baseline uploaded and verified in run #45747200458.",
         "120 synthetic conversations; deterministic silver labels; aggregate micro/macro F1 1.0000. Not human gold or production accuracy.",
-        "Disclosure comment posted to the corresponding umbrella issue (#32 or #48)."
+        "Disclosure comment posted to umbrella issue #32."
       ],
       "blocked_reason": null
     },
@@ -1462,10 +1462,10 @@
         "Disclose that heuristic qrels are not human relevance judgments."
       ],
       "evidence": [
-        "PR #196 exact-head evaluation run #45742501316 completed successfully; the reusable workflow ran this group end-to-end.",
-        "Artifact retrieval-silver-baseline uploaded and verified in run #45742501316.",
+        "PR #197 exact-head evaluation run #45747200458 completed successfully; the reusable workflow ran this group end-to-end.",
+        "Artifact retrieval-silver-baseline uploaded and verified in run #45747200458.",
         "120 generated queries; five-passage placeholder corpus; heuristic qrels; Recall@5 1.0000, MRR 0.8380, nDCG@5 0.8791. Not human relevance judgment.",
-        "Disclosure comment posted to the corresponding umbrella issue (#32 or #48)."
+        "Disclosure comment posted to umbrella issue #48."
       ],
       "blocked_reason": null
     },
