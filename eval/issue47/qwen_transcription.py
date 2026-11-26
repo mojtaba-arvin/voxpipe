@@ -24,8 +24,8 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[2]
 DATASET_ID = "cmu5xazgy00finq074vaqo1b3"
 DATASET_VERSION = "cv-corpus-27.0-2026-09-11"
-MODEL_ID = "Qwen/Qwen3-ASR-0.6B"
-MODEL_REVISION = "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+MODEL_ID = "Qwen/Qwen3-ASR-0.6B-hf"
+MODEL_REVISION = "e8cb6ff5b151ad5c0e49bf9328a9d628efb5def2"
 MODEL_LICENSE = "Apache-2.0"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
@@ -164,7 +164,7 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
 
 def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: float,
                  inference_seconds: float, peak_rss_bytes: int, torch_version: str,
-                 qwen_asr_version: str, compute_type: str = "float32") -> dict[str, Any]:
+                 transformers_version: str, compute_type: str = "float32") -> dict[str, Any]:
     if sample_count < 1 or min(audio_seconds, inference_seconds, peak_rss_bytes) <= 0:
         raise ValueError("sample count, audio/inference duration and peak RSS must be positive")
     result = {
@@ -193,7 +193,7 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
         "cer": metrics["cer"],
         "peak_rss_bytes": peak_rss_bytes,
         "torch_version": torch_version,
-        "qwen_asr_version": qwen_asr_version,
+        "transformers_version": transformers_version,
         "python_version": platform.python_version(),
         "transcript_text_uploaded": False,
         "audio_uploaded": False,
@@ -221,6 +221,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
+    processor = None
     with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
@@ -234,7 +235,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 if model_loader is None:
                     raise ValueError("a model or model_loader is required")
                 model_dir = model_loader(cache_dir)
-                model = _load_model_from_directory(model_dir)
+                processor, model = _load_model_from_directory(model_dir)
             for index, (member, reference) in enumerate(selected, start=1):
                 extracted = archive.extractfile(member)
                 if extracted is None:
@@ -260,15 +261,15 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
             torch_version = "not-installed"
         try:
             from importlib.metadata import version
-            qwen_version = version("qwen-asr")
+            transformers_version = version("transformers")
         except Exception:
-            qwen_version = "unknown"
+            transformers_version = "unknown"
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
         report = build_report(
             metrics=metrics, sample_count=len(references), audio_seconds=audio_seconds,
             inference_seconds=inference_seconds, peak_rss_bytes=peak_rss_bytes,
-            torch_version=torch_version, qwen_asr_version=qwen_version,
+            torch_version=torch_version, transformers_version=transformers_version,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -305,14 +306,29 @@ def _audio_duration_seconds(path: Path) -> float:
     return duration
 
 
-def _load_model_from_directory(model_dir: Path) -> Any:
+def _load_model_from_directory(model_dir: Path) -> tuple[Any, Any]:
     import torch
-    from qwen_asr import Qwen3ASRModel
+    from transformers import AutoModelForMultimodalLM, AutoProcessor
     torch.set_num_threads(max(1, min(__import__("os").cpu_count() or 1, 4)))
-    return Qwen3ASRModel.from_pretrained(
-        str(model_dir), dtype=torch.float32, device_map="cpu",
-        max_inference_batch_size=1, max_new_tokens=256,
+    processor = AutoProcessor.from_pretrained(str(model_dir), local_files_only=True)
+    model = AutoModelForMultimodalLM.from_pretrained(
+        str(model_dir), dtype=torch.float32, local_files_only=True
     )
+    model.to("cpu")
+    model.eval()
+    return processor, model
+
+
+def _transcribe_audio(model: Any, processor: Any, audio_path: Path) -> str:
+    import torch
+    inputs = processor.apply_transcription_request(
+        audio=str(audio_path), language="Persian"
+    ).to("cpu", model.dtype)
+    with torch.inference_mode():
+        output_ids = model.generate(**inputs, max_new_tokens=256, do_sample=False)
+    generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+    parsed = processor.decode(generated_ids, return_format="parsed")[0]
+    return str(parsed.get("transcription", ""))
 
 
 def _download_model(cache_dir: Path) -> Path:
