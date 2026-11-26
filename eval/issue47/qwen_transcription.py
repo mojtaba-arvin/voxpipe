@@ -6,6 +6,7 @@ model/dataset provenance are written to the report.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import csv
 import io
 import json
@@ -214,7 +215,8 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
 def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    max_clips: int = MAX_CLIPS, model: Any | None = None,
                    processor: Any | None = None,
-                   model_loader: Callable[[Path], Any] | None = None) -> dict[str, Any]:
+                   model_loader: Callable[[Path], Any] | None = None,
+                   intermediate_dir: Path | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("sample archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
@@ -222,7 +224,16 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
-    with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
+    if intermediate_dir is not None:
+        intermediate_dir = intermediate_dir.resolve()
+        intermediate_dir.mkdir(parents=True, exist_ok=True)
+        if any(intermediate_dir.iterdir()):
+            raise ValueError("alignment intermediate directory must be empty")
+        temporary_context = nullcontext(str(intermediate_dir))
+    else:
+        temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
+    alignment_rows: list[dict[str, str]] = []
+    with temporary_context as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
         hypotheses: list[str] = []
@@ -253,7 +264,15 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
                 references.append(reference)
                 hypotheses.append(hypothesis)
+                if intermediate_dir is not None:
+                    alignment_rows.append({"audio_path": str(audio_path), "transcript": hypothesis})
                 audio_seconds += duration
+        if intermediate_dir is not None:
+            manifest_path = intermediate_dir / "alignment_input.jsonl"
+            manifest_path.write_text(
+                "".join(json.dumps(row, ensure_ascii=False) + "\\n" for row in alignment_rows),
+                encoding="utf-8",
+            )
 
         metrics = corpus_error_rates(references, hypotheses)
         try:
@@ -358,10 +377,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
+    parser.add_argument("--intermediate-dir", type=Path, default=None,
+                        help="Keep temporary audio and Qwen hypotheses for a downstream ephemeral alignment step")
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
         model_loader=_download_model,
+        intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0
