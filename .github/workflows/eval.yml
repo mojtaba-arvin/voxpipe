@@ -236,8 +236,8 @@ jobs:
           export COMMENT_BODY
           bash scripts/comment_issue.sh
 
-  eval-47:
-    name: Group C — Qwen3-ASR CPU feasibility smoke
+  qwen-cpu-smoke:
+    name: Qwen3-ASR CPU feasibility smoke (feasibility only)
     if: ${{ inputs.run_eval_47 }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -372,39 +372,189 @@ jobs:
           export COMMENT_BODY
           bash scripts/comment_issue.sh
 
-  post-results:
-    name: Aggregate evaluation outcomes
+  eval-47:
+    name: Group C — speech evidence aggregate
     if: ${{ always() }}
-    needs: [eval-32, eval-48, eval-47, common-voice-asr, tts-overlap]
+    needs: [common-voice-asr, tts-overlap]
     runs-on: ubuntu-latest
+    outputs:
+      group_status: ${{ steps.aggregate.outputs.group_status }}
     steps:
-      - name: Publish truthful group status summary
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
+      - name: Install report validation dependencies
+        run: uv pip install --system -r requirements-dev.txt
+      - name: Download Persian read-speech aggregate
+        if: ${{ needs.common-voice-asr.result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: persian-read-speech-evaluation
+          path: eval/artifacts/downloaded/read-speech
+      - name: Download synthetic overlap annotations
+        if: ${{ needs.tts-overlap.result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: synthetic-overlap-annotations
+          path: eval/artifacts/downloaded/synthetic-overlap
+      - name: Aggregate read-speech and synthetic branches
+        id: aggregate
+        if: ${{ always() }}
         env:
-          GROUP_A: ${{ needs['eval-32'].result }}
-          GROUP_B: ${{ needs['eval-48'].result }}
-          GROUP_C: ${{ needs['eval-47'].result }}
-          COMMON_VOICE_ASR: ${{ needs['common-voice-asr'].result }}
-          TTS_OVERLAP: ${{ needs['tts-overlap'].result }}
+          READ_SPEECH_STATUS: ${{ needs.common-voice-asr.result }}
+          SYNTHETIC_STATUS: ${{ needs.tts-overlap.result }}
+          RUN_ID: ${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          {
-            echo "## VoxPipe silver evaluation baseline"
-            echo
-            echo "| Group | Result |"
-            echo "|---|---|"
-            echo "| Extraction (#32) | ${GROUP_A} |"
-            echo "| Retrieval (#48) | ${GROUP_B} |"
-            echo "| Speech CPU smoke (#166) | ${GROUP_C} |"
-            echo "| Persian Common Voice ASR (#177) | ${COMMON_VOICE_ASR} |"
-            echo "| Synthetic overlap (#179) | ${TTS_OVERLAP} |"
-            echo
-            echo "These are automated silver-baseline results, not human gold or production-quality claims."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Post optional disclosure comment
-        if: ${{ inputs.comment_issue != '' && inputs.comment_body != '' }}
+          python -m eval.issue47.aggregate_speech \
+            --read-speech-status "$READ_SPEECH_STATUS" \
+            --synthetic-status "$SYNTHETIC_STATUS" \
+            --read-speech-dir eval/artifacts/downloaded/read-speech \
+            --synthetic-dir eval/artifacts/downloaded/synthetic-overlap \
+            --run-id "$RUN_ID" \
+            --commit-sha "$COMMIT_SHA" \
+            --run-url "$RUN_URL"
+      - name: Disclose Group C branch outcomes on issue 47
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ inputs.comment_issue }}
-          COMMENT_BODY: ${{ inputs.comment_body }}
-        run: bash scripts/comment_issue.sh
+          ISSUE_NUMBER: "47"
+        run: |
+          COMMENT_BODY="$(cat eval/artifacts/issue47/report_47.md)"
+          export COMMENT_BODY
+          bash scripts/comment_issue.sh
+      - name: Upload Group C aggregate report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: speech-evaluation-group
+          path: |
+            eval/artifacts/issue47/report_47.json
+            eval/artifacts/issue47/report_47.md
+          if-no-files-found: error
+
+  post-results:
+    name: Aggregate all silver evaluation groups
+    if: ${{ always() }}
+    needs: [eval-32, eval-48, qwen-cpu-smoke, eval-47, common-voice-asr, tts-overlap]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
+      - name: Install summary validation dependencies
+        run: uv pip install --system -r requirements-dev.txt
+      - name: Download extraction silver artifact
+        if: ${{ needs['eval-32'].result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: extraction-silver-baseline
+          path: eval/artifacts/downloaded/issue32
+      - name: Download retrieval silver artifact
+        if: ${{ needs['eval-48'].result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: retrieval-silver-baseline
+          path: eval/artifacts/downloaded/issue48
+      - name: Download speech group artifact
+        if: ${{ needs['eval-47'].result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: speech-evaluation-group
+          path: eval/artifacts/downloaded/issue47
+      - name: Build exact-provenance summary
+        id: aggregate
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m eval.post_results \
+            --extraction-status "${{ needs['eval-32'].result }}" \
+            --retrieval-status "${{ needs['eval-48'].result }}" \
+            --speech-status "${{ needs['eval-47'].outputs.group_status || needs['eval-47'].result }}" \
+            --extraction-dir eval/artifacts/downloaded/issue32 \
+            --retrieval-dir eval/artifacts/downloaded/issue48 \
+            --speech-dir eval/artifacts/downloaded/issue47 \
+            --repository "${{ github.repository }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --commit-sha "${{ github.sha }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Post truthful summaries to all umbrella issues
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for issue in 32 47 48; do
+            COMMENT_BODY="$(cat "eval/artifacts/post-results/issue-${issue}.md")"
+            export ISSUE_NUMBER="$issue" COMMENT_BODY
+            bash scripts/comment_issue.sh
+          done
+      - name: Reconcile silver completion labels
+        if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ALL_SUCCESS: ${{ steps.aggregate.outputs.all_success }}
+        run: |
+          set -euo pipefail
+          for issue in 32 47 48; do
+            if [[ "$ALL_SUCCESS" == "true" ]]; then
+              curl --fail-with-body --silent --show-error \
+                --request POST \
+                --header "Accept: application/vnd.github+json" \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                --data '{"labels":["silver-baseline-complete"]}' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$issue/labels" >/dev/null
+            else
+              status="$(curl --silent --show-error --output "$RUNNER_TEMP/label-response.json" --write-out '%{http_code}' \
+                --request DELETE \
+                --header "Accept: application/vnd.github+json" \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$issue/labels/silver-baseline-complete")"
+              if [[ "$status" != "200" && "$status" != "404" ]]; then
+                cat "$RUNNER_TEMP/label-response.json" >&2
+                exit 1
+              fi
+            fi
+          done
+      - name: Publish final run summary
+        if: ${{ always() }}
+        run: |
+          echo "## VoxPipe silver evaluation"
+          echo
+          cat eval/artifacts/post-results/summary.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload final summary and issue disclosures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: silver-evaluation-summary
+          path: eval/artifacts/post-results/
+          if-no-files-found: error
