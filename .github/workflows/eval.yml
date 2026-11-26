@@ -210,6 +210,11 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "requirements*.txt"
+      - name: Cache pinned Qwen3-ASR model
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/huggingface/hub
+          key: voxpipe-qwen3-asr-model-v1
       - name: Install CPU-only ASR dependencies
         run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
       - name: Run pinned Qwen3-ASR CPU smoke
