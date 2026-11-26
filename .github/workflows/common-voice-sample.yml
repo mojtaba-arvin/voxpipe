@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: common-voice-sample-${{ github.ref }}
@@ -47,33 +46,3 @@ jobs:
           name: common-voice-persian-sample-provenance
           path: eval/artifacts/issue47/common_voice_sample.json
           if-no-files-found: warn
-      - name: Disclose sample download outcome on issue 176
-        if: ${{ success() && github.event_name == 'pull_request' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: "176"
-        run: |
-          COMMENT_BODY="$(python - <<'PY'
-          import json
-          from pathlib import Path
-
-          report = json.loads(Path("eval/artifacts/issue47/common_voice_sample.json").read_text(encoding="utf-8"))
-          lines = [
-              "## Common Voice Persian sample provenance",
-              "",
-              f"- Dataset: {report['dataset_name']}",
-              f"- Version: {report['dataset_version']}",
-              f"- License: {report['license']}",
-              f"- Release-wide recorded / validated hours: {report['recorded_hours']} / {report['validated_hours']}",
-              f"- Release-wide clips / speakers: {report['clip_count']} / {report['speaker_count']}",
-              f"- Sample audio files: {report['sample_audio_file_count']}",
-              f"- Sample download seconds: {report['sample_download_seconds']}",
-              "",
-              "The source is scripted read-speech, not natural conversation. Only audio-free aggregate provenance was uploaded; raw audio, transcript rows, speaker IDs and per-speaker records were not persisted.",
-          ]
-          print("\\n".join(lines))
-          PY
-          )"
-          export COMMENT_BODY
-          bash scripts/comment_issue.sh
