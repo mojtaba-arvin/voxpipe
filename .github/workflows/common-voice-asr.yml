@@ -1,6 +1,10 @@
 name: Common Voice Persian ASR evaluation
 
 on:
+  workflow_call:
+    secrets:
+      MDC_API_KEY:
+        required: false
   workflow_dispatch:
 
 permissions:
