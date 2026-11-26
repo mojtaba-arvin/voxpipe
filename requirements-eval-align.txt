@@ -1,9 +1,10 @@
-# WhisperX forced-alignment runtime is isolated from the pinned Qwen ASR runtime.
-# Canonical upstream versions for security auditing: requirements-eval-align-audit.txt.
-# WhisperX 3.8.6 requires the PyTorch 2.8 / torchvision 0.23 ABI family.
-torch==2.8.0+cpu
-torchaudio==2.8.0+cpu
-torchvision==0.23.0+cpu
+# Minimal runtime for WhisperX CTC forced alignment only.
+# WhisperX is installed separately with --no-deps: ASR/diarization extras are unused.
+torch==2.13.0+cpu
+torchaudio==2.11.1
+transformers==5.20.1
+huggingface_hub==1.31.0
+numpy==2.5.5
+pandas==3.1.1
+nltk==3.10.4
 whisperx==3.8.6
-transformers==4.57.3
-huggingface_hub==0.36.0
