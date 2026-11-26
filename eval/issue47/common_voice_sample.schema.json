@@ -24,8 +24,7 @@
     "dataset_archive_checksum",
     "downloaded_at",
     "sdk_version",
-    "warnings",
-    "sample_archive_checksum"
+    "warnings"
   ],
   "properties": {
     "schema_version": {
