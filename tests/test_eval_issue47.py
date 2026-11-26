@@ -70,6 +70,7 @@ class CpuSmokeReportTests(unittest.TestCase):
             build_report(
                 model_download_seconds=0,
                 model_size_bytes=1,
+                peak_rss_bytes=1,
                 model_load_seconds=1,
                 inference_seconds=1,
                 audio_seconds=2,
