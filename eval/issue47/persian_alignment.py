@@ -140,10 +140,19 @@ def run_alignment(
     if model_loader is None:
         import whisperx
 
+        import torch
+        from huggingface_hub import snapshot_download
+
+        torch.set_num_threads(max(1, min(__import__("os").cpu_count() or 1, 4)))
+        pinned_model_path = snapshot_download(
+            repo_id=MODEL_ID,
+            revision=MODEL_REVISION,
+            cache_dir=str(cache_dir),
+        )
         model, metadata = whisperx.load_align_model(
             language_code="fa",
             device="cpu",
-            model_name=MODEL_ID,
+            model_name=str(pinned_model_path),
             model_dir=str(cache_dir),
         )
         align_function = whisperx.align
