@@ -163,6 +163,7 @@ def run_alignment(
             device="cpu",
             model_name=str(pinned_model_path),
             model_dir=str(cache_dir),
+            model_cache_only=True,
         )
         align_function = whisperx_align
         audio_loader = whisperx_load_audio
