@@ -19,7 +19,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL_ID = "Qwen/Qwen3-ASR-0.6B-hf"
-MODEL_REVISION = "e8cb6ff5b151ad5c0e49bf9328a9d628efb5def2"
+MODEL_REVISION = "40946090cac63fc01d723a83174e16515073d7c0"
 MODEL_LICENSE = "Apache-2.0"
 SAMPLE_URL = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3-ASR-Repo/asr_en.wav"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "cpu_smoke.json"
