@@ -6,6 +6,18 @@ on:
     paths:
       - ".github/workflows/eval.yml"
       - ".github/workflows/eval-silver-pr.yml"
+      - ".github/workflows/common-voice-asr.yml"
+      - "eval/issue47/**"
+      - "eval/post_results.py"
+      - "eval/post_results.schema.json"
+      - "requirements-eval-align.txt"
+      - "requirements-eval-asr.txt"
+      - "requirements-eval-mdc.txt"
+      - "requirements-eval-tts.txt"
+      - "tests/test_eval_speech_aggregation.py"
+      - "tests/test_persian_alignment.py"
+      - "tests/test_eval_qwen_transcription.py"
+      - "tests/test_post_results.py"
       - "eval/issue32/**"
       - "eval/issue48/**"
       - "requirements-dev.txt"
@@ -14,6 +26,7 @@ on:
       - "tests/test_eval_issue48*.py"
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
