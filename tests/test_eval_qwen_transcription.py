@@ -77,11 +77,12 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertNotIn("سلام دنیا", serialized)
             self.assertNotIn("private-client", serialized)
             intermediate_dir = root / "alignment-input"
-            intermediate_report = run_evaluation(
-                archive_path, root / "intermediate-result.json", root / "cache",
-                model=SimpleNamespace(dtype="float32"), processor=object(),
-                intermediate_dir=intermediate_dir,
-            )
+            with patch("eval.issue47.qwen_transcription._transcribe_audio", return_value="سلام دنیا"):
+                intermediate_report = run_evaluation(
+                    archive_path, root / "intermediate-result.json", root / "cache",
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    intermediate_dir=intermediate_dir,
+                )
             manifest_rows = [json.loads(line) for line in (intermediate_dir / "alignment_input.jsonl").read_text(encoding="utf-8").splitlines()]
             self.assertEqual(len(manifest_rows), 1)
             self.assertEqual(manifest_rows[0]["transcript"], "سلام دنیا")
