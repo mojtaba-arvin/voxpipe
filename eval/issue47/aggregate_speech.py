@@ -180,8 +180,11 @@ def render_markdown(report: dict[str, Any]) -> str:
     if read["metrics"]:
         metrics = read["metrics"]
         lines.extend([
+            f"- Dataset: {metrics['dataset']['id']} ({metrics['dataset']['version']}, {metrics['dataset']['license']})",
+            f"- ASR model: {metrics['asr_model']['id']}@{metrics['asr_model']['revision']} ({metrics['asr_model']['device']}, {metrics['asr_model']['compute_type']})",
             f"- Persian read-speech clips: {metrics['sample_count']}",
             f"- Qwen WER / CER: {metrics['wer']:.6f} / {metrics['cer']:.6f}",
+            f"- Alignment model: {metrics['alignment_model']['id']}@{metrics['alignment_model']['revision']} (WhisperX {metrics['alignment_model']['whisperx_version']}, {metrics['alignment_model']['model_dtype']}, batch {metrics['alignment_model']['batch_size']})",
             f"- Word alignment coverage: {metrics['alignment_coverage']:.6f}",
             f"- Aligned / failed clips: {metrics['aligned_clip_count']} / {metrics['failed_clip_count']}",
             f"- Diarization: {metrics['diarization_status']}",
