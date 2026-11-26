@@ -54,7 +54,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 audio.setnchannels(1)
                 audio.setsampwidth(2)
                 audio.setframerate(16000)
-                audio.writeframes(b"\\x00\\x00" * 16000)
+                audio.writeframes(b"\x00\x00" * 16000)
             tsv_path = root / "validated.tsv"
             tsv_path.write_text(
                 "client_id\tpath\tsentence\nprivate-client\tclip.wav\tسلام دنیا\n",
