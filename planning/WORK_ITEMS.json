@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-25",
+  "updated_at": "2026-11-26",
   "items": [
     {
       "id": "VP-0001",
@@ -1523,7 +1523,7 @@
       "title": "Add local Persian TTS and controlled overlap fixture generation (issue #179)",
       "phase": 9,
       "priority": 62,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0051"
       ],
@@ -1535,7 +1535,11 @@
         "Keep generated WAVs temporary; persist only audio-free annotations and aggregate metadata.",
         "Use the output only for synthetic pipeline/overlap plumbing, not natural-speech or diarization claims."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #194 merged to main as a5fcb7ce42de93aee56fd5c6eb4b33144a88f5eb.",
+        "Exact-head PR workflow run 45685985373 passed the real sherpa-onnx TTS integration: both voice archives were SHA-256 verified, 50 synthetic Persian conversations were synthesized/mixed, and audio-free annotations plus manifest were uploaded.",
+        "Generated WAVs remained temporary; no audio or transcript artifacts were uploaded. This is synthetic overlap plumbing only, not natural-speech or distinct-speaker diarization evidence."
+      ],
       "blocked_reason": null
     },
     {
