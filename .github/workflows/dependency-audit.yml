@@ -8,7 +8,7 @@ on:
       - "go.mod"
       - "go.sum"
       - "requirements*.txt"
-      - ".github/workflows/dependency-audit.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
   python:
     name: Python dependency audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -57,3 +57,18 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Audit Go packages
         run: govulncheck ./...
+
+  workflow-syntax:
+    name: GitHub Actions workflow syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5
+        with:
+          go-version: '1.26.11'
+          cache: true
+      - name: Lint every workflow independently of validate.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml

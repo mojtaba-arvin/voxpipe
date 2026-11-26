@@ -138,10 +138,19 @@ def run_alignment(
 ) -> dict[str, Any]:
     rows = _read_manifest(manifest_path, max_clips)
     if model_loader is None:
-        import whisperx
+        from types import SimpleNamespace
 
         import torch
+        import torchaudio
         from huggingface_hub import snapshot_download
+        from whisperx.alignment import align as whisperx_align, load_align_model
+        from whisperx.audio import load_audio as whisperx_load_audio
+
+        # WhisperX 3.8.6 checks torchaudio.pipelines only to select bundled models.
+        # TorchAudio 2.11 removed that legacy collection; our pinned HF model uses
+        # the Transformers branch, so an empty namespace safely disables that branch.
+        if not hasattr(torchaudio, "pipelines"):
+            torchaudio.pipelines = SimpleNamespace(__all__=[])
 
         torch.set_num_threads(max(1, min(__import__("os").cpu_count() or 1, 4)))
         pinned_model_path = snapshot_download(
@@ -149,14 +158,15 @@ def run_alignment(
             revision=MODEL_REVISION,
             cache_dir=str(cache_dir),
         )
-        model, metadata = whisperx.load_align_model(
+        model, metadata = load_align_model(
             language_code="fa",
             device="cpu",
             model_name=str(pinned_model_path),
             model_dir=str(cache_dir),
+            model_cache_only=True,
         )
-        align_function = whisperx.align
-        audio_loader = whisperx.load_audio
+        align_function = whisperx_align
+        audio_loader = whisperx_load_audio
         try:
             whisperx_version = version("whisperx")
         except PackageNotFoundError:

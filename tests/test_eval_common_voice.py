@@ -15,6 +15,7 @@ from eval.issue47.common_voice_sample import (
     _inspect_sample_archive,
     _validate_dataset_details,
     run_download,
+    main,
 )
 
 
@@ -60,6 +61,7 @@ class CommonVoiceSampleTests(unittest.TestCase):
             dataset_archive_checksum="abc",
             sample_archive_name="sample.tar.gz",
             sample_archive_size_bytes=100,
+            sample_archive_checksum="b" * 64,
             sample_audio_file_count=5,
             sample_metadata_file_count=1,
             sample_download_seconds=0.25,
@@ -91,9 +93,23 @@ class CommonVoiceSampleTests(unittest.TestCase):
                 report_path = Path(temporary) / "report.json"
                 report = run_download(report_path)
                 self.assertEqual(report["status"], "sample_unavailable")
+                self.assertTrue(any("FileNotFoundError" in warning for warning in report["warnings"]))
                 self.assertTrue(report_path.is_file())
                 sample_download.assert_called_once()
                 self.assertEqual(sample_download.call_args.kwargs["extract"], False)
+
+    def test_cli_can_keep_archive_in_job_local_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.json"
+            download_directory = Path(temporary) / "sample"
+            with patch("eval.issue47.common_voice_sample.run_download") as download:
+                download.return_value = {"status": "downloaded"}
+                with patch(
+                    "sys.argv",
+                    ["common_voice_sample", "--output", str(output), "--download-directory", str(download_directory)],
+                ):
+                    self.assertEqual(main(), 0)
+                download.assert_called_once_with(output, download_directory)
 
     def test_access_denied_is_reported_without_failing_repository_validation(self) -> None:
         details = {

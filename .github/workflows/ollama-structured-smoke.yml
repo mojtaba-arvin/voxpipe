@@ -56,7 +56,7 @@ jobs:
       - name: Start local Ollama and pull model
         run: |
           nohup ollama serve >/tmp/ollama.log 2>&1 &
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
             sleep 2
           done

@@ -1,0 +1,134 @@
+name: Persian alignment runtime smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/alignment-runtime.yml"
+      - ".github/workflows/common-voice-asr.yml"
+      - "eval/issue47/persian_alignment.py"
+      - "requirements-eval-align.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  whisperx-cpu-runtime:
+    name: Install and inspect pinned WhisperX CPU runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements-eval-align.txt"
+      - name: Cache pinned Persian aligner model
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/huggingface
+          key: voxpipe-persian-aligner-234714078a1398a9db88194c5a40fefe6f376dc1-${{ hashFiles('requirements-eval-align.txt') }}
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+      - name: Install isolated WhisperX CPU environment
+        run: |
+          uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          grep -v '^whisperx==' requirements-eval-align.txt > "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
+            --index-strategy unsafe-best-match \
+            -r "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://pypi.org/simple --no-deps whisperx==3.8.6
+      - name: Audit the installed alignment runtime
+        run: |
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" pip-audit==2.9.0
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m pip freeze --all > "$RUNNER_TEMP/align-installed.txt"
+          # Audit the installed graph; canonicalize CPU build suffixes for PyPI advisory matching.
+          sed -i \
+            -e 's/^torch==2\.13\.0+cpu$/torch==2.13.0/' \
+            -e 's/^torchaudio==2\.11\.1+cpu$/torchaudio==2.11.1/' \
+            "$RUNNER_TEMP/align-installed.txt"
+          grep -v '^whisperx==' "$RUNNER_TEMP/align-installed.txt" > "$RUNNER_TEMP/align-installed-audit.txt"
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/pip-audit" --strict --no-deps -r "$RUNNER_TEMP/align-installed-audit.txt"
+          # WhisperX is installed with --no-deps; its unused ASR/diarization extras are
+          # intentionally excluded. The audit above covers every package actually installed.
+      - name: Verify installed versions and WhisperX alignment API
+        run: |
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" - <<'PY'
+          import inspect
+          import os
+          from importlib.metadata import version
+          from types import SimpleNamespace
+
+          import huggingface_hub
+          import torch
+          import torchaudio
+          import transformers
+          from huggingface_hub import snapshot_download
+
+          # WhisperX 3.8.6 only uses this legacy collection to select bundled models.
+          # The pinned custom Persian HF model always uses the Transformers branch.
+          if not hasattr(torchaudio, "pipelines"):
+              torchaudio.pipelines = SimpleNamespace(__all__=[])
+
+          from whisperx.alignment import align, load_align_model
+          from whisperx.audio import load_audio
+
+          assert version("whisperx") == "3.8.6"
+          assert torch.__version__.startswith("2.13.0+cpu"), torch.__version__
+          assert torchaudio.__version__.startswith("2.11.1"), torchaudio.__version__
+          assert transformers.__version__ == "5.20.1", transformers.__version__
+          assert huggingface_hub.__version__ == "1.31.0", huggingface_hub.__version__
+          assert not torch.cuda.is_available()
+          assert "model_name" in inspect.signature(load_align_model).parameters
+          assert "model_cache_only" in inspect.signature(load_align_model).parameters
+          assert "return_char_alignments" in inspect.signature(align).parameters
+          assert "print_progress" in inspect.signature(align).parameters
+          assert callable(load_audio)
+
+          cache_dir = os.path.join(os.environ["HOME"], ".cache", "huggingface")
+          model_path = snapshot_download(
+              repo_id="jonatasgrosman/wav2vec2-large-xlsr-53-persian",
+              revision="234714078a1398a9db88194c5a40fefe6f376dc1",
+              cache_dir=cache_dir,
+              allow_patterns=[
+                  "config.json",
+                  "preprocessor_config.json",
+                  "special_tokens_map.json",
+                  "vocab.json",
+                  "pytorch_model.bin",
+              ],
+          )
+          model, metadata = load_align_model(
+              language_code="fa",
+              device="cpu",
+              model_name=model_path,
+              model_dir=cache_dir,
+              model_cache_only=True,
+          )
+          assert metadata["language"] == "fa"
+          assert len(metadata["dictionary"]) > 10
+          model_dtype = str(next(model.parameters()).dtype)
+          assert model_dtype == "torch.float32", model_dtype
+          print({
+              "whisperx": version("whisperx"),
+              "torch": torch.__version__,
+              "torchaudio": torchaudio.__version__,
+              "transformers": transformers.__version__,
+              "huggingface_hub": huggingface_hub.__version__,
+              "aligner_model_revision": "234714078a1398a9db88194c5a40fefe6f376dc1",
+              "aligner_model_dtype": model_dtype,
+              "device": "cpu",
+          })
+          PY
