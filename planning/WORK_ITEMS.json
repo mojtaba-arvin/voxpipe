@@ -1545,7 +1545,7 @@
         "PR #212 is merged as a6453b165bb2dab20acf90d91537e5935dbd9a39. Exact-head repository validation run 45843691779 passed all 9 jobs; dependency security audit run 45843691753 passed.",
         "The merged implementation uses WhisperX 3.8.6 and jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
         "Qwen hypotheses and audio are handed off only through a temporary JSONL manifest and temporary runner files; per-word alignment JSONL is created in a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
-        "WhisperX runs in an isolated CPU environment with PyTorch 2.8.0+cpu and huggingface_hub 0.36.0, separate from the Qwen runtime (PyTorch 2.15.0+cpu). The actual aligner model dtype is recorded; WhisperX --compute_type is not misrepresented as aligner quantization.",
+        "WhisperX runs in an isolated CPU environment with PyTorch 2.8.0+cpu, Transformers 4.57.3 and huggingface_hub 0.36.0, separate from the Qwen runtime (PyTorch 2.15.0+cpu and Transformers 5.20.1). The actual aligner model dtype is recorded; WhisperX --compute_type is not misrepresented as aligner quantization.",
         "Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it."
       ],
       "blocked_reason": "Acceptance requires running forced alignment over the same real bounded Persian Common Voice sample used by #177. VP-0060 remains blocked by Mozilla Data Collective HTTP 403, so no approved audio/transcript input is available. Do not mark this item done from schema/unit tests alone."
