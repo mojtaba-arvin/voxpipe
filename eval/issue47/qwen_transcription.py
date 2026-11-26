@@ -1,0 +1,332 @@
+"""Bounded Qwen3-ASR Persian evaluation over a publisher-provided sample archive.
+
+Audio and reference sentences are temporary. Only aggregate metrics and pinned
+model/dataset provenance are written to the report.
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import io
+import json
+import platform
+import resource
+import shutil
+import tarfile
+import tempfile
+import time
+import unicodedata
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable
+
+from jsonschema import Draft202012Validator
+
+ROOT = Path(__file__).resolve().parents[2]
+DATASET_ID = "cmu5xazgy00finq074vaqo1b3"
+DATASET_VERSION = "cv-corpus-27.0-2026-09-11"
+MODEL_ID = "Qwen/Qwen3-ASR-0.6B"
+MODEL_REVISION = "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+MODEL_LICENSE = "Apache-2.0"
+DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
+OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 50_000
+MAX_AUDIO_FILE_BYTES = 32 * 1024 * 1024
+MAX_CLIPS = 50
+AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
+_TRANSLATION = str.maketrans({
+    "ي": "ی", "ى": "ی", "ك": "ک", "ۀ": "ه",
+    "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
+    "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
+    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
+    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+})
+
+
+def normalize_text(value: str) -> str:
+    value = unicodedata.normalize("NFKC", value).translate(_TRANSLATION)
+    chars = []
+    for char in value:
+        category = unicodedata.category(char)
+        if category.startswith("P") or category.startswith("S"):
+            chars.append(" ")
+        else:
+            chars.append(char)
+    return " ".join("".join(chars).split())
+
+
+def edit_distance(reference: list[str], hypothesis: list[str]) -> int:
+    if len(reference) < len(hypothesis):
+        reference, hypothesis = hypothesis, reference
+    previous = list(range(len(hypothesis) + 1))
+    for i, ref_token in enumerate(reference, 1):
+        current = [i]
+        for j, hyp_token in enumerate(hypothesis, 1):
+            current.append(min(
+                current[-1] + 1,
+                previous[j] + 1,
+                previous[j - 1] + (ref_token != hyp_token),
+            ))
+        previous = current
+    return previous[-1]
+
+
+def corpus_error_rates(references: list[str], hypotheses: list[str]) -> dict[str, Any]:
+    if not references or len(references) != len(hypotheses):
+        raise ValueError("references and hypotheses must be non-empty and have equal length")
+    word_errors = char_errors = reference_words = reference_chars = 0
+    for reference, hypothesis in zip(references, hypotheses, strict=True):
+        ref = normalize_text(reference)
+        hyp = normalize_text(hypothesis)
+        ref_words, hyp_words = ref.split(), hyp.split()
+        if not ref_words or not ref:
+            raise ValueError("reference sentences must contain non-whitespace text")
+        word_errors += edit_distance(ref_words, hyp_words)
+        char_errors += edit_distance(list(ref.replace(" ", "")), list(hyp.replace(" ", "")))
+        reference_words += len(ref_words)
+        reference_chars += len(ref.replace(" ", ""))
+    return {
+        "word_errors": word_errors,
+        "character_errors": char_errors,
+        "reference_words": reference_words,
+        "reference_characters": reference_chars,
+        "wer": round(word_errors / reference_words, 6),
+        "cer": round(char_errors / reference_chars, 6),
+    }
+
+
+def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.TarInfo], list[tuple[tarfile.TarInfo, str]]]:
+    members = archive.getmembers()
+    if len(members) > MAX_ARCHIVE_MEMBERS:
+        raise ValueError("sample archive exceeds the 50,000-member safety limit")
+    total_size = 0
+    audio_by_basename: dict[str, tarfile.TarInfo] = {}
+    metadata_members = []
+    for member in members:
+        if member.issym() or member.islnk() or member.isdev():
+            raise ValueError("sample archive contains unsupported link or device entries")
+        if not member.isfile():
+            continue
+        total_size += member.size
+        if total_size > MAX_UNCOMPRESSED_BYTES:
+            raise ValueError("sample archive exceeds the 1 GiB uncompressed safety limit")
+        basename = PurePosixPath(member.name).name
+        suffix = PurePosixPath(basename).suffix.lower()
+        if suffix in AUDIO_SUFFIXES:
+            if basename in audio_by_basename:
+                raise ValueError("sample archive contains ambiguous duplicate audio basenames")
+            if member.size <= 0 or member.size > MAX_AUDIO_FILE_BYTES:
+                raise ValueError("sample audio file is empty or exceeds the 32 MiB safety limit")
+            audio_by_basename[basename] = member
+        elif suffix == ".tsv" and PurePosixPath(member.name).name in {"validated.tsv", "train.tsv", "sample.tsv"}:
+            metadata_members.append(member)
+    if not metadata_members:
+        raise ValueError("sample archive contains no supported Common Voice TSV metadata")
+    return audio_by_basename, [(member, "") for member in metadata_members]
+
+
+def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarInfo,
+                         audio_by_basename: dict[str, tarfile.TarInfo], max_clips: int) -> list[tuple[tarfile.TarInfo, str]]:
+    stream = archive.extractfile(metadata_member)
+    if stream is None:
+        raise ValueError("unable to read Common Voice metadata member")
+    rows: list[tuple[tarfile.TarInfo, str]] = []
+    with io.TextIOWrapper(stream, encoding="utf-8", newline="") as text_stream:
+        reader = csv.reader(text_stream, delimiter="\t")
+        try:
+            header = next(reader)
+        except StopIteration as exc:
+            raise ValueError("Common Voice TSV is empty") from exc
+        try:
+            path_index = header.index("path")
+            sentence_index = header.index("sentence")
+        except ValueError as exc:
+            raise ValueError("Common Voice TSV must contain path and sentence columns") from exc
+        for row in reader:
+            if max(path_index, sentence_index) >= len(row):
+                continue
+            audio_name = PurePosixPath(row[path_index]).name
+            sentence = row[sentence_index].strip()
+            member = audio_by_basename.get(audio_name)
+            if member is None or not sentence:
+                continue
+            rows.append((member, sentence))
+            if len(rows) >= max_clips:
+                break
+    if not rows:
+        raise ValueError("sample archive has no matching audio/reference rows")
+    return rows
+
+
+def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: float,
+                 inference_seconds: float, peak_rss_bytes: int, torch_version: str,
+                 qwen_asr_version: str, compute_type: str = "float32") -> dict[str, Any]:
+    if sample_count < 1 or min(audio_seconds, inference_seconds, peak_rss_bytes) <= 0:
+        raise ValueError("sample count, audio/inference duration and peak RSS must be positive")
+    result = {
+        "schema_version": 1,
+        "status": "passed",
+        "dataset_id": DATASET_ID,
+        "dataset_version": DATASET_VERSION,
+        "source_kind": "scripted_read_speech",
+        "locale": "fa",
+        "task": "ASR",
+        "license": "CC0-1.0",
+        "model_id": MODEL_ID,
+        "model_revision": MODEL_REVISION,
+        "model_license": MODEL_LICENSE,
+        "device": "cpu",
+        "compute_type": compute_type,
+        "sample_count": sample_count,
+        "audio_duration_seconds": round(audio_seconds, 4),
+        "inference_seconds": round(inference_seconds, 4),
+        "real_time_factor": round(inference_seconds / audio_seconds, 6),
+        "word_errors": metrics["word_errors"],
+        "character_errors": metrics["character_errors"],
+        "reference_words": metrics["reference_words"],
+        "reference_characters": metrics["reference_characters"],
+        "wer": metrics["wer"],
+        "cer": metrics["cer"],
+        "peak_rss_bytes": peak_rss_bytes,
+        "torch_version": torch_version,
+        "qwen_asr_version": qwen_asr_version,
+        "python_version": platform.python_version(),
+        "transcript_text_uploaded": False,
+        "audio_uploaded": False,
+        "speaker_ids_used": False,
+        "warnings": [
+            "Common Voice is scripted read-speech, not natural conversation.",
+            "WER/CER describe only this bounded publisher-provided sample and are not human-gold or production-quality evidence.",
+            "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
+            "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
+        ],
+    }
+    schema = json.loads(OUTPUT_SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(result)
+    return result
+
+
+def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
+                   max_clips: int = MAX_CLIPS, model: Any | None = None,
+                   model_loader: Callable[[Path], Any] | None = None) -> dict[str, Any]:
+    if not archive_path.is_file() or archive_path.stat().st_size <= 0:
+        raise ValueError("sample archive must be an existing non-empty file")
+    if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
+        raise ValueError("sample archive exceeds the 256 MiB safety limit")
+    if not 1 <= max_clips <= MAX_CLIPS:
+        raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
+
+    import time
+    started = time.perf_counter()
+    with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
+        temp_root = Path(temporary)
+        references: list[str] = []
+        hypotheses: list[str] = []
+        audio_seconds = 0.0
+        inference_seconds = 0.0
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            audio_by_basename, metadata_members = _read_archive_records(archive)
+            selected = _load_reference_rows(archive, metadata_members[0][0], audio_by_basename, max_clips)
+            if model is None:
+                if model_loader is None:
+                    raise ValueError("a model or model_loader is required")
+                model_dir = model_loader(cache_dir)
+                model = _load_model_from_directory(model_dir)
+            for index, (member, reference) in enumerate(selected, start=1):
+                extracted = archive.extractfile(member)
+                if extracted is None:
+                    raise ValueError("unable to read selected audio member")
+                audio_path = temp_root / f"clip-{index:03d}{PurePosixPath(member.name).suffix.lower()}"
+                with extracted, audio_path.open("wb") as output:
+                    shutil.copyfileobj(extracted, output, length=1024 * 1024)
+                duration = _audio_duration_seconds(audio_path)
+                started_inference = time.perf_counter()
+                results = model.transcribe(audio=str(audio_path), language="Persian")
+                inference_seconds += time.perf_counter() - started_inference
+                if not results or not str(getattr(results[0], "text", "")).strip():
+                    raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
+                references.append(reference)
+                hypotheses.append(str(results[0].text))
+                audio_seconds += duration
+
+        metrics = corpus_error_rates(references, hypotheses)
+        try:
+            import torch
+            torch_version = str(torch.__version__)
+        except ImportError:
+            torch_version = "not-installed"
+        try:
+            from importlib.metadata import version
+            qwen_version = version("qwen-asr")
+        except Exception:
+            qwen_version = "unknown"
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
+        report = build_report(
+            metrics=metrics, sample_count=len(references), audio_seconds=audio_seconds,
+            inference_seconds=inference_seconds, peak_rss_bytes=peak_rss_bytes,
+            torch_version=torch_version, qwen_asr_version=qwen_version,
+        )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
+def _audio_duration_seconds(path: Path) -> float:
+    try:
+        import soundfile as sf
+        info = sf.info(str(path))
+        if info.duration > 0:
+            return float(info.duration)
+    except Exception:
+        pass
+    # Qwen's audio loader supports common compressed formats; FFprobe is a
+    # runner dependency and avoids decoding audio into memory just for timing.
+    import subprocess
+    completed = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        check=True, capture_output=True, text=True, timeout=30,
+    )
+    duration = float(completed.stdout.strip())
+    if duration <= 0:
+        raise ValueError("audio duration must be positive")
+    return duration
+
+
+def _load_model_from_directory(model_dir: Path) -> Any:
+    import torch
+    from qwen_asr import Qwen3ASRModel
+    torch.set_num_threads(max(1, min(__import__("os").cpu_count() or 1, 4)))
+    return Qwen3ASRModel.from_pretrained(
+        str(model_dir), dtype=torch.float32, device_map="cpu",
+        max_inference_batch_size=1, max_new_tokens=256,
+    )
+
+
+def _download_model(cache_dir: Path) -> Path:
+    from huggingface_hub import snapshot_download
+    return Path(snapshot_download(
+        repo_id=MODEL_ID, revision=MODEL_REVISION, cache_dir=str(cache_dir)
+    ))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--archive", type=Path, required=True)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
+    parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
+    args = parser.parse_args()
+    report = run_evaluation(
+        args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
+        model_loader=_download_model,
+    )
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
