@@ -61,6 +61,7 @@ class CommonVoiceSampleTests(unittest.TestCase):
             dataset_archive_checksum="abc",
             sample_archive_name="sample.tar.gz",
             sample_archive_size_bytes=100,
+            sample_archive_checksum="b" * 64,
             sample_audio_file_count=5,
             sample_metadata_file_count=1,
             sample_download_seconds=0.25,
