@@ -226,7 +226,7 @@ jobs:
     name: Common Voice bounded sample provenance
     # Live MDC access is external and opt-in; offline tests run in Python validation.
     # Keep this check name as a skipped PR gate; use common-voice-sample.yml for manual acquisition.
-    if: ${{ false }}
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Explain opt-in boundary
