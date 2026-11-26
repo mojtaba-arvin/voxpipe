@@ -8,13 +8,13 @@ permissions:
   issues: write
 
 concurrency:
-  group: common-voice-sample-\${{ github.event.pull_request.number || github.ref }}
+  group: common-voice-sample-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   sample-download:
     name: Download bounded publisher sample and record provenance
-    if: \${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: python -m unittest discover -s tests -p "test_eval_common_voice.py"
       - name: Download only the publisher-provided sample
         env:
-          MDC_API_KEY: \${{ secrets.MDC_API_KEY }}
+          MDC_API_KEY: ${{ secrets.MDC_API_KEY }}
         run: |
           set -euo pipefail
           test -n "$MDC_API_KEY" || { echo "MDC_API_KEY repository secret is required." >&2; exit 1; }
@@ -48,10 +48,10 @@ jobs:
           path: eval/artifacts/issue47/common_voice_sample.json
           if-no-files-found: warn
       - name: Disclose sample download outcome on issue 176
-        if: \${{ success() && github.event_name == 'pull_request' }}
+        if: ${{ success() && github.event_name == 'pull_request' }}
         env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: \${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           ISSUE_NUMBER: "176"
         run: |
           COMMENT_BODY="$(python - <<'PY'
