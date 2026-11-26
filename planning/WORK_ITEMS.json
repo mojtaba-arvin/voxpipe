@@ -1483,7 +1483,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0047"
       ],
