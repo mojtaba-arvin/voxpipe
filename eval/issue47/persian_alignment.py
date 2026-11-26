@@ -46,7 +46,7 @@ def _read_manifest(path: Path, max_clips: int) -> list[dict[str, str]]:
             transcript = str(row.get("transcript") or "").strip()
             if not audio_path.is_file():
                 raise ValueError(f"alignment input line {line_number} references a missing audio file")
-            if not transcript:
+            if not transcript.split():
                 raise ValueError(f"alignment input line {line_number} has an empty transcript")
             rows.append({"audio_path": str(audio_path), "transcript": transcript})
             if len(rows) > max_clips:
