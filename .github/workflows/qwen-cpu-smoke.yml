@@ -1,13 +1,6 @@
 name: Qwen3-ASR native Transformers CPU smoke
 
 on:
-  pull_request:
-    paths:
-      - "eval/issue47/cpu_smoke.py"
-      - "eval/issue47/cpu_smoke.schema.json"
-      - "requirements-eval-asr.txt"
-      - "requirements-eval-asr-audit.txt"
-      - ".github/workflows/qwen-cpu-smoke.yml"
   workflow_dispatch:
 
 permissions:
