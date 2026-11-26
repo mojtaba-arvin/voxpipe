@@ -53,15 +53,17 @@ jobs:
           import torch
           import transformers
           import whisperx
+          from whisperx.alignment import align, load_align_model
 
           assert version("whisperx") == "3.8.6"
           assert torch.__version__.startswith("2.8.0+cpu"), torch.__version__
           assert transformers.__version__ == "4.57.3", transformers.__version__
           assert huggingface_hub.__version__ == "0.36.0", huggingface_hub.__version__
           assert not torch.cuda.is_available()
-          assert "model_name" in inspect.signature(whisperx.load_align_model).parameters
-          assert "return_char_alignments" in inspect.signature(whisperx.align).parameters
-          assert "print_progress" in inspect.signature(whisperx.align).parameters
+          assert "model_name" in inspect.signature(load_align_model).parameters
+          assert "model_cache_only" in inspect.signature(load_align_model).parameters
+          assert "return_char_alignments" in inspect.signature(align).parameters
+          assert "print_progress" in inspect.signature(align).parameters
           assert callable(whisperx.load_audio)
           print({
               "whisperx": version("whisperx"),
