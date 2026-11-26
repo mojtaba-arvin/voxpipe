@@ -30,6 +30,11 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "requirements-eval-align.txt"
+      - name: Cache pinned Persian aligner model
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/huggingface
+          key: voxpipe-persian-aligner-234714078a1398a9db88194c5a40fefe6f376dc1-${{ hashFiles('requirements-eval-align.txt') }}
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -92,7 +97,7 @@ jobs:
           assert "print_progress" in inspect.signature(align).parameters
           assert callable(load_audio)
 
-          cache_dir = os.path.join(os.environ["RUNNER_TEMP"], "persian-aligner-model-cache")
+          cache_dir = os.path.join(os.environ["HOME"], ".cache", "huggingface")
           model_path = snapshot_download(
               repo_id="jonatasgrosman/wav2vec2-large-xlsr-53-persian",
               revision="234714078a1398a9db88194c5a40fefe6f376dc1",
