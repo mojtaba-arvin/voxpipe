@@ -63,8 +63,8 @@ class CpuSmokeReportTests(unittest.TestCase):
                 torch_num_threads=2,
                 detected_language="English",
                 transcript="x",
-                torch_version="2.8.0",
-                qwen_asr_version="0.0.6",
+                torch_version="2.15.0+cpu",
+                transformers_version="5.20.1",
             )
         with self.assertRaisesRegex(ValueError, "must be non-empty"):
             build_report(
@@ -78,8 +78,8 @@ class CpuSmokeReportTests(unittest.TestCase):
                 torch_num_threads=2,
                 detected_language="English",
                 transcript="",
-                torch_version="2.8.0",
-                qwen_asr_version="0.0.6",
+                torch_version="2.15.0+cpu",
+                transformers_version="5.20.1",
             )
 
 
