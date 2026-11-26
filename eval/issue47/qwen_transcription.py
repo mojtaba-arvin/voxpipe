@@ -213,6 +213,7 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
 
 def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    max_clips: int = MAX_CLIPS, model: Any | None = None,
+                   processor: Any | None = None,
                    model_loader: Callable[[Path], Any] | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("sample archive must be an existing non-empty file")
@@ -236,6 +237,8 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     raise ValueError("a model or model_loader is required")
                 model_dir = model_loader(cache_dir)
                 processor, model = _load_model_from_directory(model_dir)
+            if processor is None:
+                raise ValueError("a native Transformers processor is required with an injected model")
             for index, (member, reference) in enumerate(selected, start=1):
                 extracted = archive.extractfile(member)
                 if extracted is None:
@@ -245,8 +248,6 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     shutil.copyfileobj(extracted, output, length=1024 * 1024)
                 duration = _audio_duration_seconds(audio_path)
                 started_inference = time.perf_counter()
-                if processor is None:
-                    raise RuntimeError("native Transformers processor is required for Qwen3-ASR inference")
                 hypothesis = _transcribe_audio(model, processor, audio_path)
                 inference_seconds += time.perf_counter() - started_inference
                 if not hypothesis.strip():
