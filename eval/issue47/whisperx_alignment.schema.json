@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:whisperx-alignment:v1",
+  "title": "VoxPipe Persian WhisperX forced-alignment aggregate report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "locale",
+    "task",
+    "sample_count",
+    "aligned_sample_count",
+    "failed_sample_count",
+    "total_words",
+    "aligned_words",
+    "alignment_coverage",
+    "audio_duration_seconds",
+    "alignment_seconds",
+    "real_time_factor",
+    "align_model_id",
+    "align_model_revision",
+    "align_model_license",
+    "whisperx_version",
+    "device",
+    "compute_type",
+    "batch_size",
+    "asr_model_revision",
+    "peak_rss_bytes",
+    "failure_reasons",
+    "transcript_text_uploaded",
+    "word_timestamps_uploaded",
+    "audio_uploaded",
+    "speaker_ids_used",
+    "diarization_status",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "partial",
+        "failed"
+      ]
+    },
+    "locale": {
+      "const": "fa"
+    },
+    "task": {
+      "const": "forced_alignment"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "aligned_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "failed_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "total_words": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "aligned_words": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "alignment_coverage": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "audio_duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "alignment_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "real_time_factor": {
+      "type": "number",
+      "minimum": 0
+    },
+    "align_model_id": {
+      "const": "jonatasgrosman/wav2vec2-large-xlsr-53-persian"
+    },
+    "align_model_revision": {
+      "const": "234714078a1398a9db88194c5a40fefe6f376dc1"
+    },
+    "align_model_license": {
+      "const": "Apache-2.0"
+    },
+    "whisperx_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "device": {
+      "const": "cpu"
+    },
+    "compute_type": {
+      "const": "float32"
+    },
+    "batch_size": {
+      "const": 1
+    },
+    "asr_model_revision": {
+      "const": "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+    },
+    "peak_rss_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "failure_reasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "transcript_text_uploaded": {
+      "const": false
+    },
+    "word_timestamps_uploaded": {
+      "const": false
+    },
+    "audio_uploaded": {
+      "const": false
+    },
+    "speaker_ids_used": {
+      "const": false
+    },
+    "diarization_status": {
+      "const": "not_evaluated_read_speech"
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
