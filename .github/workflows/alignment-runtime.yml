@@ -102,6 +102,13 @@ jobs:
               repo_id="jonatasgrosman/wav2vec2-large-xlsr-53-persian",
               revision="234714078a1398a9db88194c5a40fefe6f376dc1",
               cache_dir=cache_dir,
+              allow_patterns=[
+                  "config.json",
+                  "preprocessor_config.json",
+                  "special_tokens_map.json",
+                  "vocab.json",
+                  "pytorch_model.bin",
+              ],
           )
           model, metadata = load_align_model(
               language_code="fa",
