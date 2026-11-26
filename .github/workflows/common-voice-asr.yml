@@ -45,11 +45,14 @@ jobs:
       - name: Install isolated WhisperX CPU alignment runtime
         run: |
           uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          grep -v '^whisperx==' requirements-eval-align.txt > "$RUNNER_TEMP/voxpipe-align-requirements.txt"
           uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
             --index-url https://download.pytorch.org/whl/cpu \
             --extra-index-url https://pypi.org/simple \
             --index-strategy unsafe-best-match \
-            -r requirements-eval-align.txt
+            -r "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://pypi.org/simple --no-deps whisperx==3.8.6
       - name: Install FFmpeg for bounded audio duration probing
         run: |
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
