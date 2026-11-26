@@ -1496,9 +1496,11 @@
         "Keep read-speech clearly distinguished from natural conversation."
       ],
       "evidence": [
-        "PR #205 is the current-mainline implementation; exact-head CI run #45752466423 is in progress. The previous authenticated attempt reached the protected sample-download endpoint with MDC_API_KEY present and received HTTP 403; no sample archive was downloaded."
+        "PR #205 merged to main as 9221eeac4d45871bc2c01eee08eaced6b6f2cd39 after exact-head validation run #45752595027 passed all 9 jobs and dependency audit run #45752594998 passed both jobs.",
+        "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
+        "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization."
       ],
-      "blocked_reason": "MDC HTTP 403 is an entitlement response, not a missing GitHub secret. Need confirm the same MDC account/organization that owns the API key has accepted the Common Voice Persian dataset terms and that the dataset is accessible to that organization. Do not ask for the key again or fall back to the full archive."
+      "blocked_reason": "Mozilla Data Collective still returns HTTP 403 from the protected download_sample endpoint after the repository owner completed the requested dataset-terms action. The GitHub secret is present and must not be re-entered or exposed. Next diagnostic: verify the API key's owning MDC organization, account profile completeness and dataset access approval with Mozilla; do not fall back to the full archive. Issue remains open until an actual bounded sample is downloaded and provenance confirms status=downloaded."
     },
     {
       "id": "VP-0060",
