@@ -246,10 +246,8 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 duration = _audio_duration_seconds(audio_path)
                 started_inference = time.perf_counter()
                 if processor is None:
-                    results = model.transcribe(audio=str(audio_path), language="Persian")
-                    hypothesis = str(results[0].text) if results else ""
-                else:
-                    hypothesis = _transcribe_audio(model, processor, audio_path)
+                    raise RuntimeError("native Transformers processor is required for Qwen3-ASR inference")
+                hypothesis = _transcribe_audio(model, processor, audio_path)
                 inference_seconds += time.perf_counter() - started_inference
                 if not hypothesis.strip():
                     raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
@@ -323,16 +321,28 @@ def _load_model_from_directory(model_dir: Path) -> tuple[Any, Any]:
     return processor, model
 
 
+def _parse_persian_transcription(parsed: dict[str, Any]) -> str:
+    language = str(parsed.get("language") or "").strip().casefold()
+    if language not in {"persian", "fa"}:
+        raise RuntimeError(f"Qwen3-ASR detected unexpected language for Persian audio: {language or 'unknown'}")
+    transcription = str(parsed.get("transcription") or "").strip()
+    if not transcription:
+        raise RuntimeError("Qwen3-ASR returned an empty Persian transcription")
+    return transcription
+
+
 def _transcribe_audio(model: Any, processor: Any, audio_path: Path) -> str:
     import torch
+    # Automatic language detection avoids a forced-language chat-template path
+    # that is incompatible with the pinned Transformers processor revision.
     inputs = processor.apply_transcription_request(
-        audio=str(audio_path), language="Persian"
+        audio=str(audio_path)
     ).to("cpu", model.dtype)
     with torch.inference_mode():
         output_ids = model.generate(**inputs, max_new_tokens=256, do_sample=False)
     generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
     parsed = processor.decode(generated_ids, return_format="parsed")[0]
-    return str(parsed.get("transcription", ""))
+    return _parse_persian_transcription(parsed)
 
 
 def _download_model(cache_dir: Path) -> Path:
