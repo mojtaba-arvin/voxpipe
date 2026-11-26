@@ -1,0 +1,14 @@
+# Upstream versions corresponding to the runtime CPU wheels. WhisperX's
+# package metadata is audited separately because the runtime installs its
+# alignment module with --no-deps and uses the patched Torch stack.
+torch==2.15.0
+torchaudio==2.15.0
+torchvision==0.30.0
+transformers==5.20.1
+huggingface_hub==1.31.0
+numpy==2.3.2
+pandas==2.3.3
+nltk==3.9.4
+Pillow==13.0.0
+jsonschema==4.25.1
+librosa==0.11.0
