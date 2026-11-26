@@ -5,6 +5,26 @@ import unittest
 from eval.issue47.aggregate_speech import build_report
 
 
+def sample_report():
+    return {
+        "schema_version": 1, "status": "downloaded",
+        "dataset_id": "cmu5xazgy00finq074vaqo1b3",
+        "dataset_name": "Common Voice Scripted Speech 27.0 - Persian",
+        "dataset_version": "cv-corpus-27.0-2026-09-11",
+        "release_date": "2026-09-17", "locale": "fa", "task": "ASR",
+        "license": "CC0-1.0", "source_kind": "scripted_read_speech",
+        "source_url": "https://datacollective.mozillafoundation.org/datasets/cmu5xazgy00finq074vaqo1b3",
+        "recorded_hours": 20.0, "validated_hours": 10.0, "clip_count": 1000,
+        "speaker_count": 500, "dataset_archive_size_bytes": None,
+        "dataset_archive_checksum": "a" * 64,
+        "downloaded_at": "2026-11-26T14:00:00Z", "sdk_version": "0.2.0",
+        "sample_archive_name": "common-voice-fa-sample.tar.gz",
+        "sample_archive_size_bytes": 1000000, "sample_audio_file_count": 50,
+        "sample_metadata_file_count": 1, "sample_download_seconds": 5.0,
+        "warnings": ["bounded sample only"],
+    }
+
+
 def qwen_report():
     return {
         "schema_version": 1, "status": "passed",
@@ -63,6 +83,7 @@ class SpeechAggregateTests(unittest.TestCase):
             qwen_report=qwen_report(), alignment_report=alignment_report(),
             speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
             overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
+            sample_report=sample_report(),
             run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
         )
         self.assertEqual(report["status"], "success")
