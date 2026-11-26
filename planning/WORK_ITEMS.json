@@ -1360,7 +1360,7 @@
       "title": "Wire structured extraction evaluation job (issue #171)",
       "phase": 9,
       "priority": 54,
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "VP-0051",
         "VP-0052",
@@ -1373,10 +1373,12 @@
         "State clearly that synthetic-template metrics are not human gold or production accuracy."
       ],
       "evidence": [
-        "PR #189 merged as 4603bd1763844106a3298da7f8e5b22f1a5c504f; eval-32 job wiring and Actionlint validation are in main.",
-        "Exact-head CI run 45678455375 passed all seven jobs, including the CLI pipeline test."
+        "PR #196 exact-head evaluation run #45742501316 completed successfully; the reusable workflow ran this group end-to-end.",
+        "Artifact extraction-silver-baseline uploaded and verified in run #45742501316.",
+        "120 synthetic conversations; deterministic silver labels; aggregate micro/macro F1 1.0000. Not human gold or production accuracy.",
+        "Disclosure comment posted to the corresponding umbrella issue (#32 or #48)."
       ],
-      "blocked_reason": "The connected GitHub integration exposes workflow-run inspection but no workflow_dispatch action; Browser control/handoff is unavailable in this chat mode. The eval-32 workflow, artifact upload and disclosure comment have not been exercised by an actual manual run. Keep issue #171 open; do not claim the manual workflow succeeded or ask the user to run it."
+      "blocked_reason": null
     },
     {
       "id": "VP-0055",
@@ -1446,7 +1448,7 @@
       "title": "Wire retrieval silver evaluation job (issue #175)",
       "phase": 9,
       "priority": 58,
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "VP-0050",
         "VP-0055",
@@ -1460,10 +1462,12 @@
         "Disclose that heuristic qrels are not human relevance judgments."
       ],
       "evidence": [
-        "PR #191 merged as 13ce9a4b00d466b9c713b2e616439efa1980c4a0; eval-48 selective workflow, CORPUS_PATH input, artifact upload and issue disclosure steps are in main.",
-        "Exact-head CI run 45681362570 passed all seven jobs, including Actionlint and the complete retrieval CLI test."
+        "PR #196 exact-head evaluation run #45742501316 completed successfully; the reusable workflow ran this group end-to-end.",
+        "Artifact retrieval-silver-baseline uploaded and verified in run #45742501316.",
+        "120 generated queries; five-passage placeholder corpus; heuristic qrels; Recall@5 1.0000, MRR 0.8380, nDCG@5 0.8791. Not human relevance judgment.",
+        "Disclosure comment posted to the corresponding umbrella issue (#32 or #48)."
       ],
-      "blocked_reason": "The connected GitHub integration exposes workflow-run inspection but no workflow_dispatch action; Browser control/handoff is unavailable in this chat mode. The eval-48 job, artifact upload and issue-comment side effect have not been exercised by an actual manual run. Keep issue #175 open; do not infer success from Actionlint or unit tests."
+      "blocked_reason": null
     },
     {
       "id": "VP-0059",

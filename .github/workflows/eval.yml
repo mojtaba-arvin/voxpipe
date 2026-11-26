@@ -1,6 +1,37 @@
 name: Evaluation baseline
 
 on:
+  workflow_call:
+    inputs:
+      run_eval_32:
+        required: false
+        type: boolean
+        default: false
+      run_eval_48:
+        required: false
+        type: boolean
+        default: false
+      run_eval_47:
+        required: false
+        type: boolean
+        default: false
+      run_tts_overlap:
+        required: false
+        type: boolean
+        default: false
+      corpus_path:
+        required: false
+        type: string
+        default: ""
+      comment_issue:
+        required: false
+        type: string
+        default: ""
+      comment_body:
+        required: false
+        type: string
+        default: ""
+
   workflow_dispatch:
     inputs:
       run_eval_32:
@@ -81,6 +112,7 @@ jobs:
           path: eval/artifacts/issue32/
           if-no-files-found: error
       - name: Disclose extraction silver baseline on issue 32
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -148,6 +180,7 @@ jobs:
           path: eval/artifacts/issue48/
           if-no-files-found: error
       - name: Disclose retrieval silver baseline on issue 48
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -239,7 +272,7 @@ jobs:
 
   tts-overlap:
     name: Synthetic Persian TTS overlap fixtures
-    if: ${{ github.event_name == 'pull_request' || inputs.run_tts_overlap }}
+    if: ${{ inputs.run_tts_overlap || (github.event_name == 'pull_request' && github.workflow == 'Evaluation baseline') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

@@ -1,0 +1,33 @@
+name: Silver evaluation PR checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/eval.yml"
+      - ".github/workflows/eval-silver-pr.yml"
+      - "eval/issue32/**"
+      - "eval/issue48/**"
+      - "requirements-dev.txt"
+      - "scripts/comment_issue.sh"
+      - "tests/test_eval_issue32*.py"
+      - "tests/test_eval_issue48*.py"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: silver-evaluation-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  silver-evaluation:
+    name: Extraction and retrieval silver evaluations
+    uses: ./.github/workflows/eval.yml
+    with:
+      run_eval_32: true
+      run_eval_48: true
+      run_eval_47: false
+      run_tts_overlap: false
+      corpus_path: ""
