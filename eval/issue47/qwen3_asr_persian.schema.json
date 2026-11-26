@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:qwen3-asr-persian:v1",
+  "title": "VoxPipe Qwen3-ASR Persian read-speech aggregate report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "dataset_id",
+    "dataset_version",
+    "source_kind",
+    "locale",
+    "task",
+    "license",
+    "model_id",
+    "model_revision",
+    "model_license",
+    "device",
+    "compute_type",
+    "sample_count",
+    "audio_duration_seconds",
+    "inference_seconds",
+    "real_time_factor",
+    "word_errors",
+    "character_errors",
+    "reference_words",
+    "reference_characters",
+    "wer",
+    "cer",
+    "peak_rss_bytes",
+    "torch_version",
+    "transformers_version",
+    "python_version",
+    "transcript_text_uploaded",
+    "audio_uploaded",
+    "speaker_ids_used",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "passed"
+    },
+    "dataset_id": {
+      "const": "cmu5xazgy00finq074vaqo1b3"
+    },
+    "dataset_version": {
+      "const": "cv-corpus-27.0-2026-09-11"
+    },
+    "source_kind": {
+      "const": "scripted_read_speech"
+    },
+    "locale": {
+      "const": "fa"
+    },
+    "task": {
+      "const": "ASR"
+    },
+    "license": {
+      "const": "CC0-1.0"
+    },
+    "model_id": {
+      "const": "Qwen/Qwen3-ASR-0.6B-hf"
+    },
+    "model_revision": {
+      "const": "40946090cac63fc01d723a83174e16515073d7c0"
+    },
+    "model_license": {
+      "const": "Apache-2.0"
+    },
+    "device": {
+      "const": "cpu"
+    },
+    "compute_type": {
+      "const": "float32"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "audio_duration_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "inference_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "real_time_factor": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "word_errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "character_errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reference_words": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reference_characters": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "wer": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cer": {
+      "type": "number",
+      "minimum": 0
+    },
+    "peak_rss_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "torch_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transformers_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "python_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transcript_text_uploaded": {
+      "const": false
+    },
+    "audio_uploaded": {
+      "const": false
+    },
+    "speaker_ids_used": {
+      "const": false
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
