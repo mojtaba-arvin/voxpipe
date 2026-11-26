@@ -66,8 +66,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install evaluation dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+        run: uv pip install --system -r requirements-dev.txt
       - name: Generate deterministic synthetic conversations
         run: python -m eval.issue32.templates --count 120 --seed 20261125
       - name: Create deterministic silver labels
@@ -131,8 +136,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install evaluation dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+        run: uv pip install --system -r requirements-dev.txt
       - name: Generate deterministic retrieval queries
         run: python -m eval.issue48.queries --count 120 --seed 20261125
       - name: Build heuristic silver qrels
@@ -195,8 +205,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install CPU-only ASR dependencies
-        run: python -m pip install --disable-pip-version-check --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
+        run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
       - name: Run pinned Qwen3-ASR CPU smoke
         run: python -m eval.issue47.cpu_smoke
       - name: Upload CPU smoke metadata only
@@ -249,8 +264,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version-file: ".python-version"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
       - name: Install local TTS evaluation dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-eval-tts.txt
+        run: uv pip install --system -r requirements-eval-tts.txt
       - name: Generate 50 Persian synthetic overlap fixtures
         run: python -m eval.issue47.synthetic_overlap --count 50 --seed 20261125
       - name: Upload audio-free overlap annotations
