@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:speech-aggregate:v1",
+  "title": "VoxPipe Group C speech evidence aggregate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "run_id",
+    "commit_sha",
+    "workflow_run_url",
+    "read_speech",
+    "synthetic_overlap",
+    "natural_conversation_evidence",
+    "medical_readiness_claim",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "success",
+        "failure",
+        "skipped"
+      ]
+    },
+    "run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "commit_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "workflow_run_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "read_speech": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "artifact_name",
+        "metrics"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "success",
+            "failure",
+            "skipped"
+          ]
+        },
+        "artifact_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metrics": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "synthetic_overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "artifact_name",
+        "metrics"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "success",
+            "failure",
+            "skipped"
+          ]
+        },
+        "artifact_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metrics": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "natural_conversation_evidence": {
+      "const": false
+    },
+    "medical_readiness_claim": {
+      "const": false
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
