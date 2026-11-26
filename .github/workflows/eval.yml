@@ -246,7 +246,7 @@ jobs:
       - name: Cache pinned Qwen3-ASR model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: ~/.cache/huggingface/hub
+          path: ~/.cache/huggingface
           key: voxpipe-qwen3-asr-model-v1
       - name: Install CPU-only ASR dependencies
         run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt
@@ -274,6 +274,7 @@ jobs:
               "",
               f"- Model revision: {result['model_revision']}",
               f"- Model size: {result['model_size_bytes']} bytes",
+              f"- Peak RSS: {result['peak_rss_bytes'] / (1024 ** 2):.1f} MiB",
               f"- Download time: {result['model_download_seconds']:.2f}s",
               f"- Load time: {result['model_load_seconds']:.2f}s",
               f"- Audio duration: {result['audio_duration_seconds']:.2f}s",

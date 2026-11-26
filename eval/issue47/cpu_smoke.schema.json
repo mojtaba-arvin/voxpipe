@@ -28,7 +28,8 @@
     "torch_version",
     "qwen_asr_version",
     "python_version",
-    "warnings"
+    "warnings",
+    "peak_rss_bytes"
   ],
   "properties": {
     "schema_version": {
@@ -120,6 +121,11 @@
     "model_size_bytes": {
       "type": "integer",
       "minimum": 1
+    },
+    "peak_rss_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Peak resident set size of the CPU smoke process in bytes."
     }
   }
 }
