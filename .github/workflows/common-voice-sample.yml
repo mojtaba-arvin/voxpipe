@@ -2,14 +2,6 @@ name: Common Voice Persian sample
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - ".github/workflows/common-voice-sample.yml"
-      - "eval/issue47/common_voice_sample.py"
-      - "eval/issue47/common_voice_sample.schema.json"
-      - "requirements-eval-mdc.txt"
-      - "tests/test_eval_common_voice.py"
 
 permissions:
   contents: read
