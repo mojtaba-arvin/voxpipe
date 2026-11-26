@@ -5,4 +5,4 @@ torchaudio==2.8.0+cpu
 torchvision==0.23.0+cpu
 whisperx==3.8.6
 transformers==5.20.1
-huggingface_hub==1.31.0
+huggingface_hub==0.36.0
