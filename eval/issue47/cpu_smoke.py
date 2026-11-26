@@ -5,6 +5,8 @@ import argparse
 import json
 import os
 import platform
+import resource
+import sys
 import tempfile
 import time
 import urllib.request
@@ -37,6 +39,7 @@ def build_report(
     *,
     model_download_seconds: float,
     model_size_bytes: int,
+    peak_rss_bytes: int,
     model_load_seconds: float,
     inference_seconds: float,
     audio_seconds: float,
@@ -49,8 +52,8 @@ def build_report(
 ) -> dict[str, Any]:
     if min(model_load_seconds, inference_seconds, audio_seconds) <= 0:
         raise ValueError("model load, inference and audio durations must be positive")
-    if model_download_seconds < 0 or model_size_bytes <= 0:
-        raise ValueError("model download duration and model size must be valid")
+    if model_download_seconds < 0 or model_size_bytes <= 0 or peak_rss_bytes <= 0:
+        raise ValueError("model download duration, model size and peak RSS must be valid")
     if cpu_count < 1 or torch_num_threads < 1 or not detected_language.strip() or not transcript.strip():
         raise ValueError("CPU count, detected language and transcript must be non-empty")
     result = {
@@ -64,6 +67,7 @@ def build_report(
         "torch_num_threads": torch_num_threads,
         "model_download_seconds": round(model_download_seconds, 4),
         "model_size_bytes": model_size_bytes,
+        "peak_rss_bytes": peak_rss_bytes,
         "evaluation_language": "English",
         "detected_language": detected_language,
         "source_kind": "public_model_card_sample",
@@ -135,6 +139,8 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
         started = time.perf_counter()
         results = model.transcribe(audio=str(audio_path), language="English")
         inference_seconds = time.perf_counter() - started
+        peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        peak_rss_bytes = int(peak_rss if sys.platform == "darwin" else peak_rss * 1024)
         if not results:
             raise RuntimeError("Qwen3-ASR returned no transcription result")
         transcript = str(results[0].text or "")
@@ -143,6 +149,7 @@ def run_smoke(output_path: Path, cache_dir: Path, sample_path: Path | None = Non
     report = build_report(
         model_download_seconds=model_download_seconds,
         model_size_bytes=model_size_bytes,
+        peak_rss_bytes=peak_rss_bytes,
         model_load_seconds=model_load_seconds,
         inference_seconds=inference_seconds,
         audio_seconds=duration,
