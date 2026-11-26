@@ -45,7 +45,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 audio.writeframes(b"\\x00\\x00" * 16000)
             tsv_path = root / "validated.tsv"
             tsv_path.write_text(
-                "client_id\tpath\tsentence\nprivate-client\tclip.mp3\tسلام دنیا\n",
+                "client_id\tpath\tsentence\nprivate-client\tclip.wav\tسلام دنیا\n",
                 encoding="utf-8",
             )
             with tarfile.open(archive_path, "w:gz") as archive:
