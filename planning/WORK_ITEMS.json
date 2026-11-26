@@ -1582,7 +1582,7 @@
       "title": "Wire speech evaluation job (issue #180)",
       "phase": 9,
       "priority": 63,
-      "status": "done",
+      "status": "blocked",
       "depends_on": [
         "VP-0059",
         "VP-0060",
@@ -1590,23 +1590,25 @@
         "VP-0062"
       ],
       "acceptance_criteria": [
-        "Wire eval-47 to consume read-speech and synthetic-overlap artifacts independently and preserve success/failure/skipped status for each branch.",
-        "Publish a schema-valid, audio-free report_47.json with run provenance and non-identifying reproducibility metadata.",
+        "Run licensed read-speech transcription/alignment and synthetic overlap checks in eval-47.",
+        "Publish a schema-valid, audio-free report_47.json with run provenance and exact branch statuses.",
+        "Keep read-speech and synthetic overlap metrics separate and preserve success/failure/skipped states.",
         "Disclose that read-speech and TTS do not establish natural conversational performance or medical readiness."
       ],
       "evidence": [
         "PR #213 exact-head Silver run 45850459347 passed: Group C aggregate job validated and uploaded report_47.json, with read-speech and synthetic branches explicitly marked skipped because their opt-in inputs were not run.",
         "The report keeps read-speech ASR/alignment and synthetic overlap separate, does not claim diarization on read-speech, and discloses that neither branch establishes natural-conversation or medical readiness.",
-        "The underlying Persian read-speech data gate remains open in VP-0059/VP-0060/VP-0061 (#176–#178); closing this item records aggregator implementation only, not Group C evaluation completion."
+        "The underlying Persian read-speech data gate remains open in VP-0059/VP-0060/VP-0061 (#176–#178); closing this item records aggregator implementation only, not Group C evaluation completion.",
+        "PR #213 implements the aggregator/report plumbing; exact-head run 45850459347 validated report_47.json and issue #47 disclosure, but read-speech and synthetic branches were skipped. This is implementation evidence, not acceptance evidence."
       ],
-      "blocked_reason": null
+      "blocked_reason": "Aggregator implementation is present, but this work item depends on VP-0059/VP-0060/VP-0061 and requires actual licensed read-speech transcription/alignment plus synthetic overlap outputs. The latest exact-head run 45850459347 marked both Group C branches skipped; do not close this item on wiring-only evidence."
     },
     {
       "id": "VP-0064",
       "title": "Aggregate all silver evaluation groups (issue #181)",
       "phase": 9,
       "priority": 64,
-      "status": "done",
+      "status": "blocked",
       "depends_on": [
         "VP-0054",
         "VP-0058",
@@ -1622,9 +1624,10 @@
       "evidence": [
         "PR #213 exact-head Silver run 45850459347 passed: post-results aggregated Group A/B/C outcomes, published summary.json with run/attempt/commit provenance and exact artifact IDs/URLs, and uploaded the issue disclosures.",
         "The same run posted truthful comments to umbrella issues #32, #47 and #48. Group C's read-speech and synthetic branches remained explicitly skipped; the summary did not report them as passes.",
-        "Completion-label reconciliation is limited to explicit workflow_dispatch evaluations and adds the label only when all three groups have validated metrics and exact artifact references; otherwise it removes stale labels. This closes reporting/label-gating implementation only, not the underlying M1 evidence gates."
+        "Completion-label reconciliation is limited to explicit workflow_dispatch evaluations and adds the label only when all three groups have validated metrics and exact artifact references; otherwise it removes stale labels. This closes reporting/label-gating implementation only, not the underlying M1 evidence gates.",
+        "PR #213 exact-head run 45850459347 exercised summary.json generation, exact artifact references and truthful comments to #32/#47/#48 with Group C branches skipped. The path works, but final acceptance remains blocked until VP-0063 and all three group evidence gates complete."
       ],
-      "blocked_reason": null
+      "blocked_reason": "Summary generation and artifact/comment plumbing are implemented, but VP-0063 and all three validated group evidence gates must complete before this item can be accepted or the completion label can be applied."
     },
     {
       "id": "VP-0065",
