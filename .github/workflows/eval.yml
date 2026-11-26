@@ -19,6 +19,10 @@ on:
         required: false
         type: boolean
         default: false
+      run_eval_47_persian:
+        required: false
+        type: boolean
+        default: false
       corpus_path:
         required: false
         type: string
@@ -54,6 +58,11 @@ on:
         required: false
         type: boolean
         default: true
+      run_eval_47_persian:
+        description: "Run Common Voice Persian Qwen3-ASR and WhisperX alignment (requires MDC dataset access)"
+        required: false
+        type: boolean
+        default: false
       corpus_path:
         description: "Optional workspace-relative JSONL corpus path for Group B"
         required: false
@@ -353,10 +362,16 @@ jobs:
           export COMMENT_BODY
           bash scripts/comment_issue.sh
 
+  align-cv:
+    name: Group C — Common Voice Persian ASR and alignment
+    if: ${{ inputs.run_eval_47_persian }}
+    uses: ./.github/workflows/common-voice-asr.yml
+    secrets: inherit
+
   post-results:
     name: Aggregate evaluation outcomes
     if: ${{ always() }}
-    needs: [eval-32, eval-48, eval-47, tts-overlap]
+    needs: [eval-32, eval-48, eval-47, tts-overlap, align-cv]
     runs-on: ubuntu-latest
     steps:
       - name: Publish truthful group status summary
@@ -365,6 +380,7 @@ jobs:
           GROUP_B: ${{ needs['eval-48'].result }}
           GROUP_C: ${{ needs['eval-47'].result }}
           TTS_OVERLAP: ${{ needs['tts-overlap'].result }}
+          COMMON_VOICE_ASR_ALIGNMENT: ${{ needs['align-cv'].result }}
         run: |
           {
             echo "## VoxPipe silver evaluation baseline"
@@ -375,6 +391,7 @@ jobs:
             echo "| Retrieval (#48) | ${GROUP_B} |"
             echo "| Speech CPU smoke (#166) | ${GROUP_C} |"
             echo "| Synthetic overlap (#179) | ${TTS_OVERLAP} |"
+            echo "| Common Voice ASR + alignment (#176–#178) | ${COMMON_VOICE_ASR_ALIGNMENT} |"
             echo
             echo "These are automated silver-baseline results, not human gold or production-quality claims."
           } >> "$GITHUB_STEP_SUMMARY"
