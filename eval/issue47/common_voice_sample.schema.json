@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:voxpipe:evaluation:issue47:common-voice-sample:v1",
+  "title": "VoxPipe Common Voice Persian sample provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "status", "dataset_id", "dataset_name", "dataset_version",
+    "release_date", "locale", "task", "license", "source_kind", "source_url",
+    "recorded_hours", "validated_hours", "clip_count", "speaker_count",
+    "dataset_archive_size_bytes", "dataset_archive_checksum", "downloaded_at",
+    "sdk_version", "warnings"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"enum": ["downloaded", "sample_unavailable"]},
+    "dataset_id": {"const": "cmu5xazgy00finq074vaqo1b3"},
+    "dataset_name": {"const": "Common Voice Scripted Speech 27.0 - Persian"},
+    "dataset_version": {"const": "cv-corpus-27.0-2026-09-11"},
+    "release_date": {"const": "2026-09-17"},
+    "locale": {"const": "fa"},
+    "task": {"const": "ASR"},
+    "license": {"const": "CC0-1.0"},
+    "source_kind": {"const": "scripted_read_speech"},
+    "source_url": {"type": "string", "format": "uri"},
+    "recorded_hours": {"type": "number", "exclusiveMinimum": 0},
+    "validated_hours": {"type": "number", "exclusiveMinimum": 0},
+    "clip_count": {"type": "integer", "minimum": 1},
+    "speaker_count": {"type": "integer", "minimum": 1},
+    "dataset_archive_size_bytes": {"type": ["integer", "null"], "minimum": 1},
+    "dataset_archive_checksum": {"type": ["string", "null"]},
+    "downloaded_at": {"type": "string", "format": "date-time"},
+    "sdk_version": {"type": "string", "minLength": 1},
+    "sample_archive_name": {"type": "string", "minLength": 1},
+    "sample_archive_size_bytes": {"type": "integer", "minimum": 1},
+    "sample_audio_file_count": {"type": "integer", "minimum": 1},
+    "sample_metadata_file_count": {"type": "integer", "minimum": 0},
+    "sample_download_seconds": {"type": "number", "minimum": 0},
+    "warnings": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "downloaded"}}},
+      "then": {
+        "required": [
+          "sample_archive_name", "sample_archive_size_bytes",
+          "sample_audio_file_count", "sample_metadata_file_count",
+          "sample_download_seconds"
+        ]
+      }
+    }
+  ]
+}
