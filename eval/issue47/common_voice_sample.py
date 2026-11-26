@@ -222,9 +222,15 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--download-directory",
+        type=Path,
+        default=None,
+        help="retain the publisher sample only in this job-local temporary directory",
+    )
     args = parser.parse_args()
     try:
-        report = run_download(args.output)
+        report = run_download(args.output, args.download_directory)
     except PermissionError:
         print("MDC sample-download returned HTTP 403. The GitHub secret is present; the SDK maps this response to PermissionError. Check that the MDC account which owns the API key has accepted this dataset's terms and that the dataset is accessible to that same organization. The public dataset-details endpoint does not verify download permission.", file=sys.stderr)
         return 1
