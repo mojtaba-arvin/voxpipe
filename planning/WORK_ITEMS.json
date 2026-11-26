@@ -1234,7 +1234,7 @@
       "title": "Speed up CI installs and cache evaluation models (issue #165)",
       "phase": 9,
       "priority": 48,
-      "status": "ready",
+      "status": "in_progress",
       "depends_on": [
         "VP-0047"
       ],
@@ -1244,7 +1244,12 @@
         "Use a static Hugging Face cache key only in jobs that download a model.",
         "Record cold/warm install timings before claiming speedup."
       ],
-      "evidence": [],
+      "evidence": [
+        "PR #199 merged to main as 1aac955993fd95e7bfbd78876c2c681fea615f14; pinned setup-uv v6.8.0 and uv pip installs are active in validation/evaluation workflows.",
+        "Exact-head validation run #45747546087 passed all seven validation jobs; Group A/B and aggregate evaluation passed in run #45747546133.",
+        "Warm-cache observation: uv 0.13.10 restored the setup-uv cache (cache hit); `uv pip install --system -r requirements-dev.txt` completed in approximately 0.31s for 20 packages in the Python/PostgreSQL job.",
+        "Cold-cache installation timing has not yet been captured; do not claim measured speedup or close #165 until cold/warm measurements are recorded."
+      ],
       "blocked_reason": null
     },
     {
