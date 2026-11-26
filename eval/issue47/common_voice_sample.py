@@ -110,8 +110,8 @@ def build_report(
     sample_download_seconds: float | None = None,
     sdk_version: str = "0.8.1",
 ) -> dict[str, Any]:
-    if status not in {"downloaded", "sample_unavailable"}:
-        raise ValueError("status must be downloaded or sample_unavailable")
+    if status not in {"downloaded", "sample_unavailable", "access_denied"}:
+        raise ValueError("status must be downloaded, sample_unavailable or access_denied")
     result: dict[str, Any] = {
         "schema_version": 1,
         "status": status,
@@ -139,6 +139,8 @@ def build_report(
             "The public dataset page reports release-wide totals; sample file counts describe only the publisher-provided excerpt.",
         ],
     }
+    if status == "access_denied":
+        result["warnings"].append("MDC denied the authenticated sample-download request with HTTP 403; no dataset bytes were downloaded. Check dataset terms and organization access before retrying.")
     if status == "downloaded":
         if (
             not sample_archive_name
@@ -184,6 +186,14 @@ def run_download(output_path: Path, download_directory: Path | None = None) -> d
                     extract=False,
                 )
             )
+        except PermissionError:
+            report = build_report(
+                status="access_denied",
+                **dataset_metadata,
+                sdk_version=_sdk_version(),
+            )
+            output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+            return report
         except FileNotFoundError:
             report = build_report(
                 status="sample_unavailable",
@@ -222,7 +232,7 @@ def main() -> int:
         print(f"Common Voice sample download failed: {type(exc).__name__}", file=sys.stderr)
         return 1
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["status"] == "downloaded" else 2
+    return 0 if report["status"] in {"downloaded", "access_denied"} else 2
 
 
 if __name__ == "__main__":
