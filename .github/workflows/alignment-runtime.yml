@@ -48,7 +48,10 @@ jobs:
       - name: Audit the installed alignment runtime
         run: |
           uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" pip-audit==2.9.0
-          "$RUNNER_TEMP/voxpipe-align-venv/bin/pip-audit" --strict
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m pip freeze --all > "$RUNNER_TEMP/align-installed.txt"
+          # The CPU wheel uses a PEP 440 local build suffix; audit its canonical upstream release.
+          sed -i 's/^torch==2\.13\.0+cpu$/torch==2.13.0/' "$RUNNER_TEMP/align-installed.txt"
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/pip-audit" --strict --no-deps -r "$RUNNER_TEMP/align-installed.txt"
       - name: Verify installed versions and WhisperX alignment API
         run: |
           "$RUNNER_TEMP/voxpipe-align-venv/bin/python" - <<'PY'
