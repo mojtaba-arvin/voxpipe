@@ -37,38 +37,71 @@ jobs:
       - name: Install isolated WhisperX CPU environment
         run: |
           uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          grep -v '^whisperx==' requirements-eval-align.txt > "$RUNNER_TEMP/voxpipe-align-requirements.txt"
           uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
             --index-url https://download.pytorch.org/whl/cpu \
             --extra-index-url https://pypi.org/simple \
             --index-strategy unsafe-best-match \
-            -r requirements-eval-align.txt
+            -r "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://pypi.org/simple --no-deps whisperx==3.8.6
+      - name: Audit the installed alignment runtime
+        run: |
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" pip-audit==2.9.0
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/pip-audit" --strict
       - name: Verify installed versions and WhisperX alignment API
         run: |
           "$RUNNER_TEMP/voxpipe-align-venv/bin/python" - <<'PY'
           import inspect
+          import os
           from importlib.metadata import version
 
           import huggingface_hub
           import torch
+          import torchaudio
           import transformers
-          import whisperx
+          from huggingface_hub import snapshot_download
           from whisperx.alignment import align, load_align_model
+          from whisperx.audio import load_audio
 
           assert version("whisperx") == "3.8.6"
-          assert torch.__version__.startswith("2.8.0+cpu"), torch.__version__
-          assert transformers.__version__ == "4.57.3", transformers.__version__
-          assert huggingface_hub.__version__ == "0.36.0", huggingface_hub.__version__
+          assert torch.__version__.startswith("2.13.0+cpu"), torch.__version__
+          assert torchaudio.__version__ == "2.11.1", torchaudio.__version__
+          assert transformers.__version__ == "5.20.1", transformers.__version__
+          assert huggingface_hub.__version__ == "1.31.0", huggingface_hub.__version__
           assert not torch.cuda.is_available()
+          assert hasattr(torchaudio, "pipelines")
           assert "model_name" in inspect.signature(load_align_model).parameters
           assert "model_cache_only" in inspect.signature(load_align_model).parameters
           assert "return_char_alignments" in inspect.signature(align).parameters
           assert "print_progress" in inspect.signature(align).parameters
-          assert callable(whisperx.load_audio)
+          assert callable(load_audio)
+
+          cache_dir = os.path.join(os.environ["RUNNER_TEMP"], "persian-aligner-model-cache")
+          model_path = snapshot_download(
+              repo_id="jonatasgrosman/wav2vec2-large-xlsr-53-persian",
+              revision="234714078a1398a9db88194c5a40fefe6f376dc1",
+              cache_dir=cache_dir,
+          )
+          model, metadata = load_align_model(
+              language_code="fa",
+              device="cpu",
+              model_name=model_path,
+              model_dir=cache_dir,
+              model_cache_only=True,
+          )
+          assert metadata["language"] == "fa"
+          assert len(metadata["dictionary"]) > 50
+          model_dtype = str(next(model.parameters()).dtype)
+          assert model_dtype == "torch.float32", model_dtype
           print({
               "whisperx": version("whisperx"),
               "torch": torch.__version__,
+              "torchaudio": torchaudio.__version__,
               "transformers": transformers.__version__,
               "huggingface_hub": huggingface_hub.__version__,
+              "aligner_model_revision": "234714078a1398a9db88194c5a40fefe6f376dc1",
+              "aligner_model_dtype": model_dtype,
               "device": "cpu",
           })
           PY
