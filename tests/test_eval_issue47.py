@@ -9,9 +9,21 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from eval.issue47.cpu_smoke import audio_duration_seconds, build_report, MODEL_REVISION, MODEL_ID
+from eval.issue47.qwen_transcription import _parse_persian_transcription
 
 
 class CpuSmokeReportTests(unittest.TestCase):
+    def test_persian_transcription_requires_detected_persian_language(self) -> None:
+        self.assertEqual(
+            _parse_persian_transcription({"language": "Persian", "transcription": "سلام دنیا"}),
+            "سلام دنیا",
+        )
+        with self.assertRaisesRegex(RuntimeError, "unexpected language"):
+            _parse_persian_transcription({"language": "English", "transcription": "hello"})
+        with self.assertRaisesRegex(RuntimeError, "empty Persian transcription"):
+            _parse_persian_transcription({"language": "Persian", "transcription": " "})
+
+
     def test_report_is_reproducible_and_discloses_english_only_scope(self) -> None:
         report = build_report(
             model_download_seconds=1.25,
