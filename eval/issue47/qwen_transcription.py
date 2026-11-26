@@ -275,6 +275,14 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
 
 
 def _audio_duration_seconds(path: Path) -> float:
+    import wave
+    try:
+        with wave.open(str(path), "rb") as audio:
+            frames, rate = audio.getnframes(), audio.getframerate()
+        if frames > 0 and rate > 0:
+            return frames / rate
+    except (wave.Error, OSError):
+        pass
     try:
         import soundfile as sf
         info = sf.info(str(path))
