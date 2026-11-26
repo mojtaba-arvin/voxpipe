@@ -97,7 +97,7 @@ def build_report(
                     "sample_archive": {
                         "name": sample_report["sample_archive_name"],
                         "size_bytes": sample_report["sample_archive_size_bytes"],
-                        "sha256": sample_report.get("dataset_archive_checksum"),
+                        "sha256": sample_report["sample_archive_checksum"],
                         "audio_file_count": sample_report["sample_audio_file_count"],
                         "metadata_file_count": sample_report["sample_metadata_file_count"],
                         "download_seconds": sample_report["sample_download_seconds"],
