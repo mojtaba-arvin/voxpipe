@@ -257,13 +257,21 @@ def main() -> int:
         args.repository, args.run_id, os.environ.get("GITHUB_TOKEN", "")
     )
     warnings = [catalog_warning] if catalog_warning else []
+
+    def safe_load(path: Path, label: str) -> dict[str, Any] | None:
+        try:
+            return _load_json(path)
+        except (OSError, ValueError, TypeError) as exc:
+            warnings.append(f"{label} artifact could not be parsed: {exc}")
+            return None
+
     summary = build_summary(
         extraction_job_status=args.extraction_status,
         retrieval_job_status=args.retrieval_status,
         speech_group_status=args.speech_status,
-        extraction_metrics=_load_json(args.extraction_dir / "metrics_32.json"),
-        retrieval_metrics=_load_json(args.retrieval_dir / "metrics_48.json"),
-        speech_report=_load_json(args.speech_dir / "report_47.json"),
+        extraction_metrics=safe_load(args.extraction_dir / "metrics_32.json", "Extraction"),
+        retrieval_metrics=safe_load(args.retrieval_dir / "metrics_48.json", "Retrieval"),
+        speech_report=safe_load(args.speech_dir / "report_47.json", "Speech"),
         artifact_catalog=catalog,
         repository=args.repository,
         run_id=args.run_id,
