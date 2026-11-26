@@ -22,7 +22,7 @@ jobs:
   python:
     name: Python dependency audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -35,7 +35,7 @@ jobs:
       - name: Audit Python requirement sets
         run: |
           set -euo pipefail
-          for requirements in requirements-dev.txt requirements-benchmark.txt requirements-vad.txt requirements-lid.txt requirements-eval-mdc.txt requirements-eval-asr-audit.txt; do
+          for requirements in requirements-dev.txt requirements-benchmark.txt requirements-vad.txt requirements-lid.txt requirements-eval-mdc.txt requirements-eval-asr-audit.txt requirements-eval-align-audit.txt; do
             if [[ -f "$requirements" ]]; then
               pip-audit --strict -r "$requirements"
             fi
