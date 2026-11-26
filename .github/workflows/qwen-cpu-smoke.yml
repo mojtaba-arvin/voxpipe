@@ -39,7 +39,9 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: voxpipe-qwen3-asr-native-cpu-v1-${{ hashFiles('requirements-eval-asr.txt') }}
-      - name: Install patched CPU-only native Transformers runtime
+      - name: Install pinned CPU-only PyTorch wheel from the official index
+        run: uv pip install --system --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
+      - name: Install patched native Transformers runtime
         run: uv pip install --system -r requirements-eval-asr.txt
       - name: Run publisher English sample CPU smoke
         run: python -m eval.issue47.cpu_smoke --output eval/artifacts/issue47/cpu_smoke.json
