@@ -1,7 +1,8 @@
-name: Common Voice Persian ASR evaluation
+name: Common Voice Persian ASR and alignment
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -11,10 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  persian-asr:
-    name: Bounded Qwen3-ASR Persian read-speech evaluation
+  align-cv:
+    name: Bounded Qwen3-ASR and WhisperX Persian read-speech evaluation
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
@@ -29,13 +30,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "requirements*.txt"
-      - name: Cache pinned Qwen3-ASR model
+      - name: Cache pinned Qwen3-ASR and WhisperX alignment models
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/huggingface
-          key: voxpipe-qwen3-asr-persian-v1-${{ hashFiles('requirements-eval-asr.txt') }}
-      - name: Install CPU-only ASR and Mozilla SDK dependencies
-        run: uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-eval-asr.txt -r requirements-eval-mdc.txt
+          key: voxpipe-persian-asr-align-v1-${{ hashFiles('requirements-eval-asr.txt', 'requirements-eval-whisperx.txt') }}
+      - name: Install CPU-only ASR, alignment and Mozilla SDK dependencies
+        run: uv pip install --system -r requirements-eval-asr.txt -r requirements-eval-whisperx.txt -r requirements-eval-mdc.txt
       - name: Install FFmpeg for bounded audio duration probing
         run: |
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
@@ -72,14 +73,27 @@ jobs:
         run: |
           python -m eval.issue47.qwen_transcription \
             --archive "${{ steps.sample.outputs.archive }}" \
+            --max-clips 50 \
+            --intermediates-output "$RUNNER_TEMP/voxpipe-qwen/intermediates.jsonl"
+      - name: Run bounded WhisperX Persian forced alignment
+        run: |
+          python -m eval.issue47.whisperx_alignment \
+            --intermediates "$RUNNER_TEMP/voxpipe-qwen/intermediates.jsonl" \
+            --alignment-jsonl "$RUNNER_TEMP/alignment_cv.jsonl" \
             --max-clips 50
-      - name: Upload aggregate metrics and provenance only
+      - name: Upload aggregate metrics and read-speech boundary only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: qwen3-asr-persian-read-speech
-          path: eval/artifacts/issue47/qwen3_asr_persian.json
+          name: common-voice-persian-asr-alignment
+          path: |
+            eval/artifacts/issue47/qwen3_asr_persian.json
+            eval/artifacts/issue47/whisperx_alignment.json
+            eval/artifacts/issue47/speaker_segments.json
           if-no-files-found: warn
-      - name: Remove temporary publisher sample
+      - name: Remove publisher sample, audio, transcripts and word-timing intermediates
         if: always()
-        run: rm -rf "$RUNNER_TEMP/voxpipe-common-voice-sample"
+        run: |
+          rm -rf "$RUNNER_TEMP/voxpipe-common-voice-sample"
+          rm -rf "$RUNNER_TEMP/voxpipe-qwen"
+          rm -f "$RUNNER_TEMP/alignment_cv.jsonl"
