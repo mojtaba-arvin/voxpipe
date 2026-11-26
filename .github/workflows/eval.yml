@@ -31,6 +31,13 @@ on:
         required: false
         type: string
         default: ""
+      run_common_voice_asr:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      MDC_API_KEY:
+        required: false
 
   workflow_dispatch:
     inputs:
@@ -54,6 +61,11 @@ on:
         required: false
         type: boolean
         default: true
+      run_common_voice_asr:
+        description: "Run bounded Persian Common Voice ASR (requires MDC access)"
+        required: false
+        type: boolean
+        default: false
       corpus_path:
         description: "Optional workspace-relative JSONL corpus path for Group B"
         required: false
@@ -293,6 +305,13 @@ jobs:
           bash scripts/comment_issue.sh
 
 
+  common-voice-asr:
+    name: Group C — Persian Common Voice ASR (read-speech)
+    if: ${{ inputs.run_common_voice_asr }}
+    uses: ./.github/workflows/common-voice-asr.yml
+    secrets:
+      MDC_API_KEY: ${{ secrets.MDC_API_KEY }}
+
   tts-overlap:
     name: Synthetic Persian TTS overlap fixtures
     if: ${{ inputs.run_tts_overlap || (github.event_name == 'pull_request' && github.workflow == 'Evaluation baseline') }}
@@ -356,7 +375,7 @@ jobs:
   post-results:
     name: Aggregate evaluation outcomes
     if: ${{ always() }}
-    needs: [eval-32, eval-48, eval-47, tts-overlap]
+    needs: [eval-32, eval-48, eval-47, common-voice-asr, tts-overlap]
     runs-on: ubuntu-latest
     steps:
       - name: Publish truthful group status summary
@@ -364,6 +383,7 @@ jobs:
           GROUP_A: ${{ needs['eval-32'].result }}
           GROUP_B: ${{ needs['eval-48'].result }}
           GROUP_C: ${{ needs['eval-47'].result }}
+          COMMON_VOICE_ASR: ${{ needs['common-voice-asr'].result }}
           TTS_OVERLAP: ${{ needs['tts-overlap'].result }}
         run: |
           {
@@ -374,6 +394,7 @@ jobs:
             echo "| Extraction (#32) | ${GROUP_A} |"
             echo "| Retrieval (#48) | ${GROUP_B} |"
             echo "| Speech CPU smoke (#166) | ${GROUP_C} |"
+            echo "| Persian Common Voice ASR (#177) | ${COMMON_VOICE_ASR} |"
             echo "| Synthetic overlap (#179) | ${TTS_OVERLAP} |"
             echo
             echo "These are automated silver-baseline results, not human gold or production-quality claims."
