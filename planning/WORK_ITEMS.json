@@ -1496,16 +1496,17 @@
         "Keep read-speech clearly distinguished from natural conversation."
       ],
       "evidence": [
-        "PR #205 is the current-mainline implementation; exact-head CI run #45752466423 is in progress. The previous authenticated attempt reached the protected sample-download endpoint with MDC_API_KEY present and received HTTP 403; no sample archive was downloaded."
+        "PR #205 is the current-mainline implementation; exact-head CI run #45752466423 is in progress. The previous authenticated attempt reached the protected sample-download endpoint with MDC_API_KEY present and received HTTP 403; no sample archive was downloaded.",
+        "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret."
       ],
-      "blocked_reason": "MDC HTTP 403 is an entitlement response, not a missing GitHub secret. Need confirm the same MDC account/organization that owns the API key has accepted the Common Voice Persian dataset terms and that the dataset is accessible to that organization. Do not ask for the key again or fall back to the full archive."
+      "blocked_reason": "The repository owner has configured MDC_API_KEY and confirmed accepting the Common Voice Persian dataset terms. The protected download_sample endpoint still returns HTTP 403. The remaining blocker is MDC-side organization ownership/profile completeness/access approval; do not ask for the key again, do not repeat terms acceptance, and do not fall back to the 10.46 GB full archive."
     },
     {
       "id": "VP-0060",
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "planned",
+      "status": "in_progress",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1515,8 +1516,11 @@
         "Measure CPU runtime/real-time factor and emit reproducible transcript artifacts.",
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
-      "evidence": [],
-      "blocked_reason": null
+      "evidence": [
+        "PR #207 (open): replaces vulnerable qwen-asr==0.0.6 stack with native Transformers 5.20.1 Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0; CPU-only PyTorch 2.15.0+cpu; HF Hub 1.31.0. Exact model inference succeeded on publisher English sample in run #45757007838: 15.0512s audio, 17.2307s inference, RTF 1.144805, peak RSS 5,372,149,760 bytes (~5,122 MiB), 4 CPU cores / 4 threads. CPU batch-feasible, not real-time, not Persian WER.",
+        "Native Persian evaluator uses automatic language detection and rejects outputs not identified as Persian; forced-language prompting was removed after Transformers 5.20.1 chat-template incompatibility. No raw audio/transcript/speaker IDs are persisted. Exact-head CI for the final code is pending."
+      ],
+      "blocked_reason": "Actual Persian WER cannot be produced until VP-0059 downloads a real bounded Common Voice Persian sample. The native inference/evaluation implementation and offline tests can be completed independently; do not report CPU English smoke as Persian quality evidence."
     },
     {
       "id": "VP-0061",
