@@ -93,6 +93,7 @@ class CommonVoiceSampleTests(unittest.TestCase):
                 report_path = Path(temporary) / "report.json"
                 report = run_download(report_path)
                 self.assertEqual(report["status"], "sample_unavailable")
+                self.assertTrue(any("FileNotFoundError" in warning for warning in report["warnings"]))
                 self.assertTrue(report_path.is_file())
                 sample_download.assert_called_once()
                 self.assertEqual(sample_download.call_args.kwargs["extract"], False)
