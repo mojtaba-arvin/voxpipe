@@ -4,6 +4,7 @@ import json
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import wave
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,12 +12,23 @@ from types import SimpleNamespace
 from jsonschema import Draft202012Validator
 
 from eval.issue47.qwen_transcription import (
+    _parse_persian_transcription,
     corpus_error_rates,
     run_evaluation,
 )
 
 
 class QwenPersianEvaluationTests(unittest.TestCase):
+    def test_auto_detected_language_must_be_persian(self) -> None:
+        self.assertEqual(
+            _parse_persian_transcription({"language": "Persian", "transcription": "سلام دنیا"}),
+            "سلام دنیا",
+        )
+        with self.assertRaisesRegex(RuntimeError, "unexpected language"):
+            _parse_persian_transcription({"language": "English", "transcription": "hello world"})
+        with self.assertRaisesRegex(RuntimeError, "empty Persian transcription"):
+            _parse_persian_transcription({"language": "Persian", "transcription": " "})
+
     def test_persian_normalization_and_error_rates(self) -> None:
         metrics = corpus_error_rates(["يک كتاب"], ["یک کتاب"])
         self.assertEqual(metrics["wer"], 0.0)
@@ -51,11 +63,12 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             with tarfile.open(archive_path, "w:gz") as archive:
                 archive.add(audio_path, arcname="clips/clip.wav")
                 archive.add(tsv_path, arcname="validated.tsv")
-            model = SimpleNamespace(
-                transcribe=lambda **kwargs: [SimpleNamespace(text="سلام دنیا", language="Persian")]
-            )
             report_path = root / "result.json"
-            report = run_evaluation(archive_path, report_path, root / "cache", model=model)
+            with patch("eval.issue47.qwen_transcription._transcribe_audio", return_value="سلام دنیا"):
+                report = run_evaluation(
+                    archive_path, report_path, root / "cache",
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                )
             self.assertEqual(report["sample_count"], 1)
             self.assertEqual(report["wer"], 0.0)
             self.assertFalse(report["transcript_text_uploaded"])
