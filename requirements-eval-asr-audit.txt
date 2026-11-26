@@ -1,7 +1,6 @@
-# Security advisory resolution uses the upstream PyPI release version. The runtime
-# requirement pins the CPU wheel as 2.8.0+cpu from the official PyTorch index;
-# the local +cpu build suffix does not change the upstream Torch source version.
-torch==2.8.0
-qwen-asr==0.0.6
+# Upstream release versions corresponding to the runtime CPU wheels.
+torch==2.15.0
+transformers==5.20.1
 huggingface_hub==0.36.0
+Pillow==13.0.0
 jsonschema==4.25.1
