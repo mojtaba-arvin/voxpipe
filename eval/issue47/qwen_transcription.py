@@ -49,7 +49,7 @@ def normalize_text(value: str) -> str:
     chars = []
     for char in value:
         category = unicodedata.category(char)
-        if category.startswith("P") or category.startswith("S"):
+        if category.startswith("P") or category.startswith("S") or category == "Mn":
             chars.append(" ")
         else:
             chars.append(char)
@@ -123,6 +123,9 @@ def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.T
             metadata_members.append(member)
     if not metadata_members:
         raise ValueError("sample archive contains no supported Common Voice TSV metadata")
+    metadata_members.sort(key=lambda member: {
+        "validated.tsv": 0, "sample.tsv": 1, "train.tsv": 2
+    }.get(PurePosixPath(member.name).name, 3))
     return audio_by_basename, [(member, "") for member in metadata_members]
 
 
