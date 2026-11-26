@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from contextlib import nullcontext
 import io
 import json
 import platform
@@ -213,7 +214,8 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
 
 def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    max_clips: int = MAX_CLIPS, model: Any | None = None,
-                   model_loader: Callable[[Path], Any] | None = None) -> dict[str, Any]:
+                   model_loader: Callable[[Path], Any] | None = None,
+                   intermediates_output: Path | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("sample archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
@@ -222,7 +224,17 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
     processor = None
-    with tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-") as temporary:
+    if intermediates_output is None:
+        temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
+    else:
+        audio_root = intermediates_output.parent / f"{intermediates_output.stem}-audio"
+        if audio_root.exists():
+            shutil.rmtree(audio_root)
+        audio_root.mkdir(parents=True, exist_ok=True)
+        temporary_context = nullcontext(str(audio_root))
+
+    intermediate_records: list[dict[str, str]] = []
+    with temporary_context as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
         hypotheses: list[str] = []
@@ -255,6 +267,13 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
                 references.append(reference)
                 hypotheses.append(hypothesis)
+                if intermediates_output is not None:
+                    intermediate_records.append({
+                        "sample_id": f"sample-{index:03d}",
+                        "audio_path": str(audio_path.resolve()),
+                        "reference": reference,
+                        "hypothesis": hypothesis,
+                    })
                 audio_seconds += duration
 
         metrics = corpus_error_rates(references, hypotheses)
@@ -277,6 +296,13 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if intermediates_output is not None:
+        intermediates_output.parent.mkdir(parents=True, exist_ok=True)
+        intermediates_output.write_text(
+            "".join(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n"
+                    for record in intermediate_records),
+            encoding="utf-8",
+        )
     return report
 
 
@@ -348,10 +374,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
+    parser.add_argument("--intermediates-output", type=Path, default=None,
+                        help="Write temporary audio/transcript inputs for downstream alignment; never upload this file or its audio directory.")
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
-        model_loader=_download_model,
+        model_loader=_download_model, intermediates_output=args.intermediates_output,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0
