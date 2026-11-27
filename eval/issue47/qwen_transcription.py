@@ -31,6 +31,11 @@ LID_MODEL_ID = "speechbrain/lang-id-voxlingua107-ecapa"
 LID_MODEL_REVISION = "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
 LID_MODEL_LICENSE = "Apache-2.0"
 LID_CONFIDENCE_THRESHOLD = 0.0
+FORCED_LANGUAGE = "Persian"
+MAX_NEW_TOKENS = 256
+DO_SAMPLE = False
+BATCH_SIZE = 1
+LID_SAMPLE_RATE = 16000
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
 MAX_ARCHIVE_BYTES = 12 * 1024 * 1024 * 1024
@@ -212,6 +217,11 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "language_id_failures": language_id_failures,
         "transcription_failures": transcription_failures,
         "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
+        "forced_language": FORCED_LANGUAGE,
+        "max_new_tokens": MAX_NEW_TOKENS,
+        "do_sample": DO_SAMPLE,
+        "batch_size": BATCH_SIZE,
+        "language_id_sample_rate": LID_SAMPLE_RATE,
         "device": "cpu",
         "compute_type": compute_type,
         "sample_count": sample_count,
@@ -409,7 +419,7 @@ def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language:
         audio=str(audio_path), language=language
     ).to("cpu", model.dtype)
     with torch.inference_mode():
-        output_ids = model.generate(**inputs, max_new_tokens=256, do_sample=False)
+        output_ids = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=DO_SAMPLE)
     generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
     transcription = processor.decode(generated_ids, return_format="transcription_only")[0]
     return {"language": "Persian", "transcription": str(transcription)}
@@ -417,7 +427,7 @@ def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language:
 
 def _identify_audio_language(language_identifier: Any, audio_path: Path) -> Any:
     import librosa
-    samples, sample_rate = librosa.load(str(audio_path), sr=16000, mono=True)
+    samples, sample_rate = librosa.load(str(audio_path), sr=LID_SAMPLE_RATE, mono=True)
     return language_identifier.identify(samples.tolist(), sample_rate=int(sample_rate))
 
 
