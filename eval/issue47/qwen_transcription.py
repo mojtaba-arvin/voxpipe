@@ -240,6 +240,9 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "peak_rss_bytes": peak_rss_bytes,
         "torch_version": torch_version,
         "transformers_version": transformers_version,
+        "speechbrain_version": speechbrain_version,
+        "torchaudio_version": torchaudio_version,
+        "huggingface_hub_version": huggingface_hub_version,
         "python_version": platform.python_version(),
         "transcript_text_uploaded": False,
         "audio_uploaded": False,
@@ -342,8 +345,11 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         try:
             from importlib.metadata import version
             transformers_version = version("transformers")
+            speechbrain_version = version("speechbrain")
+            torchaudio_version = version("torchaudio")
+            huggingface_hub_version = version("huggingface-hub")
         except Exception:
-            transformers_version = "unknown"
+            transformers_version = speechbrain_version = torchaudio_version = huggingface_hub_version = "unknown"
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
         report = build_report(
