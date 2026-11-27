@@ -319,7 +319,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                         language_id_failures["other_or_undetermined"] += 1
                     continue
                 started_inference = time.perf_counter()
-                parsed = _transcribe_audio(model, processor, audio_path, language="Persian")
+                parsed = _transcribe_audio(model, processor, audio_path, language=FORCED_LANGUAGE)
                 inference_seconds += time.perf_counter() - started_inference
                 try:
                     hypothesis = _parse_persian_transcription(parsed)
@@ -411,7 +411,7 @@ def _parse_persian_transcription(parsed: dict[str, Any]) -> str:
     return transcription
 
 
-def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language: str = "Persian") -> dict[str, str]:
+def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language: str = FORCED_LANGUAGE) -> dict[str, str]:
     import torch
     if language.casefold() not in {"persian", "fa"}:
         raise ValueError("the Common Voice Persian evaluator only permits forced Persian decoding")
