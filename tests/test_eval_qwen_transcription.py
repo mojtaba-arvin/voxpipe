@@ -88,6 +88,25 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             )
             Draft202012Validator(schema).validate(report)
 
+    def test_empty_hypothesis_is_counted_and_suppresses_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive(root)
+            prediction = SimpleNamespace(
+                language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
+            )
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value={"language": "Persian", "transcription": ""}):
+                report = run_evaluation(
+                    archive_path, root / "empty.json", root / "cache",
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(),
+                )
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["transcription_failures"]["empty_output"], 1)
+            self.assertIsNone(report["wer"])
+            self.assertIsNone(report["cer"])
+
     def test_pipeline_writes_aggregate_only_report_and_uses_ephemeral_audio(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
