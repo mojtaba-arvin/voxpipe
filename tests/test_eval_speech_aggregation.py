@@ -6,7 +6,7 @@ from unittest.mock import patch
 from eval.issue47.aggregate_speech import build_report
 
 
-def sample_report():
+def archive_report():
     return {
         "schema_version": 1, "status": "downloaded",
         "dataset_id": "cmu5xazgy00finq074vaqo1b3",
@@ -19,11 +19,11 @@ def sample_report():
         "speaker_count": 500, "dataset_archive_size_bytes": None,
         "dataset_archive_checksum": "a" * 64,
         "downloaded_at": "2026-11-26T14:00:00Z", "sdk_version": "0.2.0",
-        "sample_archive_name": "common-voice-fa-sample.tar.gz",
-        "sample_archive_size_bytes": 1000000, "sample_archive_checksum": "b" * 64,
-        "sample_audio_file_count": 50,
-        "sample_metadata_file_count": 1, "sample_download_seconds": 5.0,
-        "warnings": ["bounded sample only"],
+        "archive_name": "common-voice-fa-27.0.tar.gz",
+        "archive_size_bytes": 11236660956, "archive_sha256": "b" * 64,
+        "audio_file_count": 395173,
+        "metadata_file_count": 3, "download_seconds": 360.0,
+        "warnings": ["full archive downloaded; 50 clips selected for evaluation"],
     }
 
 
@@ -85,7 +85,7 @@ class SpeechAggregateTests(unittest.TestCase):
             qwen_report=qwen_report(), alignment_report=alignment_report(),
             speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
             overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
-            sample_report=sample_report(),
+            archive_report=archive_report(),
             run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
         )
         self.assertEqual(report["status"], "success")
@@ -103,7 +103,7 @@ class SpeechAggregateTests(unittest.TestCase):
         self.assertEqual(report["status"], "failure")
         self.assertEqual(report["read_speech"]["status"], "skipped")
 
-    def test_sample_provenance_mismatch_rejects_read_speech(self) -> None:
+    def test_full_archive_provenance_mismatch_rejects_read_speech(self) -> None:
         qwen = qwen_report()
         qwen["dataset_version"] = "unexpected-release"
         with patch("eval.issue47.aggregate_speech._validate_document"):
@@ -112,7 +112,7 @@ class SpeechAggregateTests(unittest.TestCase):
                 qwen_report=qwen, alignment_report=alignment_report(),
                 speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
                 overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
-                sample_report=sample_report(),
+                archive_report=archive_report(),
                 run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
             )
         self.assertEqual(report["status"], "failure")

@@ -41,7 +41,7 @@ def build_report(
     speaker_report: dict[str, Any] | None,
     overlap_manifest: dict[str, Any] | None,
     run_id: int,
-    sample_report: dict[str, Any] | None = None,
+    archive_report: dict[str, Any] | None = None,
     commit_sha: str,
     run_url: str,
 ) -> dict[str, Any]:
@@ -56,16 +56,16 @@ def build_report(
     read_metrics: dict[str, Any] | None = None
     if read_status == "success":
         try:
-            if qwen_report is None or alignment_report is None or speaker_report is None or sample_report is None:
+            if qwen_report is None or alignment_report is None or speaker_report is None or archive_report is None:
                 raise ValueError("read-speech job succeeded without all four expected reports")
-            _validate_document(sample_report, ROOT / "eval" / "issue47" / "common_voice_sample.schema.json", "Common Voice sample provenance")
+            _validate_document(archive_report, ROOT / "eval" / "issue47" / "common_voice_archive.schema.json", "Common Voice full-archive provenance")
             _validate_document(qwen_report, ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json", "Qwen ASR report")
             _validate_document(alignment_report, ROOT / "eval" / "issue47" / "alignment_cv.schema.json", "alignment report")
-            if sample_report.get("status") != "downloaded":
-                raise ValueError("Common Voice bounded sample was not downloaded")
+            if archive_report.get("status") != "downloaded":
+                raise ValueError("Common Voice full archive was not downloaded")
             for key in ("dataset_id", "dataset_version", "source_kind", "locale", "license"):
-                if sample_report.get(key) != qwen_report.get(key):
-                    raise ValueError(f"sample/Qwen dataset provenance mismatch for {key}")
+                if archive_report.get(key) != qwen_report.get(key):
+                    raise ValueError(f"archive/Qwen dataset provenance mismatch for {key}")
             if qwen_report.get("status") != "passed":
                 raise ValueError("Qwen ASR report is not passed")
             if alignment_report.get("status") != "completed":
@@ -87,20 +87,20 @@ def build_report(
                     "source_kind": qwen_report["source_kind"],
                     "locale": qwen_report["locale"],
                     "license": qwen_report["license"],
-                    "task": sample_report["task"],
-                    "source_url": sample_report["source_url"],
-                    "release_date": sample_report["release_date"],
-                    "recorded_hours": sample_report["recorded_hours"],
-                    "validated_hours": sample_report["validated_hours"],
-                    "clip_count": sample_report["clip_count"],
-                    "speaker_count": sample_report["speaker_count"],
-                    "sample_archive": {
-                        "name": sample_report["sample_archive_name"],
-                        "size_bytes": sample_report["sample_archive_size_bytes"],
-                        "sha256": sample_report["sample_archive_checksum"],
-                        "audio_file_count": sample_report["sample_audio_file_count"],
-                        "metadata_file_count": sample_report["sample_metadata_file_count"],
-                        "download_seconds": sample_report["sample_download_seconds"],
+                    "task": archive_report["task"],
+                    "source_url": archive_report["source_url"],
+                    "release_date": archive_report["release_date"],
+                    "recorded_hours": archive_report["recorded_hours"],
+                    "validated_hours": archive_report["validated_hours"],
+                    "clip_count": archive_report["clip_count"],
+                    "speaker_count": archive_report["speaker_count"],
+                    "full_archive": {
+                        "name": archive_report["archive_name"],
+                        "size_bytes": archive_report["archive_size_bytes"],
+                        "sha256": archive_report["archive_sha256"],
+                        "audio_file_count": archive_report["audio_file_count"],
+                        "metadata_file_count": archive_report["metadata_file_count"],
+                        "download_seconds": archive_report["download_seconds"],
                     },
                 },
                 "asr_model": {
@@ -203,7 +203,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         metrics = read["metrics"]
         lines.extend([
             f"- Dataset: {metrics['dataset']['id']} ({metrics['dataset']['version']}, {metrics['dataset']['license']})",
-            f"- Bounded sample: {metrics['dataset']['sample_archive']['name']} ({metrics['dataset']['sample_archive']['size_bytes']} bytes; {metrics['dataset']['sample_archive']['audio_file_count']} audio files; SHA-256 {metrics['dataset']['sample_archive']['sha256'] or 'not supplied'})",
+            f"- Full archive: {metrics['dataset']['full_archive']['name']} ({metrics['dataset']['full_archive']['size_bytes']} bytes; {metrics['dataset']['full_archive']['audio_file_count']} audio files; SHA-256 {metrics['dataset']['full_archive']['sha256']})",
             f"- ASR model: {metrics['asr_model']['id']}@{metrics['asr_model']['revision']} ({metrics['asr_model']['device']}, {metrics['asr_model']['compute_type']})",
             f"- Persian read-speech clips: {metrics['sample_count']}",
             f"- Qwen WER / CER: {metrics['wer']:.6f} / {metrics['cer']:.6f}",
@@ -248,7 +248,7 @@ def main() -> int:
         alignment_report=load(args.read_speech_dir, "alignment_cv.json"),
         speaker_report=load(args.read_speech_dir, "speaker_segments.json"),
         overlap_manifest=load(args.synthetic_dir, "overlap_manifest.json"),
-        sample_report=load(args.read_speech_dir, "common_voice_sample.json"),
+        archive_report=load(args.read_speech_dir, "common_voice_archive.json"),
         run_id=args.run_id,
         commit_sha=args.commit_sha,
         run_url=args.run_url,

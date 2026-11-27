@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-26",
+  "updated_at": "2026-11-27",
   "items": [
     {
       "id": "VP-0001",
@@ -1485,23 +1485,25 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "blocked",
+      "status": "in_progress",
       "depends_on": [
         "VP-0047"
       ],
       "acceptance_criteria": [
-        "Pin the dataset version/revision and verify its published license/provenance.",
-        "Download only the bounded evaluation subset needed by CI.",
-        "Cache only immutable dataset revisions and avoid committing audio data.",
+        "Pin the official Common Voice Persian 27.0 dataset identity, revision and CC0 provenance.",
+        "Download the complete official archive through the publisher's authenticated download_dataset API with resumable retries.",
+        "Verify archive size, SHA-256 when publisher metadata supplies it, tar member/path safety, and audio/TSV presence.",
+        "Keep the archive in job-local temporary storage; never commit or upload audio, transcripts or the full archive.",
         "Keep read-speech clearly distinguished from natural conversation."
       ],
       "evidence": [
         "PR #205 merged to main as 9221eeac4d45871bc2c01eee08eaced6b6f2cd39 after exact-head validation run #45752595027 passed all 9 jobs and dependency audit run #45752594998 passed both jobs.",
         "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
         "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
-        "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret."
+        "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret.",
+        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run."
       ],
-      "blocked_reason": "Mozilla Data Collective still returns HTTP 403 from the protected download_sample() endpoint after the repository secret was configured and the owner completed dataset-terms acceptance. This is an MDC-side organization/profile/access-approval blocker, not a missing GitHub secret. Do not request or expose the key again, repeat terms acceptance, or fall back to the 10.46 GB full archive. Keep the item open until a bounded publisher sample is actually downloaded and provenance records status=downloaded."
+      "blocked_reason": null
     },
     {
       "id": "VP-0060",
@@ -1516,7 +1518,7 @@
       "acceptance_criteria": [
         "Use a pinned local model revision with no external inference API.",
         "Measure CPU runtime/real-time factor and record model/runtime provenance.",
-        "Produce aggregate-only Persian WER/CER from a real bounded publisher sample; keep audio, references and hypotheses temporary and never upload transcript rows.",
+        "Produce aggregate-only Persian WER/CER from a real bounded set of clips selected from the complete official archive; keep audio, references and hypotheses temporary and never upload transcript rows.",
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
       "evidence": [
@@ -1524,10 +1526,10 @@
         "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
         "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
         "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
-        "The actual common-voice-asr workflow now calls common_voice_sample.py, validates dataset identity/license and bounded archive size/member limits before ASR, retains the archive only in RUNNER_TEMP, and uploads only the audio-free provenance JSON. A 403 produces an explicit access_denied report and stops ASR; no full-archive or third-party mirror fallback.",
-        "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate."
+        "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
+        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
       ],
-      "blocked_reason": "The MDC SDK currently returns FileNotFoundError/sample_unavailable for the bounded sample endpoint (an earlier attempt returned HTTP 403). Public metadata is available, but no sample bytes were downloaded. The dataset owner must confirm the sample endpoint and account/org entitlement with MDC. Never fall back to the 11.2 GB full release archive or an unapproved mirror."
+      "blocked_reason": "The Qwen evaluator and workflow wiring are implemented, but real Persian WER/CER requires VP-0059 to download and validate the official full archive. PR #225 updates the path to the complete archive; do not report metrics until real audio inference succeeds."
     },
     {
       "id": "VP-0061",
@@ -1548,10 +1550,10 @@
         "The merged implementation uses WhisperX 3.8.6 and jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
         "Qwen hypotheses and audio are handed off only through a temporary JSONL manifest and temporary runner files; per-word alignment JSONL is created in a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
         "The aligner uses a minimal WhisperX 3.8.6 CTC-only runtime: PyTorch 2.13.0+cpu, torchaudio 2.11.1, Transformers 5.20.1, huggingface_hub 1.31.0, NumPy 2.5.5, pandas 3.1.1 and NLTK 3.10.4. WhisperX is installed with --no-deps because its unused faster-whisper/pyannote/torchcodec stack pins vulnerable versions; only alignment/audio modules are imported. The removed torchaudio.pipelines lookup is shimmed to an empty namespace because the custom pinned Persian HF model always uses the Transformers path. Model loading is local-only after immutable-revision snapshot download.",
-        "Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it.",
-        "Exact-head runtime smoke run 45850122656 passed: pip-audit reported no known vulnerabilities in the installed minimal runtime; WhisperX 3.8.6 loaded the immutable Persian model revision 234714078a1398a9db88194c5a40fefe6f376dc1 on CPU with float32 weights. Versions: torch 2.13.0+cpu, torchaudio 2.11.1+cpu, Transformers 5.20.1, Hub 1.31.0. This validates model loading only, not real audio alignment or WER/CER."
+        "Exact-head runtime smoke run 45850122656 passed: pip-audit reported no known vulnerabilities in the installed minimal runtime; WhisperX 3.8.6 loaded the immutable Persian model revision 234714078a1398a9db88194c5a40fefe6f376dc1 on CPU with float32 weights. Versions: torch 2.13.0+cpu, torchaudio 2.11.1+cpu, Transformers 5.20.1, Hub 1.31.0. This validates model loading only, not real audio alignment or WER/CER.",
+        "PR #225 updates the Common Voice input path to the complete official archive; no audio alignment result is claimed until the full-archive run succeeds."
       ],
-      "blocked_reason": "Acceptance requires running forced alignment over the same real bounded Persian Common Voice sample used by #177. VP-0060 remains blocked by Mozilla Data Collective HTTP 403, so no approved audio/transcript input is available. Do not mark this item done from schema/unit tests alone."
+      "blocked_reason": "Real Persian forced alignment depends on Qwen hypotheses from VP-0060. PR #225 enables the complete official archive path; real audio alignment and coverage remain unverified until that workflow executes."
     },
     {
       "id": "VP-0062",
@@ -1582,33 +1584,29 @@
       "title": "Wire speech evaluation job (issue #180)",
       "phase": 9,
       "priority": 63,
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
-        "VP-0059",
-        "VP-0060",
-        "VP-0061",
         "VP-0062"
       ],
       "acceptance_criteria": [
-        "Run licensed read-speech transcription/alignment and synthetic overlap checks in eval-47.",
-        "Publish a schema-valid, audio-free report_47.json with run provenance and exact branch statuses.",
-        "Keep read-speech and synthetic overlap metrics separate and preserve success/failure/skipped states.",
+        "Aggregate optional read-speech and synthetic overlap branch outcomes independently, including success/failure/skipped.",
+        "Publish a schema-valid, audio-free report_47.json with exact run provenance and branch statuses.",
+        "Upload the aggregate artifact and publish a truthful disclosure.",
         "Disclose that read-speech and TTS do not establish natural conversational performance or medical readiness."
       ],
       "evidence": [
         "PR #213 exact-head Silver run 45850459347 passed: Group C aggregate job validated and uploaded report_47.json, with read-speech and synthetic branches explicitly marked skipped because their opt-in inputs were not run.",
         "The report keeps read-speech ASR/alignment and synthetic overlap separate, does not claim diarization on read-speech, and discloses that neither branch establishes natural-conversation or medical readiness.",
-        "The underlying Persian read-speech data gate remains open in VP-0059/VP-0060/VP-0061 (#176–#178); closing this item records aggregator implementation only, not Group C evaluation completion.",
-        "PR #213 implements the aggregator/report plumbing; exact-head run 45850459347 validated report_47.json and issue #47 disclosure, but read-speech and synthetic branches were skipped. This is implementation evidence, not acceptance evidence."
+        "Implementation completed in PR #213; exact-head Silver run #45850459347 passed and uploaded report_47.json with both optional branches explicitly skipped. This is aggregation implementation completion, not speech-evaluation completion."
       ],
-      "blocked_reason": "Aggregator implementation is present, but this work item depends on VP-0059/VP-0060/VP-0061 and requires actual licensed read-speech transcription/alignment plus synthetic overlap outputs. The latest exact-head run 45850459347 marked both Group C branches skipped; do not close this item on wiring-only evidence."
+      "blocked_reason": null
     },
     {
       "id": "VP-0064",
       "title": "Aggregate all silver evaluation groups (issue #181)",
       "phase": 9,
       "priority": 64,
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "VP-0054",
         "VP-0058",
@@ -1625,16 +1623,16 @@
         "PR #213 exact-head Silver run 45850459347 passed: post-results aggregated Group A/B/C outcomes, published summary.json with run/attempt/commit provenance and exact artifact IDs/URLs, and uploaded the issue disclosures.",
         "The same run posted truthful comments to umbrella issues #32, #47 and #48. Group C's read-speech and synthetic branches remained explicitly skipped; the summary did not report them as passes.",
         "Completion-label reconciliation is limited to explicit workflow_dispatch evaluations and adds the label only when all three groups have validated metrics and exact artifact references; otherwise it removes stale labels. This closes reporting/label-gating implementation only, not the underlying M1 evidence gates.",
-        "PR #213 exact-head run 45850459347 exercised summary.json generation, exact artifact references and truthful comments to #32/#47/#48 with Group C branches skipped. The path works, but final acceptance remains blocked until VP-0063 and all three group evidence gates complete."
+        "Implementation completed in PR #213; exact-head Silver run #45850459347 produced summary.json, exact artifact references, per-group statuses and truthful issue disclosures. Completion labels remain gated on all groups succeeding."
       ],
-      "blocked_reason": "Summary generation and artifact/comment plumbing are implemented, but VP-0063 and all three validated group evidence gates must complete before this item can be accepted or the completion label can be applied."
+      "blocked_reason": null
     },
     {
       "id": "VP-0065",
       "title": "Recruit two independent Persian extraction annotators (issue #182)",
       "phase": 10,
       "priority": 65,
-      "status": "blocked",
+      "status": "cancelled",
       "depends_on": [
         "VP-0064"
       ],
@@ -1643,15 +1641,17 @@
         "Record adjudication policy and dataset access controls.",
         "Do not substitute synthetic templates or rule labels for human annotations."
       ],
-      "evidence": [],
-      "blocked_reason": "Requires recruiting and coordinating two qualified human annotators. No participant pool, approved budget or annotation service is available through repository automation; labels must not be fabricated."
+      "evidence": [
+        "Issue #182 closed as not_planned: two independent qualified Persian annotators are unavailable within project scope."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0066",
       "title": "Adjudicate extraction disagreements and compute kappa (issue #183)",
       "phase": 10,
       "priority": 66,
-      "status": "planned",
+      "status": "cancelled",
       "depends_on": [
         "VP-0065"
       ],
@@ -1660,7 +1660,9 @@
         "Compute and report Cohen's kappa with a documented label guide and sample size.",
         "Retain provenance and privacy-safe audit information."
       ],
-      "evidence": [],
+      "evidence": [
+        "Issue #183 closed as not_planned: adjudication and Cohen's kappa cannot be produced without independent annotators."
+      ],
       "blocked_reason": null
     },
     {
@@ -1668,7 +1670,7 @@
       "title": "Collect human retrieval relevance judgments (issue #184)",
       "phase": 10,
       "priority": 67,
-      "status": "blocked",
+      "status": "cancelled",
       "depends_on": [
         "VP-0064"
       ],
@@ -1677,8 +1679,10 @@
         "Document assessor instructions, disagreement handling and dataset provenance.",
         "Keep human judgments separate from heuristic qrels."
       ],
-      "evidence": [],
-      "blocked_reason": "Requires qualified human relevance assessors and an approved corpus. Heuristic qrels cannot replace human judgments, and no external annotator pool or budget is available through repository automation."
+      "evidence": [
+        "Issue #184 closed as not_planned: independent human relevance assessors and an approved corpus are unavailable."
+      ],
+      "blocked_reason": null
     },
     {
       "id": "VP-0068",
