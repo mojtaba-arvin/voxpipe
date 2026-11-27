@@ -171,12 +171,13 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
                  audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
                  torch_version: str, transformers_version: str,
                  language_id_failures: dict[str, int],
+                 transcription_failures: dict[str, int],
                  language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
                  compute_type: str = "float32") -> dict[str, Any]:
     if not 0 <= sample_count <= MAX_CLIPS or not 1 <= requested_sample_count <= MAX_CLIPS:
         raise ValueError("sample counts must remain within the 50-clip experiment bound")
-    if sample_count + sum(language_id_failures.values()) != requested_sample_count:
-        raise ValueError("accepted and rejected sample counts must equal the requested sample count")
+    if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != requested_sample_count:
+        raise ValueError("accepted and failed sample counts must equal the requested sample count")
     if audio_seconds <= 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
         raise ValueError("audio duration, inference duration and peak RSS must be valid")
     if not 0.0 <= language_id_confidence_threshold <= 1.0:
@@ -201,6 +202,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "language_id_model_license": LID_MODEL_LICENSE,
         "language_id_confidence_threshold": language_id_confidence_threshold,
         "language_id_failures": language_id_failures,
+        "transcription_failures": transcription_failures,
         "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
         "device": "cpu",
         "compute_type": compute_type,
@@ -229,7 +231,8 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
             "An independent pinned VoxLingua107 audio-language gate must identify Persian at or above the configured confidence threshold before Qwen inference.",
             "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
-            "If any of the requested clips fails the language gate, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
+            "Arabic, low-confidence, other/undetermined language-gate failures and empty transcription outputs are counted separately.",
+            "If any requested clip fails language validation or produces an empty hypothesis, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
     }
@@ -284,6 +287,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
             if language_identifier is None:
                 language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
             language_id_failures = {"arabic": 0, "low_confidence": 0, "other_or_undetermined": 0}
+            transcription_failures = {"empty_output": 0}
             for index, (member, reference) in enumerate(selected, start=1):
                 extracted = archive.extractfile(member)
                 if extracted is None:
@@ -306,7 +310,13 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 started_inference = time.perf_counter()
                 parsed = _transcribe_audio(model, processor, audio_path, language="Persian")
                 inference_seconds += time.perf_counter() - started_inference
-                hypothesis = _parse_persian_transcription(parsed)
+                try:
+                    hypothesis = _parse_persian_transcription(parsed)
+                except RuntimeError as exc:
+                    if "empty Persian transcription" not in str(exc):
+                        raise
+                    transcription_failures["empty_output"] += 1
+                    continue
                 references.append(reference)
                 hypotheses.append(hypothesis)
                 if intermediate_dir is not None:
@@ -337,6 +347,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
             audio_seconds=audio_seconds, inference_seconds=inference_seconds,
             peak_rss_bytes=peak_rss_bytes, torch_version=torch_version,
             transformers_version=transformers_version, language_id_failures=language_id_failures,
+            transcription_failures=transcription_failures,
             language_id_confidence_threshold=language_id_confidence_threshold,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
