@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/common-voice-full-archive-evaluation
+      - feat/qwen-persian-language-detection
   workflow_call:
     secrets:
       MDC_API_KEY:
@@ -40,11 +41,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/huggingface
-          key: voxpipe-qwen3-asr-persian-v3-${{ hashFiles('requirements-eval-asr.txt', 'requirements-eval-align.txt', 'eval/issue47/persian_alignment.py') }}
+          key: voxpipe-qwen3-asr-persian-v4-${{ hashFiles('requirements-eval-asr.txt', 'requirements-eval-align.txt', 'requirements-eval-lid.txt', 'eval/issue47/persian_alignment.py') }}
       - name: Install pinned CPU-only PyTorch wheel from the official index
         run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.15.0+cpu
       - name: Install native Transformers ASR and Mozilla SDK dependencies
         run: uv pip install --system -r requirements-eval-asr.txt -r requirements-eval-mdc.txt
+      - name: Install pinned CPU-only torchaudio and independent language-ID runtime
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torchaudio==2.15.0+cpu
+          uv pip install --system -r requirements-eval-lid.txt
       - name: Install isolated WhisperX CPU alignment runtime
         run: |
           uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
