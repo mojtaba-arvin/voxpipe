@@ -131,7 +131,7 @@ def run_download(output_path: Path, download_directory: Path) -> tuple[dict[str,
     started = time.perf_counter()
     archive_path = Path(download_dataset(
         DATASET_ID, download_directory=str(download_directory), show_progress=False,
-        enable_logging=True, extract=False, max_download_attempts=5,
+        enable_logging=False, extract=False, max_download_attempts=5,
     ))
     elapsed = time.perf_counter() - started
     size, audio_count, metadata_count = _inspect_archive(archive_path)
@@ -164,7 +164,7 @@ def main() -> int:
         print("MDC denied full-archive access (HTTP 403). Check the API-key owner's profile, terms acceptance and dataset access approval.", flush=True)
         return 3
     except Exception as exc:
-        print(f"Common Voice full-archive download/validation failed: {type(exc).__name__}: {exc}", flush=True)
+        print(f"Common Voice full-archive download/validation failed: {type(exc).__name__}", flush=True)
         return 1
     print(json.dumps(report, ensure_ascii=False, indent=2))
     print(f"archive={archive.resolve()}")
