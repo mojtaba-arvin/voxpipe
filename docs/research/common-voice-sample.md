@@ -23,11 +23,11 @@ The previous automatic Qwen3-ASR path classified the first Persian Common Voice 
 
 The evaluator now:
 1. Runs independent local SpeechBrain VoxLingua107 ECAPA language identification on every selected audio clip. Model revision `0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9` is pinned; only `fa` and `ar` are in the accepted inventory.
-2. Requires a Persian (`fa`) prediction at confidence >= 0.65 before ASR. Arabic, low-confidence, and other/undetermined outcomes are counted separately and rejected.
+2. Requires the independent model's top language label to be Persian (`fa`) before ASR. The confidence threshold is 0.0 because the repository's existing disjoint FLEURS validation calibration selected 0.0 under its 0.99 selective-accuracy / 0.50 minimum-coverage constraints (run 45170396629); this is not an extra score floor. The strict `fa`-only acceptance inventory remains in force: Arabic (`ar`) and every other/out-of-inventory label are rejected. The calibration is FLEURS-specific and is not a Common Voice accuracy guarantee.
 3. Calls Transformers 5.20.1 `apply_transcription_request(audio=..., language="Persian")` for clips that pass the independent audio-language gate. Forced language is a decoding instruction, not proof of the audio language.
 4. Publishes WER/CER only if all 50 requested clips pass the independent language gate and produce non-empty Persian hypotheses. Otherwise the aggregate report has `status=failed` and null WER/CER; it does not calculate metrics on a reduced or mixed-language set.
 
-Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e16515073d7c0`, CPU float32, batch size 1. Language-ID model: `speechbrain/lang-id-voxlingua107-ecapa`, Apache-2.0, pinned revision above. The language-ID confidence threshold is recorded in the aggregate report; it is a conservative gate, not a Common Voice-calibrated probability guarantee.
+Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e16515073d7c0`, CPU float32, batch size 1. Language-ID model: `speechbrain/lang-id-voxlingua107-ecapa`, Apache-2.0, pinned revision above. The language-ID confidence threshold and FLEURS calibration provenance are recorded in the aggregate report. The accepted-language gate is the model's top class being exactly `fa`; the FLEURS threshold calibration is not a Common Voice accuracy guarantee.
 
 ## Privacy and interpretation
 
