@@ -51,7 +51,10 @@
     "max_new_tokens",
     "do_sample",
     "batch_size",
-    "language_id_sample_rate"
+    "language_id_sample_rate",
+    "speechbrain_version",
+    "torchaudio_version",
+    "huggingface_hub_version"
   ],
   "properties": {
     "schema_version": {
@@ -294,6 +297,18 @@
     },
     "language_id_sample_rate": {
       "const": 16000
+    },
+    "speechbrain_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "torchaudio_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "huggingface_hub_version": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "allOf": [
