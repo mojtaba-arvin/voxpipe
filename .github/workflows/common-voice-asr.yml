@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/common-voice-full-archive-evaluation
+      - feat/qwen-persian-language-detection
   workflow_call:
     secrets:
       MDC_API_KEY:
