@@ -58,7 +58,7 @@ def build_report(
         try:
             if qwen_report is None or alignment_report is None or speaker_report is None or archive_report is None:
                 raise ValueError("read-speech job succeeded without all four expected reports")
-            _validate_document(archive_report, ROOT / "eval" / "issue47" / "common_voice_sample.schema.json", "Common Voice full-archive provenance")
+            _validate_document(archive_report, ROOT / "eval" / "issue47" / "common_voice_archive.schema.json", "Common Voice full-archive provenance")
             _validate_document(qwen_report, ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json", "Qwen ASR report")
             _validate_document(alignment_report, ROOT / "eval" / "issue47" / "alignment_cv.schema.json", "alignment report")
             if archive_report.get("status") != "downloaded":
