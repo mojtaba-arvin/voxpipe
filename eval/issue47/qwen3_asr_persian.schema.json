@@ -43,7 +43,8 @@
     "language_id_failures",
     "language_strategy",
     "requested_sample_count",
-    "rejected_sample_count"
+    "rejected_sample_count",
+    "transcription_failures"
   ],
   "properties": {
     "schema_version": {
@@ -223,6 +224,19 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 50
+    },
+    "transcription_failures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "empty_output"
+      ],
+      "properties": {
+        "empty_output": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   },
   "allOf": [
