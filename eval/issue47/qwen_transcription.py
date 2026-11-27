@@ -28,6 +28,10 @@ DATASET_VERSION = "cv-corpus-27.0-2026-09-11"
 MODEL_ID = "Qwen/Qwen3-ASR-0.6B-hf"
 MODEL_REVISION = "40946090cac63fc01d723a83174e16515073d7c0"
 MODEL_LICENSE = "Apache-2.0"
+LID_MODEL_ID = "speechbrain/lang-id-voxlingua107-ecapa"
+LID_MODEL_REVISION = "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+LID_MODEL_LICENSE = "Apache-2.0"
+LID_CONFIDENCE_THRESHOLD = 0.65
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
 MAX_ARCHIVE_BYTES = 12 * 1024 * 1024 * 1024
@@ -163,14 +167,26 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
     return rows
 
 
-def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: float,
-                 inference_seconds: float, peak_rss_bytes: int, torch_version: str,
-                 transformers_version: str, compute_type: str = "float32") -> dict[str, Any]:
-    if sample_count < 1 or min(audio_seconds, inference_seconds, peak_rss_bytes) <= 0:
-        raise ValueError("sample count, audio/inference duration and peak RSS must be positive")
+def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested_sample_count: int,
+                 audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
+                 torch_version: str, transformers_version: str,
+                 language_id_failures: dict[str, int],
+                 language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
+                 compute_type: str = "float32") -> dict[str, Any]:
+    if not 0 <= sample_count <= MAX_CLIPS or not 1 <= requested_sample_count <= MAX_CLIPS:
+        raise ValueError("sample counts must remain within the 50-clip experiment bound")
+    if sample_count + sum(language_id_failures.values()) != requested_sample_count:
+        raise ValueError("accepted and rejected sample counts must equal the requested sample count")
+    if audio_seconds <= 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
+        raise ValueError("audio duration, inference duration and peak RSS must be valid")
+    if not 0.0 <= language_id_confidence_threshold <= 1.0:
+        raise ValueError("language-ID confidence threshold must be between 0 and 1")
+    status = "passed" if sample_count == requested_sample_count else "failed"
+    if status == "passed" and metrics is None:
+        raise ValueError("a complete Persian sample requires aggregate metrics")
     result = {
         "schema_version": 1,
-        "status": "passed",
+        "status": status,
         "dataset_id": DATASET_ID,
         "dataset_version": DATASET_VERSION,
         "source_kind": "scripted_read_speech",
@@ -180,18 +196,26 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
         "model_id": MODEL_ID,
         "model_revision": MODEL_REVISION,
         "model_license": MODEL_LICENSE,
+        "language_id_model_id": LID_MODEL_ID,
+        "language_id_model_revision": LID_MODEL_REVISION,
+        "language_id_model_license": LID_MODEL_LICENSE,
+        "language_id_confidence_threshold": language_id_confidence_threshold,
+        "language_id_failures": language_id_failures,
+        "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
         "device": "cpu",
         "compute_type": compute_type,
         "sample_count": sample_count,
+        "requested_sample_count": requested_sample_count,
+        "rejected_sample_count": requested_sample_count - sample_count,
         "audio_duration_seconds": round(audio_seconds, 4),
         "inference_seconds": round(inference_seconds, 6),
         "real_time_factor": round(inference_seconds / audio_seconds, 6),
-        "word_errors": metrics["word_errors"],
-        "character_errors": metrics["character_errors"],
-        "reference_words": metrics["reference_words"],
-        "reference_characters": metrics["reference_characters"],
-        "wer": metrics["wer"],
-        "cer": metrics["cer"],
+        "word_errors": metrics["word_errors"] if metrics is not None else None,
+        "character_errors": metrics["character_errors"] if metrics is not None else None,
+        "reference_words": metrics["reference_words"] if metrics is not None else None,
+        "reference_characters": metrics["reference_characters"] if metrics is not None else None,
+        "wer": metrics["wer"] if metrics is not None else None,
+        "cer": metrics["cer"] if metrics is not None else None,
         "peak_rss_bytes": peak_rss_bytes,
         "torch_version": torch_version,
         "transformers_version": transformers_version,
@@ -203,6 +227,9 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
             "Common Voice is scripted read-speech, not natural conversation.",
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
+            "An independent pinned VoxLingua107 audio-language gate must identify Persian at or above the configured confidence threshold before Qwen inference.",
+            "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
+            "If any of the requested clips fails the language gate, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
     }
@@ -216,6 +243,9 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    max_clips: int = MAX_CLIPS, model: Any | None = None,
                    processor: Any | None = None,
                    model_loader: Callable[[Path], Any] | None = None,
+                   language_identifier: Any | None = None,
+                   language_identifier_loader: Callable[[Path], Any] | None = None,
+                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
                    intermediate_dir: Path | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("Common Voice archive must be an existing non-empty file")
@@ -242,6 +272,8 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         with tarfile.open(archive_path, mode="r:gz") as archive:
             audio_by_basename, metadata_members = _read_archive_records(archive)
             selected = _load_reference_rows(archive, metadata_members[0][0], audio_by_basename, max_clips)
+            if len(selected) != max_clips:
+                raise ValueError(f"Common Voice archive yielded {len(selected)} matching clips; exactly {max_clips} are required")
             if model is None:
                 if model_loader is None:
                     raise ValueError("a model or model_loader is required")
@@ -249,6 +281,9 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 processor, model = _load_model_from_directory(model_dir)
             if processor is None:
                 raise ValueError("a native Transformers processor is required with an injected model")
+            if language_identifier is None:
+                language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
+            language_id_failures = {"arabic": 0, "low_confidence": 0, "other_or_undetermined": 0}
             for index, (member, reference) in enumerate(selected, start=1):
                 extracted = archive.extractfile(member)
                 if extracted is None:
@@ -257,24 +292,34 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 with extracted, audio_path.open("wb") as output:
                     shutil.copyfileobj(extracted, output, length=1024 * 1024)
                 duration = _audio_duration_seconds(audio_path)
+                audio_seconds += duration
+                language_prediction = _identify_audio_language(language_identifier, audio_path)
+                raw_language = str(getattr(language_prediction, "raw_language", None) or language_prediction.language).casefold()
+                if language_prediction.language != "fa" or language_prediction.confidence < language_id_confidence_threshold:
+                    if getattr(language_prediction, "abstention_reason", None) == "low_confidence":
+                        language_id_failures["low_confidence"] += 1
+                    elif raw_language in {"ar", "arabic"}:
+                        language_id_failures["arabic"] += 1
+                    else:
+                        language_id_failures["other_or_undetermined"] += 1
+                    continue
                 started_inference = time.perf_counter()
-                hypothesis = _transcribe_audio(model, processor, audio_path)
+                parsed = _transcribe_audio(model, processor, audio_path, language="Persian")
                 inference_seconds += time.perf_counter() - started_inference
-                if not hypothesis.strip():
-                    raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
+                hypothesis = _parse_persian_transcription(parsed)
                 references.append(reference)
                 hypotheses.append(hypothesis)
                 if intermediate_dir is not None:
                     alignment_rows.append({"audio_path": str(audio_path), "transcript": hypothesis})
-                audio_seconds += duration
-        if intermediate_dir is not None:
+        complete_sample = len(references) == len(selected)
+        if intermediate_dir is not None and complete_sample:
             manifest_path = intermediate_dir / "alignment_input.jsonl"
             manifest_path.write_text(
                 "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in alignment_rows),
                 encoding="utf-8",
             )
 
-        metrics = corpus_error_rates(references, hypotheses)
+        metrics = corpus_error_rates(references, hypotheses) if complete_sample else None
         try:
             import torch
             torch_version = str(torch.__version__)
@@ -288,9 +333,11 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
         report = build_report(
-            metrics=metrics, sample_count=len(references), audio_seconds=audio_seconds,
-            inference_seconds=inference_seconds, peak_rss_bytes=peak_rss_bytes,
-            torch_version=torch_version, transformers_version=transformers_version,
+            metrics=metrics, sample_count=len(references), requested_sample_count=len(selected),
+            audio_seconds=audio_seconds, inference_seconds=inference_seconds,
+            peak_rss_bytes=peak_rss_bytes, torch_version=torch_version,
+            transformers_version=transformers_version, language_id_failures=language_id_failures,
+            language_id_confidence_threshold=language_id_confidence_threshold,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -350,18 +397,38 @@ def _parse_persian_transcription(parsed: dict[str, Any]) -> str:
     return transcription
 
 
-def _transcribe_audio(model: Any, processor: Any, audio_path: Path) -> str:
+def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language: str = "Persian") -> dict[str, str]:
     import torch
-    # Automatic language detection avoids a forced-language chat-template path
-    # that is incompatible with the pinned Transformers processor revision.
+    if language.casefold() not in {"persian", "fa"}:
+        raise ValueError("the Common Voice Persian evaluator only permits forced Persian decoding")
     inputs = processor.apply_transcription_request(
-        audio=str(audio_path)
+        audio=str(audio_path), language=language
     ).to("cpu", model.dtype)
     with torch.inference_mode():
         output_ids = model.generate(**inputs, max_new_tokens=256, do_sample=False)
     generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
-    parsed = processor.decode(generated_ids, return_format="parsed")[0]
-    return _parse_persian_transcription(parsed)
+    transcription = processor.decode(generated_ids, return_format="transcription_only")[0]
+    return {"language": "Persian", "transcription": str(transcription)}
+
+
+def _identify_audio_language(language_identifier: Any, audio_path: Path) -> Any:
+    import librosa
+    samples, sample_rate = librosa.load(str(audio_path), sr=16000, mono=True)
+    return language_identifier.identify(samples.tolist(), sample_rate=int(sample_rate))
+
+
+def _download_language_identifier(cache_dir: Path) -> Any:
+    import sys
+    from huggingface_hub import snapshot_download
+    sys.path.insert(0, str(ROOT / "src"))
+    from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier
+    model_dir = snapshot_download(
+        repo_id=LID_MODEL_ID, revision=LID_MODEL_REVISION, cache_dir=str(cache_dir)
+    )
+    return SpeechBrainLanguageIdentifier(
+        model_dir=model_dir, threshold=LID_CONFIDENCE_THRESHOLD,
+        model_version=LID_MODEL_REVISION, supported_languages=frozenset({"fa", "ar"}),
+    )
 
 
 def _download_model(cache_dir: Path) -> Path:
@@ -382,11 +449,11 @@ def main() -> int:
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
-        model_loader=_download_model,
+        model_loader=_download_model, language_identifier_loader=_download_language_identifier,
         intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
-    return 0
+    return 0 if report["status"] == "passed" else 1
 
 
 if __name__ == "__main__":
