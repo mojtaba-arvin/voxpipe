@@ -19,13 +19,13 @@ from eval.issue47.qwen_transcription import (
 
 
 class QwenPersianEvaluationTests(unittest.TestCase):
-    def test_auto_detected_language_must_be_persian(self) -> None:
+    def test_persian_language_contract_rejects_non_persian_and_empty_output(self) -> None:
         self.assertEqual(
             _parse_persian_transcription({"language": "Persian", "transcription": "سلام دنیا"}),
             "سلام دنیا",
         )
         with self.assertRaisesRegex(RuntimeError, "unexpected language"):
-            _parse_persian_transcription({"language": "English", "transcription": "hello world"})
+            _parse_persian_transcription({"language": "Arabic", "transcription": "مرحبا"})
         with self.assertRaisesRegex(RuntimeError, "empty Persian transcription"):
             _parse_persian_transcription({"language": "Persian", "transcription": " "})
 
@@ -45,23 +45,33 @@ class QwenPersianEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-whitespace"):
             corpus_error_rates(["  "], ["متن"])
 
+    @staticmethod
+    def _archive(root: Path) -> Path:
+        archive_path = root / "sample.tar.gz"
+        audio_path = root / "clip.wav"
+        with wave.open(str(audio_path), "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(16000)
+            audio.writeframes(b"\x00\x00" * 16000)
+        tsv_path = root / "validated.tsv"
+        tsv_path.write_text(
+            "client_id\tpath\tsentence\nprivate-client\tclip.wav\tسلام دنیا\n",
+            encoding="utf-8",
+        )
+        with tarfile.open(archive_path, "w:gz") as archive:
+            archive.add(audio_path, arcname="clips/clip.wav")
+            archive.add(tsv_path, arcname="validated.tsv")
+        return archive_path
+
     def test_arabic_audio_is_rejected_without_publishing_wer_or_cer(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            archive_path = root / "sample.tar.gz"
-            audio_path = root / "clip.wav"
-            with wave.open(str(audio_path), "wb") as audio:
-                audio.setnchannels(1)
-                audio.setsampwidth(2)
-                audio.setframerate(16000)
-                audio.writeframes(b"\\x00\\x00" * 16000)
-            tsv_path = root / "validated.tsv"
-            tsv_path.write_text("client_id\\tpath\\tsentence\\nprivate-client\\tclip.wav\\tسلام دنیا\\n", encoding="utf-8")
-            with tarfile.open(archive_path, "w:gz") as archive:
-                archive.add(audio_path, arcname="clips/clip.wav")
-                archive.add(tsv_path, arcname="validated.tsv")
-            prediction = SimpleNamespace(language="ar", confidence=0.99, raw_language="ar", abstention_reason=None)
-            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \\
+            archive_path = self._archive(root)
+            prediction = SimpleNamespace(
+                language="ar", confidence=0.99, raw_language="ar", abstention_reason=None
+            )
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
                  patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
                 report = run_evaluation(
                     archive_path, root / "rejected.json", root / "cache",
@@ -73,29 +83,22 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertEqual(report["language_id_failures"]["arabic"], 1)
             self.assertIsNone(report["wer"])
             self.assertIsNone(report["cer"])
+            schema = json.loads(
+                (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "qwen3_asr_persian.schema.json").read_text(encoding="utf-8")
+            )
+            Draft202012Validator(schema).validate(report)
 
     def test_pipeline_writes_aggregate_only_report_and_uses_ephemeral_audio(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            archive_path = root / "sample.tar.gz"
-            audio_path = root / "clip.wav"
-            with wave.open(str(audio_path), "wb") as audio:
-                audio.setnchannels(1)
-                audio.setsampwidth(2)
-                audio.setframerate(16000)
-                audio.writeframes(b"\x00\x00" * 16000)
-            tsv_path = root / "validated.tsv"
-            tsv_path.write_text(
-                "client_id\tpath\tsentence\nprivate-client\tclip.wav\tسلام دنیا\n",
-                encoding="utf-8",
-            )
-            with tarfile.open(archive_path, "w:gz") as archive:
-                archive.add(audio_path, arcname="clips/clip.wav")
-                archive.add(tsv_path, arcname="validated.tsv")
+            archive_path = self._archive(root)
             report_path = root / "result.json"
-            language_prediction = SimpleNamespace(language="fa", confidence=0.99, raw_language="fa", abstention_reason=None)
+            language_prediction = SimpleNamespace(
+                language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
+            )
+            forced_hypothesis = {"language": "Persian", "transcription": "سلام دنیا"}
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
-                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value={"language": "Persian", "transcription": "سلام دنیا"}):
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value=forced_hypothesis):
                 report = run_evaluation(
                     archive_path, report_path, root / "cache",
                     model=SimpleNamespace(dtype="float32"), processor=object(),
@@ -105,21 +108,28 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertEqual(report["sample_count"], 1)
             self.assertEqual(report["requested_sample_count"], 1)
             self.assertEqual(report["wer"], 0.0)
-            self.assertEqual(report["language_id_model_revision"], "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9")
+            self.assertEqual(
+                report["language_id_model_revision"],
+                "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
+            )
             self.assertFalse(report["transcript_text_uploaded"])
             self.assertFalse(report["audio_uploaded"])
             serialized = report_path.read_text(encoding="utf-8").lower()
             self.assertNotIn("سلام دنیا", serialized)
             self.assertNotIn("private-client", serialized)
+
             intermediate_dir = root / "alignment-input"
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
-                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value={"language": "Persian", "transcription": "سلام دنیا"}):
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value=forced_hypothesis):
                 intermediate_report = run_evaluation(
                     archive_path, root / "intermediate-result.json", root / "cache",
                     model=SimpleNamespace(dtype="float32"), processor=object(),
                     language_identifier=object(), intermediate_dir=intermediate_dir,
                 )
-            manifest_rows = [json.loads(line) for line in (intermediate_dir / "alignment_input.jsonl").read_text(encoding="utf-8").splitlines()]
+            manifest_rows = [
+                json.loads(line)
+                for line in (intermediate_dir / "alignment_input.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
             self.assertEqual(len(manifest_rows), 1)
             self.assertEqual(manifest_rows[0]["transcript"], "سلام دنیا")
             self.assertTrue(Path(manifest_rows[0]["audio_path"]).is_file())
