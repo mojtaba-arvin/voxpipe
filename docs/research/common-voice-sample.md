@@ -31,6 +31,6 @@ Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e1651
 
 ## Privacy and interpretation
 
-Raw audio, references, hypotheses, client IDs, speaker IDs and per-clip language predictions remain temporary and are never uploaded, committed or logged. Only aggregate WER/CER, aggregate language-gate failure counts, model/runtime configuration and dataset provenance may be published.
+Raw audio, references, hypotheses, client IDs, speaker IDs and per-clip language predictions remain temporary and are never uploaded, committed or logged. The workflow does not generate or publish per-clip alignment or speaker-segment artifacts. Only aggregate WER/CER, aggregate language-gate/transcription failure counts, model/runtime configuration and dataset provenance may be published. Reported inference time/RTF includes both language identification and Qwen decoding, but excludes model initialization and archive download.
 
 Common Voice is scripted read-speech, not natural conversation or human-gold annotation. CC0 licensing does not establish individual consent for natural-conversation use. These results cannot establish conversational ASR, diarization, speaker identity, production accuracy or medical readiness.
