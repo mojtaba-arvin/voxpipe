@@ -248,6 +248,8 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "Common Voice is scripted read-speech, not natural conversation.",
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
+            "Inference time and real-time factor include independent language identification plus Qwen decoding, but exclude model initialization and archive download.",
+            "No per-clip alignment or speaker-segment artifacts are generated or published.",
             "An independent pinned VoxLingua107 audio-language gate must identify Persian at or above the configured confidence threshold before Qwen inference.",
             "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
             "Arabic, low-confidence, other/undetermined language-gate failures and empty transcription outputs are counted separately.",
