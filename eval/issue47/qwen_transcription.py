@@ -300,10 +300,10 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 language_prediction = _identify_audio_language(language_identifier, audio_path)
                 raw_language = str(getattr(language_prediction, "raw_language", None) or language_prediction.language).casefold()
                 if language_prediction.language != "fa" or language_prediction.confidence < language_id_confidence_threshold:
-                    if getattr(language_prediction, "abstention_reason", None) == "low_confidence":
-                        language_id_failures["low_confidence"] += 1
-                    elif raw_language in {"ar", "arabic"}:
+                    if raw_language in {"ar", "arabic"}:
                         language_id_failures["arabic"] += 1
+                    elif getattr(language_prediction, "abstention_reason", None) == "low_confidence":
+                        language_id_failures["low_confidence"] += 1
                     else:
                         language_id_failures["other_or_undetermined"] += 1
                     continue
