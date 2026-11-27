@@ -103,7 +103,7 @@
     },
     "real_time_factor": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "word_errors": {
       "type": [
