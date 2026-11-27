@@ -64,9 +64,9 @@ jobs:
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL /usr/local/share/powershell
           df -h "$RUNNER_TEMP"
           available_kib="$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')"
-          required_kib=$((15 * 1024 * 1024))
+          required_kib=$((18 * 1024 * 1024))
           if (( available_kib < required_kib )); then
-            echo "Full Common Voice evaluation requires at least 15 GiB free disk after cleanup; available: $((available_kib / 1024 / 1024)) GiB." >&2
+            echo "Full Common Voice evaluation requires at least 18 GiB free disk after cleanup; available: $((available_kib / 1024 / 1024)) GiB." >&2
             exit 1
           fi
       - name: Download and validate the complete publisher archive
@@ -85,18 +85,18 @@ jobs:
           import os
           from pathlib import Path
 
-          report = json.loads(Path("eval/artifacts/issue47/common_voice_sample.json").read_text(encoding="utf-8"))
+          report = json.loads(Path("eval/artifacts/issue47/common_voice_archive.json").read_text(encoding="utf-8"))
           if report["status"] != "downloaded":
-              raise SystemExit(f"Publisher sample unavailable: {report['status']}")
+              raise SystemExit(f"Full Common Voice archive download failed: {report['status']}")
           archive_path = Path(os.environ["RUNNER_TEMP"]) / "voxpipe-common-voice-archive" / report["archive_name"]
           if not archive_path.is_file():
-              raise SystemExit("Validated publisher sample archive is missing from the job-local directory")
+              raise SystemExit("Validated full Common Voice archive is missing from the job-local directory")
           print(f"archive={archive_path.resolve()}")
           PY
       - name: Run bounded Persian Qwen3-ASR evaluation
         run: |
           python -m eval.issue47.qwen_transcription \
-            --archive "${{ steps.sample.outputs.archive }}" \
+            --archive "${{ steps.archive.outputs.archive }}" \
             --max-clips 50 \
             --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
       - name: Run Persian WhisperX forced alignment on temporary Qwen hypotheses
@@ -118,7 +118,7 @@ jobs:
             eval/artifacts/issue47/alignment_cv.json
             eval/artifacts/issue47/speaker_segments.json
           if-no-files-found: warn
-      - name: Remove temporary publisher sample
+      - name: Remove temporary full publisher archive
         if: always()
         run: |
           rm -rf "$RUNNER_TEMP/voxpipe-common-voice-archive"
