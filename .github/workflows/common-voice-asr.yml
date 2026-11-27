@@ -1,6 +1,9 @@
 name: Common Voice Persian full-archive ASR evaluation
 
 on:
+  push:
+    branches:
+      - feat/common-voice-full-archive-evaluation
   workflow_call:
     secrets:
       MDC_API_KEY:
