@@ -1,4 +1,4 @@
-name: Common Voice Persian ASR evaluation
+name: Common Voice Persian full-archive ASR evaluation
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ jobs:
   persian-asr:
     name: Bounded Qwen3-ASR Persian read-speech evaluation
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
@@ -58,17 +58,28 @@ jobs:
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
           sudo apt-get install --no-install-recommends -y ffmpeg
           ffprobe -version
-      - name: Download and validate only the publisher-provided sample
-        id: sample
+      - name: Reclaim runner disk for the publisher's full archive
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL /usr/local/share/powershell
+          df -h "$RUNNER_TEMP"
+          available_kib="$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')"
+          required_kib=$((15 * 1024 * 1024))
+          if (( available_kib < required_kib )); then
+            echo "Full Common Voice evaluation requires at least 15 GiB free disk after cleanup; available: $((available_kib / 1024 / 1024)) GiB." >&2
+            exit 1
+          fi
+      - name: Download and validate the complete publisher archive
+        id: archive
         env:
           MDC_API_KEY: ${{ secrets.MDC_API_KEY }}
         run: |
           set -euo pipefail
           test -n "$MDC_API_KEY" || { echo "MDC_API_KEY repository secret is required." >&2; exit 1; }
-          sample_dir="$RUNNER_TEMP/voxpipe-common-voice-sample"
-          python -m eval.issue47.common_voice_sample \
-            --output eval/artifacts/issue47/common_voice_sample.json \
-            --download-directory "$sample_dir"
+          archive_dir="$RUNNER_TEMP/voxpipe-common-voice-archive"
+          python -m eval.issue47.common_voice_archive \
+            --output eval/artifacts/issue47/common_voice_archive.json \
+            --download-directory "$archive_dir"
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
@@ -77,7 +88,7 @@ jobs:
           report = json.loads(Path("eval/artifacts/issue47/common_voice_sample.json").read_text(encoding="utf-8"))
           if report["status"] != "downloaded":
               raise SystemExit(f"Publisher sample unavailable: {report['status']}")
-          archive_path = Path(os.environ["RUNNER_TEMP"]) / "voxpipe-common-voice-sample" / report["sample_archive_name"]
+          archive_path = Path(os.environ["RUNNER_TEMP"]) / "voxpipe-common-voice-archive" / report["archive_name"]
           if not archive_path.is_file():
               raise SystemExit("Validated publisher sample archive is missing from the job-local directory")
           print(f"archive={archive_path.resolve()}")
@@ -102,7 +113,7 @@ jobs:
         with:
           name: persian-read-speech-evaluation
           path: |
-            eval/artifacts/issue47/common_voice_sample.json
+            eval/artifacts/issue47/common_voice_archive.json
             eval/artifacts/issue47/qwen3_asr_persian.json
             eval/artifacts/issue47/alignment_cv.json
             eval/artifacts/issue47/speaker_segments.json
@@ -110,5 +121,5 @@ jobs:
       - name: Remove temporary publisher sample
         if: always()
         run: |
-          rm -rf "$RUNNER_TEMP/voxpipe-common-voice-sample"
+          rm -rf "$RUNNER_TEMP/voxpipe-common-voice-archive"
           rm -rf "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
