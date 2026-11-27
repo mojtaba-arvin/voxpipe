@@ -112,7 +112,7 @@ class SpeechAggregateTests(unittest.TestCase):
                 qwen_report=qwen, alignment_report=alignment_report(),
                 speaker_report={"schema_version":1,"diarization_status":"not_evaluated_read_speech","speaker_segments":[]},
                 overlap_manifest=overlap_manifest(), run_id=123, commit_sha="a"*40,
-                sample_report=sample_report(),
+                archive_report=archive_report(),
                 run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
             )
         self.assertEqual(report["status"], "failure")
