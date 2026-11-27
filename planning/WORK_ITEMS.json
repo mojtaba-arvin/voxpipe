@@ -1518,7 +1518,7 @@
       "acceptance_criteria": [
         "Use a pinned local model revision with no external inference API.",
         "Measure CPU runtime/real-time factor and record model/runtime provenance.",
-        "Produce aggregate-only Persian WER/CER from a real bounded publisher sample; keep audio, references and hypotheses temporary and never upload transcript rows.",
+        "Produce aggregate-only Persian WER/CER from a real bounded set of clips selected from the complete official archive; keep audio, references and hypotheses temporary and never upload transcript rows.",
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
       "evidence": [
@@ -1526,7 +1526,6 @@
         "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
         "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
         "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
-        "The actual common-voice-asr workflow now calls common_voice_sample.py, validates dataset identity/license and bounded archive size/member limits before ASR, retains the archive only in RUNNER_TEMP, and uploads only the audio-free provenance JSON. A 403 produces an explicit access_denied report and stops ASR; no full-archive or third-party mirror fallback.",
         "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
         "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
       ],
@@ -1551,7 +1550,6 @@
         "The merged implementation uses WhisperX 3.8.6 and jonatasgrosman/wav2vec2-large-xlsr-53-persian at immutable revision 234714078a1398a9db88194c5a40fefe6f376dc1 (Apache-2.0).",
         "Qwen hypotheses and audio are handed off only through a temporary JSONL manifest and temporary runner files; per-word alignment JSONL is created in a temporary directory and never uploaded. Only aggregate alignment coverage/model metadata and an empty speaker_segments.json are intended as artifacts.",
         "The aligner uses a minimal WhisperX 3.8.6 CTC-only runtime: PyTorch 2.13.0+cpu, torchaudio 2.11.1, Transformers 5.20.1, huggingface_hub 1.31.0, NumPy 2.5.5, pandas 3.1.1 and NLTK 3.10.4. WhisperX is installed with --no-deps because its unused faster-whisper/pyannote/torchcodec stack pins vulnerable versions; only alignment/audio modules are imported. The removed torchaudio.pipelines lookup is shimmed to an empty namespace because the custom pinned Persian HF model always uses the Transformers path. Model loading is local-only after immutable-revision snapshot download.",
-        "Real alignment remains unverified until #177 obtains the bounded Common Voice sample and the alignment job executes against it.",
         "Exact-head runtime smoke run 45850122656 passed: pip-audit reported no known vulnerabilities in the installed minimal runtime; WhisperX 3.8.6 loaded the immutable Persian model revision 234714078a1398a9db88194c5a40fefe6f376dc1 on CPU with float32 weights. Versions: torch 2.13.0+cpu, torchaudio 2.11.1+cpu, Transformers 5.20.1, Hub 1.31.0. This validates model loading only, not real audio alignment or WER/CER.",
         "PR #225 updates the Common Voice input path to the complete official archive; no audio alignment result is claimed until the full-archive run succeeds."
       ],
@@ -1599,8 +1597,6 @@
       "evidence": [
         "PR #213 exact-head Silver run 45850459347 passed: Group C aggregate job validated and uploaded report_47.json, with read-speech and synthetic branches explicitly marked skipped because their opt-in inputs were not run.",
         "The report keeps read-speech ASR/alignment and synthetic overlap separate, does not claim diarization on read-speech, and discloses that neither branch establishes natural-conversation or medical readiness.",
-        "The underlying Persian read-speech data gate remains open in VP-0059/VP-0060/VP-0061 (#176–#178); closing this item records aggregator implementation only, not Group C evaluation completion.",
-        "PR #213 implements the aggregator/report plumbing; exact-head run 45850459347 validated report_47.json and issue #47 disclosure, but read-speech and synthetic branches were skipped. This is implementation evidence, not acceptance evidence.",
         "Implementation completed in PR #213; exact-head Silver run #45850459347 passed and uploaded report_47.json with both optional branches explicitly skipped. This is aggregation implementation completion, not speech-evaluation completion."
       ],
       "blocked_reason": null
@@ -1627,7 +1623,6 @@
         "PR #213 exact-head Silver run 45850459347 passed: post-results aggregated Group A/B/C outcomes, published summary.json with run/attempt/commit provenance and exact artifact IDs/URLs, and uploaded the issue disclosures.",
         "The same run posted truthful comments to umbrella issues #32, #47 and #48. Group C's read-speech and synthetic branches remained explicitly skipped; the summary did not report them as passes.",
         "Completion-label reconciliation is limited to explicit workflow_dispatch evaluations and adds the label only when all three groups have validated metrics and exact artifact references; otherwise it removes stale labels. This closes reporting/label-gating implementation only, not the underlying M1 evidence gates.",
-        "PR #213 exact-head run 45850459347 exercised summary.json generation, exact artifact references and truthful comments to #32/#47/#48 with Group C branches skipped. The path works, but final acceptance remains blocked until VP-0063 and all three group evidence gates complete.",
         "Implementation completed in PR #213; exact-head Silver run #45850459347 produced summary.json, exact artifact references, per-group statuses and truthful issue disclosures. Completion labels remain gated on all groups succeeding."
       ],
       "blocked_reason": null
