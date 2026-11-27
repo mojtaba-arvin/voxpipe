@@ -45,6 +45,29 @@ class PersianAlignmentTests(unittest.TestCase):
             [{"word": "سلام", "start": 0.1, "end": 0.5}],
         )
 
+    def test_word_timestamps_must_be_monotonic_and_inside_audio(self) -> None:
+        words = [
+            {"word": "اول", "start": 0.1, "end": 0.3},
+            {"word": "overlap", "start": 0.25, "end": 0.4},
+            {"word": "دوم", "start": 0.3, "end": 0.5},
+            {"word": "out-of-order", "start": 0.2, "end": 0.4},
+            {"word": "past-end", "start": 0.9, "end": 1.01},
+            {"word": "boolean", "start": True, "end": 0.8},
+        ]
+        self.assertEqual(
+            _validated_word_times(words, 1.0),
+            [
+                {"word": "اول", "start": 0.1, "end": 0.3},
+                {"word": "دوم", "start": 0.3, "end": 0.5},
+            ],
+        )
+
+    def test_word_timestamp_validation_rejects_invalid_duration(self) -> None:
+        for duration in (0.0, -1.0, float("nan"), float("inf")):
+            with self.subTest(duration=duration):
+                with self.assertRaisesRegex(ValueError, "finite and positive"):
+                    _validated_word_times([], duration)
+
     def test_manifest_requires_existing_audio_and_non_empty_transcript(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
