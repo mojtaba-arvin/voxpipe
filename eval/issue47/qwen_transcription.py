@@ -252,7 +252,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "No per-clip alignment or speaker-segment artifacts are generated or published.",
             "An independent pinned VoxLingua107 audio-language gate must identify Persian at or above the configured confidence threshold before Qwen inference.",
             "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
-            "Arabic, low-confidence, other/undetermined language-gate failures and empty transcription outputs are counted separately.",
+            "Arabic and other/undetermined language-gate failures, plus empty transcription outputs, are counted separately.",
             "If any requested clip fails language validation or produces an empty hypothesis, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
@@ -298,7 +298,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 raise ValueError("a native Transformers processor is required with an injected model")
             if language_identifier is None:
                 language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
-            language_id_failures = {"arabic": 0, "low_confidence": 0, "other_or_undetermined": 0}
+            language_id_failures = {"arabic": 0, "other_or_undetermined": 0}
             transcription_failures = {"empty_output": 0}
             for index, (member, reference) in enumerate(selected, start=1):
                 extracted = archive.extractfile(member)
@@ -316,8 +316,6 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 if language_prediction.language != "fa" or language_prediction.confidence < language_id_confidence_threshold:
                     if raw_language in {"ar", "arabic"}:
                         language_id_failures["arabic"] += 1
-                    elif getattr(language_prediction, "abstention_reason", None) == "low_confidence":
-                        language_id_failures["low_confidence"] += 1
                     else:
                         language_id_failures["other_or_undetermined"] += 1
                     continue
