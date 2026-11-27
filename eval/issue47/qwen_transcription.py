@@ -1,12 +1,11 @@
-"""Bounded Qwen3-ASR Persian evaluation over a publisher-provided sample archive.
+"""Bounded Qwen3-ASR Persian evaluation over a publisher-provided full archive.
 
-Audio and reference sentences are temporary. Only aggregate metrics and pinned
-model/dataset provenance are written to the report.
+Audio, reference sentences and hypotheses are temporary. Only aggregate metrics,
+failure counts and pinned model/dataset provenance are written to the report.
 """
 from __future__ import annotations
 
 import argparse
-from contextlib import nullcontext
 import csv
 import io
 import json
