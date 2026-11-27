@@ -46,7 +46,12 @@
     "rejected_sample_count",
     "transcription_failures",
     "language_id_supported_languages",
-    "language_id_threshold_calibration"
+    "language_id_threshold_calibration",
+    "forced_language",
+    "max_new_tokens",
+    "do_sample",
+    "batch_size",
+    "language_id_sample_rate"
   ],
   "properties": {
     "schema_version": {
@@ -275,6 +280,21 @@
           "const": 0
         }
       }
+    },
+    "forced_language": {
+      "const": "Persian"
+    },
+    "max_new_tokens": {
+      "const": 256
+    },
+    "do_sample": {
+      "const": false
+    },
+    "batch_size": {
+      "const": 1
+    },
+    "language_id_sample_rate": {
+      "const": 16000
     }
   },
   "allOf": [
