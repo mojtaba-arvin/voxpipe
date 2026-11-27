@@ -215,7 +215,9 @@
       "const": "independent_voxlingua107_gate_then_forced_persian"
     },
     "requested_sample_count": {
-      "const": 50
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
     },
     "rejected_sample_count": {
       "type": "integer",
@@ -238,7 +240,9 @@
       "then": {
         "properties": {
           "sample_count": {
-            "const": 50
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
           },
           "rejected_sample_count": {
             "const": 0
