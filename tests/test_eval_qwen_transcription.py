@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+from contextlib import nullcontext
 import tarfile
 import tempfile
 import unittest
@@ -15,6 +17,7 @@ from eval.issue47.qwen_transcription import (
     _parse_persian_transcription,
     corpus_error_rates,
     run_evaluation,
+    _transcribe_audio,
 )
 
 
@@ -28,6 +31,50 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             _parse_persian_transcription({"language": "Arabic", "transcription": "مرحبا"})
         with self.assertRaisesRegex(RuntimeError, "empty Persian transcription"):
             _parse_persian_transcription({"language": "Persian", "transcription": " "})
+
+    def test_qwen_transcription_request_is_explicitly_forced_to_persian(self) -> None:
+        class InputIds:
+            shape = (1, 2)
+
+            def __getitem__(self, key):
+                return self
+
+        class Inputs(dict):
+            def to(self, *args):
+                return self
+
+        class OutputIds:
+            def __getitem__(self, key):
+                return self
+
+        class Processor:
+            def __init__(self):
+                self.request = None
+
+            def apply_transcription_request(self, **kwargs):
+                self.request = kwargs
+                return Inputs(input_ids=InputIds())
+
+            def decode(self, generated_ids, *, return_format):
+                self.assert_format = return_format
+                return ["سلام دنیا"]
+
+        class Model:
+            dtype = "float32"
+
+            def generate(self, **kwargs):
+                self.kwargs = kwargs
+                return OutputIds()
+
+        processor = Processor()
+        model = Model()
+        with patch.dict(sys.modules, {"torch": SimpleNamespace(inference_mode=nullcontext)}):
+            result = _transcribe_audio(model, processor, Path("clip.wav"))
+        self.assertEqual(processor.request["language"], "Persian")
+        self.assertEqual(processor.assert_format, "transcription_only")
+        self.assertEqual(result, {"language": "Persian", "transcription": "سلام دنیا"})
+        with self.assertRaisesRegex(ValueError, "only permits forced Persian"):
+            _transcribe_audio(model, processor, Path("clip.wav"), language="Arabic")
 
     def test_persian_normalization_and_error_rates(self) -> None:
         metrics = corpus_error_rates(["يک كتاب"], ["یک کتاب"])
