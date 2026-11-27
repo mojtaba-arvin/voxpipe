@@ -31,7 +31,7 @@ MODEL_LICENSE = "Apache-2.0"
 LID_MODEL_ID = "speechbrain/lang-id-voxlingua107-ecapa"
 LID_MODEL_REVISION = "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
 LID_MODEL_LICENSE = "Apache-2.0"
-LID_CONFIDENCE_THRESHOLD = 0.65
+LID_CONFIDENCE_THRESHOLD = 0.0
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
 MAX_ARCHIVE_BYTES = 12 * 1024 * 1024 * 1024
@@ -201,6 +201,15 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "language_id_model_revision": LID_MODEL_REVISION,
         "language_id_model_license": LID_MODEL_LICENSE,
         "language_id_confidence_threshold": language_id_confidence_threshold,
+        "language_id_supported_languages": ["ar", "fa"],
+        "language_id_threshold_calibration": {
+            "dataset_id": "google/fleurs",
+            "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "validation_run_id": 45170396629,
+            "min_selective_accuracy": 0.99,
+            "min_coverage": 0.50,
+            "selected_threshold": 0.0,
+        },
         "language_id_failures": language_id_failures,
         "transcription_failures": transcription_failures,
         "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
