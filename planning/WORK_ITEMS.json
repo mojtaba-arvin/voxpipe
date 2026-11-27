@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-27",
+  "updated_at": "2026-11-28",
   "items": [
     {
       "id": "VP-0001",
@@ -1485,7 +1485,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0047"
       ],
@@ -1501,7 +1501,8 @@
         "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
         "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
         "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret.",
-        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run."
+        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run.",
+        "2026-11-27: PR #225 merged to main as b6958422b477dc25375238429a164473e9d7c5b7. Owner-authorized full-archive run #46019633908 downloaded and validated the official CC0-1.0 Persian 27.0 archive: 11,236,660,956 bytes, SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d, 395,173 audio files and 10 TSV files. Archive remained in runner temporary storage; only audio-free provenance was uploaded."
       ],
       "blocked_reason": null
     },
@@ -1510,7 +1511,7 @@
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "blocked",
+      "status": "in_progress",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1527,9 +1528,12 @@
         "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
         "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
         "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
-        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
+        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run.",
+        "2026-11-27: The first full-archive run #46019633908 loaded pinned Qwen3-ASR revision 40946090cac63fc01d723a83174e16515073d7c0 but automatic language detection labelled the first selected Persian clip Arabic. The evaluator failed closed; no WER/CER was produced.",
+        "2026-11-28: Diagnosis: Transformers 5.20.1 supports an explicit Persian language argument to Qwen3-ASR apply_transcription_request. The implementation now adds an independent local SpeechBrain VoxLingua107 gate (Apache-2.0, revision 0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9; accepted inventory fa/ar; confidence threshold 0.65) before forced Persian decoding. Any rejected/uncertain clip makes the 50-clip report failed with null WER/CER; metrics are emitted only when all 50 clips pass. Audio, references, hypotheses and per-clip LID predictions remain temporary.",
+        "Implementation commits on feat/qwen-persian-language-detection: 726fb24c628fea7c62e7119dc13b2f4f51afc125 (independent LID gate and forced Persian decoding), d7d92106c4bb0732183703c1ac3a0f77a725090d/fb69f3f36f3338d4bec095b4403fa0f134fe7710 (aggregate schema), e35681428b146a2ea61610ca060fd0c28e60a983 (Arabic rejection/privacy regression tests), 470f0867e094b523c24f7b11aea4d2075827cae1 (pinned LID runtime), and 9196cd7f7caa5112f078bb67c9c1274a714f72676 (workflow integration). Exact-head full-archive evaluation evidence is pending; do not mark done or claim Persian accuracy until it passes."
       ],
-      "blocked_reason": "The Qwen evaluator and workflow wiring are implemented, but real Persian WER/CER requires VP-0059 to download and validate the official full archive. PR #225 updates the path to the complete archive; do not report metrics until real audio inference succeeds."
+      "blocked_reason": null
     },
     {
       "id": "VP-0061",
