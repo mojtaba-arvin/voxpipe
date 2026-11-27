@@ -35,14 +35,25 @@
     "transcript_text_uploaded",
     "audio_uploaded",
     "speaker_ids_used",
-    "warnings"
+    "warnings",
+    "language_id_model_id",
+    "language_id_model_revision",
+    "language_id_model_license",
+    "language_id_confidence_threshold",
+    "language_id_failures",
+    "language_strategy",
+    "requested_sample_count",
+    "rejected_sample_count"
   ],
   "properties": {
     "schema_version": {
       "const": 1
     },
     "status": {
-      "const": "passed"
+      "enum": [
+        "passed",
+        "failed"
+      ]
     },
     "dataset_id": {
       "const": "cmu5xazgy00finq074vaqo1b3"
@@ -79,7 +90,7 @@
     },
     "sample_count": {
       "type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "maximum": 50
     },
     "audio_duration_seconds": {
@@ -88,35 +99,47 @@
     },
     "inference_seconds": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "real_time_factor": {
       "type": "number",
       "exclusiveMinimum": 0
     },
     "word_errors": {
-      "type": "integer",
-      "minimum": 0
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "character_errors": {
-      "type": "integer",
-      "minimum": 0
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "reference_words": {
-      "type": "integer",
-      "minimum": 1
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "reference_characters": {
-      "type": "integer",
-      "minimum": 1
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "wer": {
-      "type": "number",
-      "minimum": 0
+      "type": [
+        "number",
+        "null"
+      ]
     },
     "cer": {
-      "type": "number",
-      "minimum": 0
+      "type": [
+        "number",
+        "null"
+      ]
     },
     "peak_rss_bytes": {
       "type": "integer",
@@ -150,6 +173,136 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "language_id_model_id": {
+      "const": "speechbrain/lang-id-voxlingua107-ecapa"
+    },
+    "language_id_model_revision": {
+      "const": "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+    },
+    "language_id_model_license": {
+      "const": "Apache-2.0"
+    },
+    "language_id_confidence_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "language_id_failures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "arabic",
+        "low_confidence",
+        "other_or_undetermined"
+      ],
+      "properties": {
+        "arabic": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low_confidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "other_or_undetermined": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "language_strategy": {
+      "const": "independent_voxlingua107_gate_then_forced_persian"
+    },
+    "requested_sample_count": {
+      "const": 50
+    },
+    "rejected_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "passed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sample_count": {
+            "const": 50
+          },
+          "rejected_sample_count": {
+            "const": 0
+          },
+          "wer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "word_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "character_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reference_words": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reference_characters": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "wer": {
+            "type": "null"
+          },
+          "cer": {
+            "type": "null"
+          },
+          "word_errors": {
+            "type": "null"
+          },
+          "character_errors": {
+            "type": "null"
+          },
+          "reference_words": {
+            "type": "null"
+          },
+          "reference_characters": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
 }
