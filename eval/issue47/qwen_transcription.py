@@ -30,9 +30,9 @@ MODEL_REVISION = "40946090cac63fc01d723a83174e16515073d7c0"
 MODEL_LICENSE = "Apache-2.0"
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
-MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
-MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
-MAX_ARCHIVE_MEMBERS = 50_000
+MAX_ARCHIVE_BYTES = 12 * 1024 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 128 * 1024 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 500_000
 MAX_AUDIO_FILE_BYTES = 32 * 1024 * 1024
 MAX_CLIPS = 50
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
@@ -100,7 +100,7 @@ def corpus_error_rates(references: list[str], hypotheses: list[str]) -> dict[str
 def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.TarInfo], list[tuple[tarfile.TarInfo, str]]]:
     members = archive.getmembers()
     if len(members) > MAX_ARCHIVE_MEMBERS:
-        raise ValueError("sample archive exceeds the 50,000-member safety limit")
+        raise ValueError("Common Voice archive exceeds the 500,000-member safety limit")
     total_size = 0
     audio_by_basename: dict[str, tarfile.TarInfo] = {}
     metadata_members = []
@@ -111,7 +111,7 @@ def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.T
             continue
         total_size += member.size
         if total_size > MAX_UNCOMPRESSED_BYTES:
-            raise ValueError("sample archive exceeds the 1 GiB uncompressed safety limit")
+            raise ValueError("Common Voice archive exceeds the 128 GiB uncompressed safety limit")
         basename = PurePosixPath(member.name).name
         suffix = PurePosixPath(basename).suffix.lower()
         if suffix in AUDIO_SUFFIXES:
@@ -201,7 +201,7 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
         "speaker_ids_used": False,
         "warnings": [
             "Common Voice is scripted read-speech, not natural conversation.",
-            "WER/CER describe only this bounded publisher-provided sample and are not human-gold or production-quality evidence.",
+            "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
@@ -218,9 +218,9 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    model_loader: Callable[[Path], Any] | None = None,
                    intermediate_dir: Path | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
-        raise ValueError("sample archive must be an existing non-empty file")
+        raise ValueError("Common Voice archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
-        raise ValueError("sample archive exceeds the 256 MiB safety limit")
+        raise ValueError("Common Voice archive exceeds the 12 GiB safety limit")
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
