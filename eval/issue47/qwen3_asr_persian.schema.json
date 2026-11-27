@@ -258,7 +258,8 @@
         "validation_run_id",
         "min_selective_accuracy",
         "min_coverage",
-        "selected_threshold"
+        "selected_threshold",
+        "dataset_license"
       ],
       "properties": {
         "dataset_id": {
@@ -278,6 +279,9 @@
         },
         "selected_threshold": {
           "const": 0
+        },
+        "dataset_license": {
+          "const": "CC-BY-4.0"
         }
       }
     },
