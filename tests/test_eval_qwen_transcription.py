@@ -186,6 +186,11 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
             )
             self.assertEqual(report["language_id_confidence_threshold"], 0.0)
+            self.assertEqual(report["forced_language"], "Persian")
+            self.assertEqual(report["max_new_tokens"], 256)
+            self.assertFalse(report["do_sample"])
+            self.assertEqual(report["batch_size"], 1)
+            self.assertEqual(report["language_id_sample_rate"], 16000)
             self.assertFalse(report["transcript_text_uploaded"])
             self.assertFalse(report["audio_uploaded"])
             self.assertEqual(len(seen_audio_paths), 1)
