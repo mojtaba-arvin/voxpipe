@@ -257,8 +257,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    model_loader: Callable[[Path], Any] | None = None,
                    language_identifier: Any | None = None,
                    language_identifier_loader: Callable[[Path], Any] | None = None,
-                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
-                   intermediate_dir: Path | None = None) -> dict[str, Any]:
+                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("Common Voice archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
@@ -266,15 +265,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
-    if intermediate_dir is not None:
-        intermediate_dir = intermediate_dir.resolve()
-        intermediate_dir.mkdir(parents=True, exist_ok=True)
-        if any(intermediate_dir.iterdir()):
-            raise ValueError("alignment intermediate directory must be empty")
-        temporary_context = nullcontext(str(intermediate_dir))
-    else:
-        temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
-    alignment_rows: list[dict[str, str]] = []
+    temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
     with temporary_context as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
@@ -330,15 +321,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     continue
                 references.append(reference)
                 hypotheses.append(hypothesis)
-                if intermediate_dir is not None:
-                    alignment_rows.append({"audio_path": str(audio_path), "transcript": hypothesis})
         complete_sample = len(references) == len(selected)
-        if intermediate_dir is not None and complete_sample:
-            manifest_path = intermediate_dir / "alignment_input.jsonl"
-            manifest_path.write_text(
-                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in alignment_rows),
-                encoding="utf-8",
-            )
 
         metrics = corpus_error_rates(references, hypotheses) if complete_sample else None
         try:
@@ -466,13 +449,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
-    parser.add_argument("--intermediate-dir", type=Path, default=None,
-                        help="Keep temporary audio and Qwen hypotheses for a downstream ephemeral alignment step")
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
         model_loader=_download_model, language_identifier_loader=_download_language_identifier,
-        intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if report["status"] == "passed" else 1
