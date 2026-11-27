@@ -209,6 +209,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "language_id_threshold_calibration": {
             "dataset_id": "google/fleurs",
             "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "dataset_license": "CC-BY-4.0",
             "validation_run_id": 45170396629,
             "min_selective_accuracy": 0.99,
             "min_coverage": 0.50,
