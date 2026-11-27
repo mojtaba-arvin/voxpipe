@@ -297,7 +297,9 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     shutil.copyfileobj(extracted, output, length=1024 * 1024)
                 duration = _audio_duration_seconds(audio_path)
                 audio_seconds += duration
+                started_language_id = time.perf_counter()
                 language_prediction = _identify_audio_language(language_identifier, audio_path)
+                inference_seconds += time.perf_counter() - started_language_id
                 raw_language = str(getattr(language_prediction, "raw_language", None) or language_prediction.language).casefold()
                 if language_prediction.language != "fa" or language_prediction.confidence < language_id_confidence_threshold:
                     if raw_language in {"ar", "arabic"}:
