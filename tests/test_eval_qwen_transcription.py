@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import sys
-from contextlib import nullcontext
 import tarfile
 import tempfile
 import unittest
+from contextlib import nullcontext
 from unittest.mock import patch
 import wave
 from pathlib import Path
@@ -15,9 +15,9 @@ from jsonschema import Draft202012Validator
 
 from eval.issue47.qwen_transcription import (
     _parse_persian_transcription,
+    _transcribe_audio,
     corpus_error_rates,
     run_evaluation,
-    _transcribe_audio,
 )
 
 
@@ -154,7 +154,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertIsNone(report["wer"])
             self.assertIsNone(report["cer"])
 
-    def test_pipeline_writes_aggregate_only_report_and_uses_ephemeral_audio(self) -> None:
+    def test_pipeline_writes_aggregate_only_report_and_cleans_temporary_audio(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive_path = self._archive(root)
@@ -163,8 +163,15 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
             )
             forced_hypothesis = {"language": "Persian", "transcription": "سلام دنیا"}
+            seen_audio_paths = []
+
+            def transcribe(_model, _processor, audio_path, *, language):
+                self.assertEqual(language, "Persian")
+                seen_audio_paths.append(audio_path)
+                return forced_hypothesis
+
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
-                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value=forced_hypothesis):
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", side_effect=transcribe):
                 report = run_evaluation(
                     archive_path, report_path, root / "cache",
                     model=SimpleNamespace(dtype="float32"), processor=object(),
@@ -178,28 +185,14 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 report["language_id_model_revision"],
                 "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
             )
+            self.assertEqual(report["language_id_confidence_threshold"], 0.0)
             self.assertFalse(report["transcript_text_uploaded"])
             self.assertFalse(report["audio_uploaded"])
+            self.assertEqual(len(seen_audio_paths), 1)
+            self.assertFalse(seen_audio_paths[0].exists())
             serialized = report_path.read_text(encoding="utf-8").lower()
             self.assertNotIn("سلام دنیا", serialized)
             self.assertNotIn("private-client", serialized)
-
-            intermediate_dir = root / "alignment-input"
-            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
-                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value=forced_hypothesis):
-                intermediate_report = run_evaluation(
-                    archive_path, root / "intermediate-result.json", root / "cache",
-                    model=SimpleNamespace(dtype="float32"), processor=object(),
-                    language_identifier=object(), intermediate_dir=intermediate_dir,
-                )
-            manifest_rows = [
-                json.loads(line)
-                for line in (intermediate_dir / "alignment_input.jsonl").read_text(encoding="utf-8").splitlines()
-            ]
-            self.assertEqual(len(manifest_rows), 1)
-            self.assertEqual(manifest_rows[0]["transcript"], "سلام دنیا")
-            self.assertTrue(Path(manifest_rows[0]["audio_path"]).is_file())
-            self.assertFalse(intermediate_report["transcript_text_uploaded"])
             schema = json.loads(
                 (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "qwen3_asr_persian.schema.json").read_text(encoding="utf-8")
             )
