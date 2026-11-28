@@ -103,6 +103,8 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
             BENCHMARK.run(1, Path("unused"), calibration_samples=0)
         with self.assertRaises(ValueError):
             BENCHMARK.run(1, Path("unused"), min_coverage=1.1)
+        with self.assertRaises(ValueError):
+            BENCHMARK.run(1, Path("unused"), minimum_confidence_floor=1.1)
 
 
     def test_benchmark_artifacts_are_aggregate_only(self):
@@ -119,6 +121,8 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
         requirements = (SCRIPT.parents[1] / "requirements-lid-benchmark.txt").read_text(encoding="utf-8")
         self.assertIn("torch==2.13.0+cpu", workflow)
         self.assertIn("torchaudio==2.11.0+cpu", workflow)
+        self.assertIn("--minimum-confidence-floor 0.50", workflow)
+        self.assertIn("minimum_threshold=minimum_confidence_floor", SCRIPT.read_text(encoding="utf-8"))
         self.assertNotIn("torch==", requirements)
         self.assertNotIn("torchaudio==", requirements)
 
