@@ -1,4 +1,4 @@
-# Upstream release versions corresponding to the runtime CPU wheels.
+# Upstream PyPI versions corresponding to the CPU runtime wheels. TorchAudio 2.11.0 uses the stable ABI and supports PyTorch 2.13+.
 torch==2.13.0
 transformers==5.20.1
 huggingface_hub==1.31.0

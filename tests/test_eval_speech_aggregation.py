@@ -37,7 +37,7 @@ def qwen_report():
         "sample_count": 50, "audio_duration_seconds": 10.0, "inference_seconds": 20.0,
         "real_time_factor": 2.0, "word_errors": 1, "character_errors": 2,
         "reference_words": 100, "reference_characters": 500, "wer": 0.01, "cer": 0.004,
-        "peak_rss_bytes": 1000000, "torch_version": "2.11.0+cpu", "transformers_version": "5.20.1",
+        "peak_rss_bytes": 1000000, "torch_version": "2.13.0+cpu", "transformers_version": "5.20.1",
         "python_version": "3.13", "transcript_text_uploaded": False, "audio_uploaded": False,
         "speaker_ids_used": False, "warnings": ["read speech only"],
         "language_id_model_id": "speechbrain/lang-id-voxlingua107-ecapa",
