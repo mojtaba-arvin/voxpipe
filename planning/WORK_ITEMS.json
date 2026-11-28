@@ -1723,7 +1723,7 @@
       "title": "Optimize CI execution and workflow cost (issue #233)",
       "phase": 11,
       "priority": 70,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "acceptance_criteria": [
         "Measure workflow/job wall time and runner minutes from recent Actions runs and record bottlenecks.",
@@ -1733,8 +1733,11 @@
         "Verify exact-head CI and report before/after measured durations and any intentional skips."
       ],
       "evidence": [
-        "Issue #233 records baseline run #46117453812 job durations, 2,185 workflow runs, repeated full-archive ASR attempts, and model-runtime smoke costs.",
-        "Implementation branch ci/issue-233-workflow-cost-optimization."
+        "Issue #233 closed by merged PR #234 (squash commit 4f87899b5048b97c47fe06e635bc89bacdcb8a6e).",
+        "Exact PR-head runs passed: Validate #46121970412 and #46122681780; runtime integration #46121970426; dependency audit #46121970404; silver evaluation #46121970464 and #46122681873; FLEURS calibration #46121970499; Ollama smoke #46121970494.",
+        "Main-branch validation #46122805800, runtime integration #46122805888, and alignment runtime #46122805801 passed. Persian FLEURS 100-sample main benchmark was dispatched by the merge path as run #46122805803 (its result is tracked separately).",
+        "Measured: Validate runner allocation 456s baseline versus 229s after separation; runtime S3/quickstart remain path-gated and pass. First main-branch BuildKit cache miss saved cache key Linux-voxpipe-buildx-e41e9ef5d8fca6878e0e225b5ea28c186e37827eefca6c610bc13ee87beff76d; warm-cache savings are not yet measured.",
+        "Follow-up hardens runtime-integration path filters for contracts and the local bootstrap/worker/CLI entrypoints."
       ],
       "blocked_reason": null
     }
