@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ollama-structured-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: ollama-structured-smoke-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
