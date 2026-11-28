@@ -101,6 +101,8 @@ def build_report(
     aligned_word_count: int,
     model_dtype: str,
     whisperx_version: str,
+    timestamp_validation_failure_count: int = 0,
+    missing_word_timestamp_count: int = 0,
 ) -> dict[str, Any]:
     if clip_count < 1 or aligned_clip_count < 0 or failed_clip_count < 0:
         raise ValueError("clip counts are invalid")
@@ -108,7 +110,20 @@ def build_report(
         raise ValueError("aligned and failed clip counts must account for every clip")
     if word_count < 1 or not 0 <= aligned_word_count <= word_count:
         raise ValueError("word counts are invalid")
-    status = "completed" if failed_clip_count == 0 else ("partial" if aligned_clip_count else "failed")
+    if (
+        isinstance(timestamp_validation_failure_count, bool)
+        or isinstance(missing_word_timestamp_count, bool)
+        or not 0 <= timestamp_validation_failure_count <= word_count
+        or not 0 <= missing_word_timestamp_count <= word_count
+    ):
+        raise ValueError("timestamp failure counts are invalid")
+    unaligned_word_count = word_count - aligned_word_count
+    status = (
+        "completed"
+        if failed_clip_count == 0 and unaligned_word_count == 0
+        and timestamp_validation_failure_count == 0 and missing_word_timestamp_count == 0
+        else ("partial" if aligned_clip_count else "failed")
+    )
     report = {
         "schema_version": 1,
         "status": status,
@@ -125,6 +140,9 @@ def build_report(
         "failed_clip_count": failed_clip_count,
         "word_count": word_count,
         "aligned_word_count": aligned_word_count,
+        "unaligned_word_count": unaligned_word_count,
+        "timestamp_validation_failure_count": timestamp_validation_failure_count,
+        "missing_word_timestamp_count": missing_word_timestamp_count,
         "alignment_coverage": round(aligned_word_count / word_count, 6),
         "alignment_intermediate_uploaded": False,
         "audio_uploaded": False,
@@ -204,6 +222,7 @@ def run_alignment(
         model_dtype = "unknown"
 
     aligned_clips = failed_clips = total_words = aligned_words = 0
+    timestamp_validation_failure_count = missing_word_timestamp_count = 0
     with tempfile.TemporaryDirectory(prefix="voxpipe-persian-alignment-") as temporary:
         intermediate_path = Path(temporary) / "alignment_cv.jsonl"
         with intermediate_path.open("w", encoding="utf-8") as intermediate:
@@ -211,6 +230,7 @@ def run_alignment(
                 transcript = row["transcript"]
                 expected_words = len(transcript.split())
                 total_words += expected_words
+                word_rows: list[dict[str, Any]] = []
                 try:
                     audio = audio_loader(row["audio_path"])
                     duration = len(audio) / SAMPLE_RATE
@@ -232,6 +252,9 @@ def run_alignment(
                         for word in segment.get("words", [])
                     ]
                     valid_words = _validated_word_times(word_rows, duration)
+                    timestamp_validation_failure_count += min(
+                        max(0, len(word_rows) - len(valid_words)), expected_words
+                    )
                     if not valid_words:
                         raise ValueError("aligner returned no valid word timestamps")
                     aligned_clips += 1
@@ -239,6 +262,8 @@ def run_alignment(
                     intermediate.write(json.dumps({"clip": index, "words": valid_words}, ensure_ascii=False) + "\n")
                 except Exception:
                     failed_clips += 1
+                finally:
+                    missing_word_timestamp_count += max(0, expected_words - len(word_rows))
 
     report = build_report(
         clip_count=len(rows),
@@ -248,6 +273,8 @@ def run_alignment(
         aligned_word_count=aligned_words,
         model_dtype=model_dtype,
         whisperx_version=whisperx_version,
+        timestamp_validation_failure_count=timestamp_validation_failure_count,
+        missing_word_timestamp_count=missing_word_timestamp_count,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
