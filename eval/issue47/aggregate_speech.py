@@ -125,6 +125,9 @@ def build_report(
                 "alignment_coverage": alignment_report["alignment_coverage"],
                 "aligned_clip_count": alignment_report["aligned_clip_count"],
                 "failed_clip_count": alignment_report["failed_clip_count"],
+                "unaligned_word_count": alignment_report["unaligned_word_count"],
+                "timestamp_validation_failure_count": alignment_report["timestamp_validation_failure_count"],
+                "missing_word_timestamp_count": alignment_report["missing_word_timestamp_count"],
                 "diarization_status": "not_evaluated_read_speech",
             }
         except (KeyError, TypeError, ValueError) as exc:
@@ -210,6 +213,8 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"- Alignment model: {metrics['alignment_model']['id']}@{metrics['alignment_model']['revision']} (WhisperX {metrics['alignment_model']['whisperx_version']}, {metrics['alignment_model']['model_dtype']}, batch {metrics['alignment_model']['batch_size']})",
             f"- Word alignment coverage: {metrics['alignment_coverage']:.6f}",
             f"- Aligned / failed clips: {metrics['aligned_clip_count']} / {metrics['failed_clip_count']}",
+            f"- Unaligned words: {metrics['unaligned_word_count']}",
+            f"- Timestamp validation failures / missing word timestamps: {metrics['timestamp_validation_failure_count']} / {metrics['missing_word_timestamp_count']}",
             f"- Diarization: {metrics['diarization_status']}",
         ])
     if synthetic["metrics"]:
