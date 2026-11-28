@@ -7,6 +7,6 @@ jsonschema==4.25.1
 librosa==0.11.0
 
 # Runtime uses the matching CPU wheel torchaudio==2.13.0+cpu.
-torchaudio==2.11.0
+torchaudio==2.13.0
 
 setuptools==84.1.0
