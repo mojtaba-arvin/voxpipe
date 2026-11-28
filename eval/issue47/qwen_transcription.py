@@ -44,6 +44,8 @@ MAX_UNCOMPRESSED_BYTES = 128 * 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 500_000
 MAX_AUDIO_FILE_BYTES = 32 * 1024 * 1024
 MAX_CLIPS = 50
+MIN_AUDIO_DURATION_SECONDS = 1.0
+CANDIDATE_SCAN_LIMIT = 1000
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
 _TRANSLATION = str.maketrans({
     "ي": "ی", "ى": "ی", "ك": "ک", "ۀ": "ه",
@@ -140,13 +142,16 @@ def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.T
 
 
 def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarInfo,
-                         audio_by_basename: dict[str, tarfile.TarInfo], max_clips: int) -> list[tuple[tarfile.TarInfo, str]]:
+                         audio_by_basename: dict[str, tarfile.TarInfo],
+                         candidate_limit: int = CANDIDATE_SCAN_LIMIT) -> list[tuple[tarfile.TarInfo, str]]:
+    if not 1 <= candidate_limit <= 10000:
+        raise ValueError("candidate scan limit must be between 1 and 10000")
     stream = archive.extractfile(metadata_member)
     if stream is None:
         raise ValueError("unable to read Common Voice metadata member")
     rows: list[tuple[tarfile.TarInfo, str]] = []
     with io.TextIOWrapper(stream, encoding="utf-8", newline="") as text_stream:
-        reader = csv.reader(text_stream, delimiter="\t")
+        reader = csv.reader(text_stream, delimiter="\\t")
         try:
             header = next(reader)
         except StopIteration as exc:
@@ -165,15 +170,18 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
             if member is None or not sentence:
                 continue
             rows.append((member, sentence))
-            if len(rows) >= max_clips:
+            if len(rows) >= candidate_limit:
                 break
     if not rows:
         raise ValueError("sample archive has no matching audio/reference rows")
     return rows
 
 
+
 def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested_sample_count: int,
-                 audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
+                 selected_sample_count: int, duration_shortfall_count: int,
+                 candidate_rows_scanned: int, duration_rejected_count: int,
+                 duration_probe_failures: int, audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
                  torch_version: str, transformers_version: str,
                  speechbrain_version: str, torchaudio_version: str, huggingface_hub_version: str,
                  language_id_failures: dict[str, int],
@@ -182,13 +190,19 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
                  compute_type: str = "float32") -> dict[str, Any]:
     if not 0 <= sample_count <= MAX_CLIPS or not 1 <= requested_sample_count <= MAX_CLIPS:
         raise ValueError("sample counts must remain within the 50-clip experiment bound")
-    if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != requested_sample_count:
-        raise ValueError("accepted and failed sample counts must equal the requested sample count")
-    if audio_seconds <= 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
+    if not 0 <= selected_sample_count <= requested_sample_count:
+        raise ValueError("selected sample count must remain within the requested sample bound")
+    if selected_sample_count + duration_shortfall_count != requested_sample_count:
+        raise ValueError("selected clips and duration shortfall must account for the requested sample")
+    if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != selected_sample_count:
+        raise ValueError("accepted and failed language/transcription counts must account for selected clips")
+    if min(candidate_rows_scanned, duration_rejected_count, duration_probe_failures) < 0:
+        raise ValueError("candidate selection counts must be non-negative")
+    if audio_seconds < 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
         raise ValueError("audio duration, inference duration and peak RSS must be valid")
     if not 0.0 <= language_id_confidence_threshold <= 1.0:
         raise ValueError("language-ID confidence threshold must be between 0 and 1")
-    status = "passed" if sample_count == requested_sample_count else "failed"
+    status = "passed" if sample_count == requested_sample_count and selected_sample_count == requested_sample_count and duration_shortfall_count == 0 else "failed"
     if status == "passed" and metrics is None:
         raise ValueError("a complete Persian sample requires aggregate metrics")
     result = {
@@ -251,10 +265,17 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "compute_type": compute_type,
         "sample_count": sample_count,
         "requested_sample_count": requested_sample_count,
+        "selected_sample_count": selected_sample_count,
+        "duration_shortfall_count": duration_shortfall_count,
+        "candidate_rows_scanned": candidate_rows_scanned,
+        "duration_rejected_count": duration_rejected_count,
+        "duration_probe_failures": duration_probe_failures,
+        "selection_policy": "first_50_validated_tsv_rows_with_audio_duration_at_least_1s",
+        "min_audio_duration_seconds": MIN_AUDIO_DURATION_SECONDS,
         "rejected_sample_count": requested_sample_count - sample_count,
         "audio_duration_seconds": round(audio_seconds, 4),
         "inference_seconds": round(inference_seconds, 6),
-        "real_time_factor": round(inference_seconds / audio_seconds, 6),
+        "real_time_factor": round(inference_seconds / audio_seconds, 6) if audio_seconds > 0 else None,
         "word_errors": metrics["word_errors"] if metrics is not None else None,
         "character_errors": metrics["character_errors"] if metrics is not None else None,
         "reference_words": metrics["reference_words"] if metrics is not None else None,
@@ -276,6 +297,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
             "Inference time and real-time factor include independent language identification plus Qwen decoding, but exclude model initialization and archive download.",
+            "Selection deterministically scans validated.tsv for the first 50 clips with at least one second of audio before the independent language gate; no clip is replaced after language or transcription failure.",
             "The temporary alignment manifest contains only the same accepted audio paths and Qwen hypotheses; it is deleted after WhisperX runs and is never uploaded.",
             "An independent pinned VoxLingua107 audio-language gate must classify Persian as the top label in the explicit fa/ar inventory before Qwen inference.",
             "The FLEURS-calibrated confidence threshold is 0.0, so it applies no additional confidence floor; acceptance is based on the independent model top label being fa, not on a confidence guarantee.",
