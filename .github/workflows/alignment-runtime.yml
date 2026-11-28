@@ -1,14 +1,20 @@
 name: Persian alignment runtime smoke
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths:
       - ".github/workflows/alignment-runtime.yml"
       - ".github/workflows/common-voice-asr.yml"
       - "eval/issue47/persian_alignment.py"
       - "requirements-eval-align.txt"
+  schedule:
+    - cron: "23 4 * * 1"
   workflow_dispatch:
+
+concurrency:
+  group: alignment-runtime-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
