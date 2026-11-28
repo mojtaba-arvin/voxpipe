@@ -33,7 +33,6 @@ class DependencySecurityPolicyTests(unittest.TestCase):
         self.assertIn("torch==2.13.0", audit)
         self.assertIn("torchaudio==2.13.0", audit)
         self.assertIn("setuptools==84.1.0", audit)
-        self.assertIn("torch==2.13.0", audit)
         self.assertIn("setuptools==84.1.0", runtime)
 
     def test_all_go_ci_jobs_use_the_patched_toolchain(self):
