@@ -40,6 +40,10 @@ on:
       - "scripts/reconcile_ingestion.py"
       - "deploy/s3/**"
       - "requirements-s3.txt"
+      - "requirements-dev.txt"
+      - "requirements-postgres.txt"
+      - "tests/test_dev_quickstart.py"
+      - "tests/test_s3_storage_integration.py"
       - ".github/workflows/runtime-integration.yml"
   schedule:
     - cron: "41 3 * * 1"
