@@ -1,9 +1,6 @@
 name: Common Voice Persian full-archive ASR evaluation
 
 on:
-  push:
-    branches:
-      - feat/common-voice-full-archive-evaluation
   workflow_call:
     secrets:
       MDC_API_KEY:
@@ -15,7 +12,7 @@ permissions:
 
 concurrency:
   group: common-voice-asr-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   persian-asr:
@@ -25,6 +22,11 @@ jobs:
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
+      - name: Require default branch for manual archive evaluation
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "Full-archive evaluation is opt-in and must be dispatched from main." >&2
+          exit 1
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Python
