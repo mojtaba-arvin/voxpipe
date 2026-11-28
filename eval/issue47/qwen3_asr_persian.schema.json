@@ -208,7 +208,7 @@
       "const": "Apache-2.0"
     },
     "language_id_confidence_threshold": {
-      "const": 0
+      "const": 0.5
     },
     "language_id_failures": {
       "type": "object",
@@ -270,7 +270,8 @@
         "min_selective_accuracy",
         "min_coverage",
         "selected_threshold",
-        "dataset_license"
+        "dataset_license",
+        "minimum_confidence_floor"
       ],
       "properties": {
         "dataset_id": {
@@ -280,7 +281,7 @@
           "const": "6989e5bd2dc37546a93ae5d857bc04325e6a3738"
         },
         "validation_run_id": {
-          "const": 46144284846
+          "const": 46145923356
         },
         "min_selective_accuracy": {
           "const": 0.99
@@ -289,10 +290,13 @@
           "const": 0.5
         },
         "selected_threshold": {
-          "const": 0
+          "const": 0.5
         },
         "dataset_license": {
           "const": "CC-BY-4.0"
+        },
+        "minimum_confidence_floor": {
+          "const": 0.5
         }
       }
     },
@@ -324,7 +328,7 @@
       "minLength": 1
     },
     "language_id_threshold_policy": {
-      "const": "no_confidence_floor_top_label_fa_with_zero_and_tie_abstention"
+      "const": "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention"
     },
     "language_id_held_out_control": {
       "type": "object",
@@ -361,28 +365,28 @@
           "const": "CC-BY-4.0"
         },
         "test_run_id": {
-          "const": 46144284846
+          "const": 46145923356
         },
         "test_head_sha": {
-          "const": "5f9855c0b01a57e8a6b4405afdc0a630a2ac77be"
+          "const": "7d102ed672a40e90ea29738d45a78cb220335f74"
         },
         "sample_count": {
           "const": 400
         },
         "accuracy": {
-          "const": 0.94
+          "const": 0.9225
         },
         "macro_f1": {
-          "const": 0.7727272727272727
+          "const": 0.763700857227313
         },
         "coverage": {
-          "const": 0.94
+          "const": 0.9225
         },
         "selective_accuracy": {
           "const": 1
         },
         "abstention_rate": {
-          "const": 0.06
+          "const": 0.0775
         },
         "persian_samples": {
           "const": 100
@@ -394,7 +398,7 @@
           "const": 100
         },
         "arabic_correct": {
-          "const": 100
+          "const": 99
         },
         "persian_arabic_cross_confusions": {
           "const": 0
@@ -409,7 +413,7 @@
           "const": 0
         },
         "negative_control_abstentions": {
-          "const": 24
+          "const": 30
         }
       }
     },
