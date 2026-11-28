@@ -121,7 +121,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
                  patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
                 report = run_evaluation(
-                    archive_path, root / "rejected.json", root / "cache",
+                    archive_path, root / "rejected.json", root / "cache", max_clips=1,
                     model=SimpleNamespace(dtype="float32"), processor=object(),
                     language_identifier=object(),
                 )
@@ -135,6 +135,29 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             )
             Draft202012Validator(schema).validate(report)
 
+    def test_out_of_inventory_and_undetermined_audio_are_rejected(self) -> None:
+        cases = (
+            SimpleNamespace(language="und", confidence=0.91, raw_language="en", abstention_reason="out_of_inventory"),
+            SimpleNamespace(language="und", confidence=0.0, raw_language="fa", abstention_reason="low_confidence"),
+        )
+        for prediction in cases:
+            with self.subTest(raw_language=prediction.raw_language, reason=prediction.abstention_reason):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    archive_path = self._archive(root)
+                    with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \\
+                         patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
+                        report = run_evaluation(
+                            archive_path, root / "rejected.json", root / "cache", max_clips=1,
+                            model=SimpleNamespace(dtype="float32"), processor=object(),
+                            language_identifier=object(),
+                        )
+                    transcribe.assert_not_called()
+                    self.assertEqual(report["status"], "failed")
+                    self.assertEqual(report["language_id_failures"]["other_or_undetermined"], 1)
+                    self.assertIsNone(report["wer"])
+                    self.assertIsNone(report["cer"])
+
     def test_empty_hypothesis_is_counted_and_suppresses_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -145,7 +168,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
                  patch("eval.issue47.qwen_transcription._transcribe_audio", return_value={"language": "Persian", "transcription": ""}):
                 report = run_evaluation(
-                    archive_path, root / "empty.json", root / "cache",
+                    archive_path, root / "empty.json", root / "cache", max_clips=1,
                     model=SimpleNamespace(dtype="float32"), processor=object(),
                     language_identifier=object(),
                 )
@@ -173,7 +196,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
                  patch("eval.issue47.qwen_transcription._transcribe_audio", side_effect=transcribe):
                 report = run_evaluation(
-                    archive_path, report_path, root / "cache",
+                    archive_path, report_path, root / "cache", max_clips=1,
                     model=SimpleNamespace(dtype="float32"), processor=object(),
                     language_identifier=object(),
                 )
