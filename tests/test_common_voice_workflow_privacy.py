@@ -15,14 +15,15 @@ class CommonVoiceWorkflowPrivacyTests(unittest.TestCase):
         )[1].split("      - name:", 1)[0]
         self.assertIn("eval/artifacts/issue47/common_voice_archive.json", artifact_step)
         self.assertIn("eval/artifacts/issue47/qwen3_asr_persian.json", artifact_step)
-        self.assertNotIn("alignment_cv.json", workflow)
-        self.assertNotIn("speaker_segments.json", workflow)
-        self.assertNotIn("--intermediate-dir", workflow)
-        self.assertNotIn("WhisperX", workflow)
+        self.assertIn("eval/artifacts/issue47/alignment_cv.json", artifact_step)
+        self.assertIn("eval/artifacts/issue47/speaker_segments.json", artifact_step)
+        self.assertIn("--intermediate-dir \"$RUNNER_TEMP/voxpipe-qwen-alignment-input\"", workflow)
+        self.assertIn("--candidate-scan-limit 100", workflow)
+        self.assertIn("Run Persian WhisperX forced alignment on the exact Qwen hypotheses", workflow)
+        self.assertIn('rm -rf "$RUNNER_TEMP/voxpipe-qwen-alignment-input"', workflow)
+        self.assertNotIn("alignment_input.jsonl", artifact_step)
         self.assertNotIn("predictions.jsonl", artifact_step)
         self.assertNotIn("words.json", artifact_step)
-        self.assertIn("--max-clips 50", workflow)
-        self.assertIn("--candidate-scan-limit 100", workflow)
 
 
 if __name__ == "__main__":
