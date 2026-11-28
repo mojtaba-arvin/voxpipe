@@ -105,5 +105,14 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
             BENCHMARK.run(1, Path("unused"), min_coverage=1.1)
 
 
+    def test_benchmark_artifacts_are_aggregate_only(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        workflow = (SCRIPT.parents[1] / ".github" / "workflows" / "fleurs-lid-calibration.yml").read_text(encoding="utf-8")
+        self.assertNotIn("calibration_predictions.jsonl", source)
+        self.assertNotIn("predictions.jsonl", source)
+        self.assertIn("benchmark-results/fleurs-lid/calibration.json", workflow)
+        self.assertIn("benchmark-results/fleurs-lid/summary.json", workflow)
+        self.assertNotIn("path: benchmark-results/fleurs-lid/", workflow)
+
 if __name__ == "__main__":
     unittest.main()

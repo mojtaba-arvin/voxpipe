@@ -129,14 +129,18 @@ class SpeechBrainLanguageIdentifier:
             raise ValueError("language model returned inconsistent scores")
         if any(not math.isfinite(score) or not 0.0 <= score <= 1.0 for score in probabilities):
             raise ValueError("language model returned invalid probability scores")
-        index=max(range(len(probabilities)),key=probabilities.__getitem__)
-        confidence=probabilities[index]
+        confidence=max(probabilities)
+        top_indices=[index for index,score in enumerate(probabilities) if score==confidence]
+        index=top_indices[0]
         raw_label=self._label(labels[index])
         if not raw_label:
             raise ValueError("language model returned an empty language label")
         label=raw_label
         abstention_reason=None
-        if self.supported_languages is not None and raw_label not in self.supported_languages:
+        if confidence <= 0.0 or len(top_indices) != 1:
+            label="und"
+            abstention_reason="low_confidence"
+        elif self.supported_languages is not None and raw_label not in self.supported_languages:
             label="und"
             abstention_reason="out_of_inventory"
         elif confidence < self.threshold:

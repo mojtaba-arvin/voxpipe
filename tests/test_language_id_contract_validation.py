@@ -157,5 +157,28 @@ class LanguageIdContractTests(unittest.TestCase):
             identifier.identify([0.0] * 16000, sample_rate=16000)
 
 
+    def test_identifier_abstains_on_zero_probability_at_zero_threshold(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.0, 0.0], ("fa", "ar")),
+            threshold=0.0,
+            supported_languages=frozenset({"fa", "ar"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "und")
+        self.assertEqual(prediction.confidence, 0.0)
+        self.assertEqual(prediction.raw_language, "fa")
+        self.assertEqual(prediction.abstention_reason, "low_confidence")
+
+    def test_identifier_abstains_on_tied_top_language_scores(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.5, 0.5], ("fa", "ar")),
+            threshold=0.0,
+            supported_languages=frozenset({"fa", "ar"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "und")
+        self.assertEqual(prediction.raw_language, "fa")
+        self.assertEqual(prediction.abstention_reason, "low_confidence")
+
 if __name__ == "__main__":
     unittest.main()

@@ -92,11 +92,9 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
             "result":calibration,
         }
         output_dir.mkdir(parents=True,exist_ok=True)
-        (output_dir/"calibration_predictions.jsonl").write_text(
-            "".join(json.dumps(row,ensure_ascii=False)+"\n" for row in calibration_rows),encoding="utf-8")
+        (output_dir/"calibration.json").write_text(
+            json.dumps(calibration_report,ensure_ascii=False,indent=2),encoding="utf-8")
         if not calibration["feasible"]:
-            (output_dir/"calibration.json").write_text(
-                json.dumps(calibration_report,ensure_ascii=False,indent=2),encoding="utf-8")
             raise RuntimeError("no abstention threshold satisfies the configured validation accuracy and coverage floors")
         selected_threshold=float(calibration["threshold"])
     else:
@@ -113,8 +111,6 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "test",max_samples,model,dataset_loader=load_dataset,audio_type=Audio,soundfile=sf,numpy=np)
     metrics=evaluate_language_id(references,predictions)
     output_dir.mkdir(parents=True,exist_ok=True)
-    (output_dir/"predictions.jsonl").write_text(
-        "".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     weight_hashes={p.name:hash_file(p) for p in sorted(model_dir.iterdir())
         if p.is_file() and p.suffix in (".ckpt",".txt",".yaml")}
     summary={"language_controls":{"persian":"fa","arabic":"ar","negative_controls":["en","de"]},
