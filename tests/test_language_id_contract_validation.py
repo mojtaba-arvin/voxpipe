@@ -62,6 +62,35 @@ class LanguageIdContractTests(unittest.TestCase):
         self.assertEqual(result["coverage"], 0.50)
         self.assertEqual(result["selective_accuracy"], 1.0)
 
+    def test_abstention_calibrator_enforces_positive_minimum_confidence_floor(self):
+        references = ["fa", "fa", "ar", "ar"]
+        predictions = [
+            LanguagePrediction("fa", 0.90),
+            LanguagePrediction("fa", 0.40),
+            LanguagePrediction("ar", 0.80),
+            LanguagePrediction("ar", 0.60),
+        ]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.99,
+            min_coverage=0.50, minimum_threshold=0.50,
+        )
+        self.assertTrue(result["feasible"])
+        self.assertEqual(result["minimum_threshold"], 0.50)
+        self.assertEqual(result["threshold"], 0.50)
+        self.assertEqual(result["coverage"], 0.75)
+        self.assertEqual(result["selective_accuracy"], 1.0)
+
+    def test_abstention_calibrator_rejects_all_scores_below_minimum_floor(self):
+        references = ["fa", "ar"]
+        predictions = [LanguagePrediction("fa", 0.4), LanguagePrediction("ar", 0.3)]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.99,
+            min_coverage=0.50, minimum_threshold=0.50,
+        )
+        self.assertFalse(result["feasible"])
+        self.assertIsNone(result["threshold"])
+        self.assertEqual(result["minimum_threshold"], 0.50)
+
     def test_abstention_calibrator_fails_closed_when_no_threshold_is_feasible(self):
         references = ["fa", "de"]
         predictions = [
