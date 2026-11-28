@@ -219,13 +219,23 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 abstention_reason="low_confidence",
             )
             with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
-                 patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
+                 patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe, \
+                 patch(
+                     "eval.issue47.qwen_transcription.build_report",
+                     return_value={
+                         "status": "failed",
+                         "language_id_failures": {"arabic": 0, "other_or_undetermined": 1},
+                         "wer": None,
+                         "cer": None,
+                     },
+                 ) as build_report:
                 report = run_evaluation(
                     archive_path, root / "low-confidence.json", root / "cache", max_clips=1,
                     model=SimpleNamespace(dtype="float32"), processor=object(),
                     language_identifier=object(), language_id_confidence_threshold=0.5,
                 )
             transcribe.assert_not_called()
+            self.assertEqual(build_report.call_args.kwargs["language_id_confidence_threshold"], 0.5)
             self.assertEqual(report["status"], "failed")
             self.assertEqual(report["language_id_failures"]["other_or_undetermined"], 1)
             self.assertIsNone(report["wer"])
