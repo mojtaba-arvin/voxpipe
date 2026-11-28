@@ -54,7 +54,8 @@ def load_split(split, max_samples, model, *, dataset_loader, audio_type, soundfi
 
 
 def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_samples:int=100,
-        min_selective_accuracy:float=0.99,min_coverage:float=0.50)->dict:
+        min_selective_accuracy:float=0.99,min_coverage:float=0.50,
+        minimum_confidence_floor:float=0.50)->dict:
     if not isinstance(max_samples,int) or isinstance(max_samples,bool) or not 1<=max_samples<=264:
         raise ValueError("max_samples must be between 1 and 264")
     if not isinstance(calibration_samples,int) or isinstance(calibration_samples,bool) or calibration_samples<1:
@@ -62,7 +63,8 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
     if threshold is not None and (not isinstance(threshold,(int,float)) or isinstance(threshold,bool)
             or not 0.0<=threshold<=1.0):
         raise ValueError("threshold must be between 0 and 1")
-    for value,name in ((min_selective_accuracy,"min_selective_accuracy"),(min_coverage,"min_coverage")):
+    for value,name in ((min_selective_accuracy,"min_selective_accuracy"),(min_coverage,"min_coverage"),
+                       (minimum_confidence_floor,"minimum_confidence_floor")):
         if not isinstance(value,(int,float)) or isinstance(value,bool) or not 0<=value<=1:
             raise ValueError(f"{name} must be between 0 and 1")
 
@@ -84,11 +86,13 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
             soundfile=sf,numpy=np)
         calibration=calibrate_abstention_threshold(
             calibration_references,calibration_predictions,
-            min_selective_accuracy=min_selective_accuracy,min_coverage=min_coverage)
+            min_selective_accuracy=min_selective_accuracy,min_coverage=min_coverage,
+            minimum_threshold=minimum_confidence_floor)
         calibration_report={
             "mode":"validation-calibrated","split":"validation","dataset_revision":REVISION,
             "samples_per_language":calibration_samples,"total_samples":len(calibration_rows),
-            "constraints":{"min_selective_accuracy":min_selective_accuracy,"min_coverage":min_coverage},
+            "constraints":{"min_selective_accuracy":min_selective_accuracy,"min_coverage":min_coverage,
+                "minimum_confidence_floor":minimum_confidence_floor},
             "result":calibration,
         }
         output_dir.mkdir(parents=True,exist_ok=True)
@@ -121,7 +125,9 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "samples_per_language":max_samples,"total_samples":len(rows)},
         "model":{"id":MODEL_ID,"revision":model_revision,"license":"Apache-2.0",
             "weights_sha256":weight_hashes,"device":"cpu","threshold":selected_threshold,"supported_languages":sorted(SUPPORTED_LANGUAGES),
-            "threshold_policy":"calibrated on disjoint pinned FLEURS validation split" if threshold is None else "operator-fixed override"},
+            "threshold_policy":(
+                f"validation-calibrated with minimum confidence floor {minimum_confidence_floor}"
+                if threshold is None else "operator-fixed override")},
         "calibration":calibration_report,"metrics":metrics,
         "environment":{"python":sys.version,"platform":platform.platform(),"processor":platform.processor(),"runtime_lock_sha256":hash_file(Path("requirements-lid-benchmark.txt")),"dependencies":{name:importlib.metadata.version(name) for name in ("numpy","soundfile","datasets","huggingface-hub","speechbrain","torch","torchaudio")}},
         "generated_at":datetime.now(timezone.utc).isoformat()}
@@ -139,10 +145,12 @@ def main():
         help="operator-fixed override; when omitted, calibrate on dev and evaluate on test")
     parser.add_argument("--min-selective-accuracy",type=float,default=0.99)
     parser.add_argument("--min-coverage",type=float,default=0.50)
+    parser.add_argument("--minimum-confidence-floor",type=float,default=0.50)
     args=parser.parse_args()
     print(json.dumps(run(args.max_samples,args.output_dir,args.threshold,
         calibration_samples=args.calibration_samples,
-        min_selective_accuracy=args.min_selective_accuracy,min_coverage=args.min_coverage),
+        min_selective_accuracy=args.min_selective_accuracy,min_coverage=args.min_coverage,
+        minimum_confidence_floor=args.minimum_confidence_floor),
         ensure_ascii=False,indent=2))
 
 
