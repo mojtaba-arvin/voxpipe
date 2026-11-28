@@ -111,6 +111,81 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             archive.add(tsv_path, arcname="validated.tsv")
         return archive_path
 
+    @staticmethod
+    def _archive_with_durations(root: Path, durations: list[float]) -> Path:
+        archive_path = root / "duration-sample.tar.gz"
+        tsv_path = root / "validated.tsv"
+        rows = ["client_id\\tpath\\tsentence"]
+        with tarfile.open(archive_path, "w:gz") as archive:
+            for index, duration in enumerate(durations, start=1):
+                name = f"clip-{index}.wav"
+                audio_path = root / name
+                with wave.open(str(audio_path), "wb") as audio:
+                    audio.setnchannels(1)
+                    audio.setsampwidth(2)
+                    audio.setframerate(16000)
+                    audio.writeframes(b"\\x00\\x00" * int(16000 * duration))
+                archive.add(audio_path, arcname=f"clips/{name}")
+                rows.append(f"private-client\\t{name}\\tسلام دنیا")
+            tsv_path.write_text("\\n".join(rows) + "\\n", encoding="utf-8")
+            archive.add(tsv_path, arcname="validated.tsv")
+        return archive_path
+
+    def test_duration_filter_selects_first_eligible_clips_before_language_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive_with_durations(root, [0.5, 1.25, 2.0])
+            prediction = SimpleNamespace(
+                language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
+            )
+            seen_audio_paths = []
+
+            def transcribe(_model, _processor, audio_path, *, language):
+                self.assertEqual(language, "Persian")
+                seen_audio_paths.append(audio_path.name)
+                return {"language": "Persian", "transcription": "سلام دنیا"}
+
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction) as identify, \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", side_effect=transcribe):
+                report = run_evaluation(
+                    archive_path, root / "result.json", root / "cache", max_clips=2,
+                    candidate_scan_limit=10,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(),
+                )
+            self.assertEqual(report["status"], "passed")
+            self.assertEqual(report["selected_sample_count"], 2)
+            self.assertEqual(report["duration_shortfall_count"], 0)
+            self.assertEqual(report["candidate_rows_scanned"], 3)
+            self.assertEqual(report["duration_rejected_count"], 1)
+            self.assertEqual(report["duration_probe_failures"], 0)
+            self.assertEqual(report["min_audio_duration_seconds"], 1.0)
+            self.assertEqual(seen_audio_paths, ["candidate-0002.wav", "candidate-0003.wav"])
+            self.assertEqual(identify.call_count, 2)
+
+    def test_duration_shortfall_fails_without_metrics_on_reduced_sample(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive_with_durations(root, [0.5, 0.8])
+            with patch("eval.issue47.qwen_transcription._identify_audio_language") as identify, \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
+                report = run_evaluation(
+                    archive_path, root / "shortfall.json", root / "cache", max_clips=2,
+                    candidate_scan_limit=10,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(),
+                )
+            identify.assert_not_called()
+            transcribe.assert_not_called()
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["selected_sample_count"], 0)
+            self.assertEqual(report["duration_shortfall_count"], 2)
+            self.assertEqual(report["duration_rejected_count"], 2)
+            self.assertEqual(report["sample_count"], 0)
+            self.assertIsNone(report["wer"])
+            self.assertIsNone(report["cer"])
+            self.assertIsNone(report["real_time_factor"])
+
     def test_arabic_audio_is_rejected_without_publishing_wer_or_cer(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -272,6 +347,11 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertEqual(report["status"], "passed")
             self.assertEqual(report["sample_count"], 1)
             self.assertEqual(report["requested_sample_count"], 1)
+            self.assertEqual(report["selected_sample_count"], 1)
+            self.assertEqual(report["duration_shortfall_count"], 0)
+            self.assertEqual(report["candidate_rows_scanned"], 1)
+            self.assertEqual(report["duration_rejected_count"], 0)
+            self.assertEqual(report["min_audio_duration_seconds"], 1.0)
             self.assertEqual(report["wer"], 0.0)
             self.assertEqual(
                 report["language_id_model_revision"],
