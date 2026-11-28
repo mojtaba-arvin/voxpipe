@@ -60,6 +60,7 @@ jobs:
             --max-samples 100 \
             --min-selective-accuracy 0.99 \
             --min-coverage 0.50 \
+            --minimum-confidence-floor 0.50 \
             --output-dir benchmark-results/fleurs-lid
       - name: Upload calibration and evaluation evidence
         if: always()
