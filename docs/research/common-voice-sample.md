@@ -27,7 +27,7 @@ The evaluator now:
 3. Calls Transformers 5.20.1 `apply_transcription_request(audio=..., language="Persian")` for clips that pass the independent audio-language gate. Forced language is a decoding instruction, not proof of the audio language.
 4. Publishes WER/CER only if all 50 requested clips pass the independent language gate and produce non-empty Persian hypotheses. Otherwise the aggregate report has `status=failed` and null WER/CER; it does not calculate metrics on a reduced or mixed-language set.
 
-Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e16515073d7c0`, CPU float32, batch size 1. Language-ID model: `speechbrain/lang-id-voxlingua107-ecapa`, Apache-2.0, pinned revision above. The language-ID confidence threshold and FLEURS calibration provenance are recorded in the aggregate report. The accepted-language gate is the model's top class being exactly `fa`; the FLEURS threshold calibration is not a Common Voice accuracy guarantee.
+Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e16515073d7c0`, CPU float32, batch size 1. Runtime CPU wheels are pinned to `torch==2.11.0+cpu` and `torchaudio==2.11.0+cpu` from the official PyTorch CPU index; TorchAudio 2.15.0+cpu is not published there. Language-ID model: `speechbrain/lang-id-voxlingua107-ecapa`, Apache-2.0, pinned revision above. The language-ID confidence threshold and FLEURS calibration provenance are recorded in the aggregate report. The accepted-language gate is the model's top class being exactly `fa`; the FLEURS threshold calibration is not a Common Voice accuracy guarantee.
 
 ## Privacy and interpretation
 
