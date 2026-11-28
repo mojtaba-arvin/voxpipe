@@ -56,7 +56,15 @@
     "torchaudio_version",
     "huggingface_hub_version",
     "language_id_threshold_policy",
-    "language_id_held_out_control"
+    "language_id_held_out_control",
+    "selected_sample_count",
+    "duration_shortfall_count",
+    "candidate_scan_limit",
+    "candidate_rows_scanned",
+    "duration_rejected_count",
+    "duration_probe_failures",
+    "selection_policy",
+    "min_audio_duration_seconds"
   ],
   "properties": {
     "schema_version": {
@@ -108,14 +116,17 @@
     },
     "audio_duration_seconds": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "inference_seconds": {
       "type": "number",
       "minimum": 0
     },
     "real_time_factor": {
-      "type": "number",
+      "type": [
+        "number",
+        "null"
+      ],
       "minimum": 0
     },
     "word_errors": {
@@ -401,6 +412,42 @@
           "const": 24
         }
       }
+    },
+    "selected_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "duration_shortfall_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "candidate_scan_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "candidate_rows_scanned": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "duration_rejected_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "duration_probe_failures": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "selection_policy": {
+      "const": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s"
+    },
+    "min_audio_duration_seconds": {
+      "const": 1
     }
   },
   "allOf": [
@@ -448,6 +495,14 @@
           "reference_characters": {
             "type": "integer",
             "minimum": 1
+          },
+          "selected_sample_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "duration_shortfall_count": {
+            "const": 0
           }
         }
       }
