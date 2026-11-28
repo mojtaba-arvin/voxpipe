@@ -111,7 +111,7 @@ class PersianAlignmentTests(unittest.TestCase):
             audio.write_bytes(b"private-audio")
             manifest = root / "input.jsonl"
             manifest.write_text(
-                json.dumps({"audio_path": str(audio), "transcript": "سلام دنیا"}) + "\n",
+                json.dumps({"audio_path": str(audio), "transcript": "سلام دنیا دوست"}) + "\n",
                 encoding="utf-8",
             )
             self.assertEqual(len(_read_manifest(manifest, 1)), 1)
@@ -159,10 +159,10 @@ class PersianAlignmentTests(unittest.TestCase):
             self.assertEqual(report["aligned_clip_count"], 1)
             self.assertEqual(report["failed_clip_count"], 0)
             self.assertEqual(report["aligned_word_count"], 1)
-            self.assertEqual(report["unaligned_word_count"], 1)
+            self.assertEqual(report["unaligned_word_count"], 2)
             self.assertEqual(report["timestamp_validation_failure_count"], 1)
-            self.assertEqual(report["missing_word_timestamp_count"], 0)
-            self.assertEqual(report["alignment_coverage"], 0.5)
+            self.assertEqual(report["missing_word_timestamp_count"], 1)
+            self.assertEqual(report["alignment_coverage"], round(1 / 3, 6))
             speaker_report = json.loads((root / "speakers.json").read_text(encoding="utf-8"))
             self.assertEqual(speaker_report["diarization_status"], "not_evaluated_read_speech")
             self.assertEqual(speaker_report["speaker_segments"], [])
