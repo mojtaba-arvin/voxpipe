@@ -57,19 +57,38 @@ def _read_manifest(path: Path, max_clips: int) -> list[dict[str, str]]:
 
 
 def _validated_word_times(words: list[dict[str, Any]], duration: float) -> list[dict[str, Any]]:
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("audio duration must be finite and positive")
     valid: list[dict[str, Any]] = []
+    previous_start = previous_end = 0.0
     for word in words:
         if not isinstance(word, dict):
             continue
         token = str(word.get("word") or "").strip()
         start, end = word.get("start"), word.get("end")
-        if not token or not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+        if (
+            not token
+            or isinstance(start, bool)
+            or isinstance(end, bool)
+            or not isinstance(start, (int, float))
+            or not isinstance(end, (int, float))
+        ):
             continue
         if not math.isfinite(start) or not math.isfinite(end):
             continue
-        if start < 0 or end <= start or end > duration + 0.05:
+        # Reject malformed/out-of-order timestamps instead of silently repairing
+        # them. A 20 ms overlap tolerance accommodates frame-boundary rounding.
+        if (
+            start < 0
+            or end <= start
+            or end > duration
+            or start < previous_start
+            or end < previous_end
+            or (valid and start < previous_end - 0.02)
+        ):
             continue
         valid.append({"word": token, "start": round(float(start), 4), "end": round(float(end), 4)})
+        previous_start, previous_end = float(start), float(end)
     return valid
 
 
