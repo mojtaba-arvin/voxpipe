@@ -110,7 +110,7 @@ jobs:
           python -m eval.issue47.qwen_transcription \
             --archive "${{ steps.archive.outputs.archive }}" \
             --max-clips 50 \
-            --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
+            --candidate-scan-limit 100
       - name: Run Persian WhisperX forced alignment on the exact Qwen hypotheses
         run: |
           "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \
@@ -134,4 +134,3 @@ jobs:
         if: always()
         run: |
           rm -rf "$RUNNER_TEMP/voxpipe-common-voice-archive"
-          rm -rf "$RUNNER_TEMP/voxpipe-qwen-alignment-input"

@@ -45,7 +45,7 @@ MAX_ARCHIVE_MEMBERS = 500_000
 MAX_AUDIO_FILE_BYTES = 32 * 1024 * 1024
 MAX_CLIPS = 50
 MIN_AUDIO_DURATION_SECONDS = 1.0
-CANDIDATE_SCAN_LIMIT = 1000
+CANDIDATE_SCAN_LIMIT = 100
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
 _TRANSLATION = str.maketrans({
     "ي": "ی", "ى": "ی", "ك": "ک", "ۀ": "ه",
@@ -144,8 +144,8 @@ def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.T
 def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarInfo,
                          audio_by_basename: dict[str, tarfile.TarInfo],
                          candidate_limit: int = CANDIDATE_SCAN_LIMIT) -> list[tuple[tarfile.TarInfo, str]]:
-    if not 1 <= candidate_limit <= 10000:
-        raise ValueError("candidate scan limit must be between 1 and 10000")
+    if not 1 <= candidate_limit <= 100:
+        raise ValueError("candidate scan limit must be between 1 and 100")
     stream = archive.extractfile(metadata_member)
     if stream is None:
         raise ValueError("unable to read Common Voice metadata member")
@@ -196,7 +196,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
     if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != selected_sample_count:
         raise ValueError("accepted and failed language/transcription counts must account for selected clips")
     if (
-        not 1 <= candidate_scan_limit <= 10000
+        not 1 <= candidate_scan_limit <= 100
         or not 0 <= candidate_rows_scanned <= candidate_scan_limit
         or not 0 <= duration_rejected_count <= candidate_rows_scanned
         or not 0 <= duration_probe_failures <= candidate_rows_scanned
@@ -334,8 +334,8 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         raise ValueError("Common Voice archive exceeds the 12 GiB safety limit")
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
-    if not 1 <= candidate_scan_limit <= 10000:
-        raise ValueError("candidate scan limit must be between 1 and 10000")
+    if not 1 <= candidate_scan_limit <= 100:
+        raise ValueError("candidate scan limit must be between 1 and 100")
 
     if intermediate_dir is not None:
         intermediate_dir = intermediate_dir.resolve()
@@ -597,12 +597,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
+    parser.add_argument("--candidate-scan-limit", type=int, default=CANDIDATE_SCAN_LIMIT)
     parser.add_argument("--intermediate-dir", type=Path)
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
         model_loader=_download_model, language_identifier_loader=_download_language_identifier,
-        intermediate_dir=args.intermediate_dir,
+        candidate_scan_limit=args.candidate_scan_limit, intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if report["status"] == "passed" else 1

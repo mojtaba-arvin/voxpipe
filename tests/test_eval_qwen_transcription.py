@@ -233,6 +233,70 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                     self.assertIsNone(report["wer"])
                     self.assertIsNone(report["cer"])
 
+    @staticmethod
+    def _archive_with_short_and_valid_clips(root: Path) -> Path:
+        archive_path = root / "duration-filtered.tar.gz"
+        short_path = root / "short.wav"
+        valid_path = root / "valid.wav"
+        for path, frames in ((short_path, 8000), (valid_path, 24000)):
+            with wave.open(str(path), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(16000)
+                audio.writeframes(b"\x00\x00" * frames)
+        tsv_path = root / "validated.tsv"
+        tsv_path.write_text(
+            "client_id\tpath\tsentence\nprivate-a\tshort.wav\tکوتاه\nprivate-b\tvalid.wav\tسلام دنیا\n",
+            encoding="utf-8",
+        )
+        with tarfile.open(archive_path, "w:gz") as archive:
+            archive.add(short_path, arcname="clips/short.wav")
+            archive.add(valid_path, arcname="clips/valid.wav")
+            archive.add(tsv_path, arcname="validated.tsv")
+        return archive_path
+
+    def test_short_clips_are_excluded_before_language_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive_with_short_and_valid_clips(root)
+            prediction = SimpleNamespace(
+                language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
+            )
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction) as identify, \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", return_value={"language": "Persian", "transcription": "سلام دنیا"}) as transcribe:
+                report = run_evaluation(
+                    archive_path, root / "duration.json", root / "cache", max_clips=1,
+                    candidate_scan_limit=2, model=SimpleNamespace(dtype="float32"),
+                    processor=object(), language_identifier=object(),
+                )
+            self.assertEqual(identify.call_count, 1)
+            self.assertEqual(transcribe.call_count, 1)
+            self.assertEqual(report["status"], "passed")
+            self.assertEqual(report["selected_sample_count"], 1)
+            self.assertEqual(report["candidate_rows_scanned"], 2)
+            self.assertEqual(report["duration_rejected_count"], 1)
+            self.assertEqual(report["duration_shortfall_count"], 0)
+            self.assertEqual(report["wer"], 0.0)
+            self.assertEqual(report["cer"], 0.0)
+            schema = json.loads(
+                (Path(__file__).resolve().parents[1] / "eval" / "issue47" / "qwen3_asr_persian.schema.json").read_text(encoding="utf-8")
+            )
+            Draft202012Validator(schema).validate(report)
+
+    def test_duration_shortfall_suppresses_wer_and_cer(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive_with_short_and_valid_clips(root)
+            report = run_evaluation(
+                archive_path, root / "shortfall.json", root / "cache", max_clips=2,
+                candidate_scan_limit=1,
+            )
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["selected_sample_count"], 0)
+            self.assertEqual(report["duration_shortfall_count"], 2)
+            self.assertIsNone(report["wer"])
+            self.assertIsNone(report["cer"])
+
     def test_empty_hypothesis_is_counted_and_suppresses_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

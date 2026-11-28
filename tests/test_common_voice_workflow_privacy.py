@@ -17,6 +17,8 @@ class CommonVoiceWorkflowPrivacyTests(unittest.TestCase):
         self.assertIn("eval/artifacts/issue47/qwen3_asr_persian.json", artifact_step)
         self.assertNotIn("speaker_segments.json", workflow)
         self.assertNotIn("alignment_cv.json", workflow)
+        self.assertNotIn("--intermediate-dir", workflow)
+        self.assertIn("--candidate-scan-limit 100", workflow)
         self.assertNotIn("predictions.jsonl", artifact_step)
         self.assertNotIn("Run Persian WhisperX forced alignment", workflow)
 
