@@ -177,6 +177,75 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             self.assertIsNone(report["wer"])
             self.assertIsNone(report["cer"])
 
+    def test_alignment_manifest_contains_exact_audio_and_qwen_hypothesis_pairs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive(root)
+            intermediate_dir = root / "alignment-input"
+            language_prediction = SimpleNamespace(
+                language="fa", confidence=0.99, raw_language="fa", abstention_reason=None
+            )
+            forced_hypothesis = {"language": "Persian", "transcription": "سلام جهان"}
+            seen_audio_paths = []
+
+            def transcribe(_model, _processor, audio_path, *, language):
+                self.assertEqual(language, "Persian")
+                seen_audio_paths.append(audio_path.resolve())
+                return forced_hypothesis
+
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=language_prediction), \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio", side_effect=transcribe):
+                report = run_evaluation(
+                    archive_path, root / "result.json", root / "cache", max_clips=1,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(), intermediate_dir=intermediate_dir,
+                )
+
+            manifest = intermediate_dir / "alignment_input.jsonl"
+            self.assertEqual(report["status"], "passed")
+            self.assertTrue(manifest.is_file())
+            rows = [json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(set(rows[0]), {"audio_path", "transcript"})
+            self.assertEqual(rows[0]["transcript"], "سلام جهان")
+            self.assertNotEqual(rows[0]["transcript"], "سلام دنیا")
+            self.assertEqual(Path(rows[0]["audio_path"]), seen_audio_paths[0])
+            self.assertTrue(seen_audio_paths[0].is_file())
+
+    def test_incomplete_language_gate_does_not_create_alignment_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive(root)
+            intermediate_dir = root / "alignment-input"
+            prediction = SimpleNamespace(
+                language="ar", confidence=0.99, raw_language="ar", abstention_reason=None
+            )
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
+                report = run_evaluation(
+                    archive_path, root / "rejected.json", root / "cache", max_clips=1,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(), intermediate_dir=intermediate_dir,
+                )
+            transcribe.assert_not_called()
+            self.assertEqual(report["status"], "failed")
+            self.assertIsNone(report["wer"])
+            self.assertFalse((intermediate_dir / "alignment_input.jsonl").exists())
+
+    def test_alignment_intermediate_directory_must_be_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive(root)
+            intermediate_dir = root / "alignment-input"
+            intermediate_dir.mkdir()
+            (intermediate_dir / "unexpected.txt").write_text("private", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "must be empty"):
+                run_evaluation(
+                    archive_path, root / "result.json", root / "cache", max_clips=1,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(), intermediate_dir=intermediate_dir,
+                )
+
     def test_pipeline_writes_aggregate_only_report_and_cleans_temporary_audio(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
