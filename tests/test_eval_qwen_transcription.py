@@ -115,7 +115,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
     def _archive_with_durations(root: Path, durations: list[float]) -> Path:
         archive_path = root / "duration-sample.tar.gz"
         tsv_path = root / "validated.tsv"
-        rows = ["client_id\\tpath\\tsentence"]
+        rows = ["client_id\tpath\tsentence"]
         with tarfile.open(archive_path, "w:gz") as archive:
             for index, duration in enumerate(durations, start=1):
                 name = f"clip-{index}.wav"
@@ -124,10 +124,10 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                     audio.setnchannels(1)
                     audio.setsampwidth(2)
                     audio.setframerate(16000)
-                    audio.writeframes(b"\\x00\\x00" * int(16000 * duration))
+                    audio.writeframes(b"\x00\x00" * int(16000 * duration))
                 archive.add(audio_path, arcname=f"clips/{name}")
-                rows.append(f"private-client\\t{name}\\tسلام دنیا")
-            tsv_path.write_text("\\n".join(rows) + "\\n", encoding="utf-8")
+                rows.append(f"private-client\t{name}\tسلام دنیا")
+            tsv_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
             archive.add(tsv_path, arcname="validated.tsv")
         return archive_path
 
