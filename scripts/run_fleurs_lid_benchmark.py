@@ -10,6 +10,7 @@ CONFIGS={
  "fa_ir":{"language":"fa","sha256":"e8982e2e5bb7c505c90aed9c5dde5c533076f6b74d1104d250cfc1ae7cb02a36"},
  "en_us":{"language":"en","sha256":"6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d"},
  "de_de":{"language":"de","sha256":"3b40c214cabd603f1ddbf3da0499f7780975d6c56b75240f07a8990dbb7a6c07"},
+ "ar_eg":{"language":"ar","sha256":"3386d58ff9619c2b1395dcaed0a476363fae15420bc68b7ca4870cffdff9936d"},
 }
 MODEL_ID="speechbrain/lang-id-voxlingua107-ecapa"
 MODEL_REVISION="0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
