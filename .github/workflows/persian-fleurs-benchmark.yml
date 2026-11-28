@@ -2,15 +2,6 @@ name: Persian FLEURS CPU benchmark
 
 on:
   push:
-    branches: [main, feat/phase2-6-execution-foundation]
-    paths:
-      - "scripts/run_fleurs_stt_benchmark.py"
-      - "scripts/benchmark_stt.py"
-      - "scripts/validate_corpus_manifest.py"
-      - "contracts/schemas/speech-corpus-manifest.v1.schema.json"
-      - "requirements-benchmark.txt"
-      - ".github/workflows/persian-fleurs-benchmark.yml"
-  pull_request:
     branches: [main]
     paths:
       - "scripts/run_fleurs_stt_benchmark.py"

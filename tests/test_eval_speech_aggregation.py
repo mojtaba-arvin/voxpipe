@@ -22,7 +22,7 @@ def archive_report():
         "archive_name": "common-voice-fa-27.0.tar.gz",
         "archive_size_bytes": 11236660956, "archive_sha256": "f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d",
         "audio_file_count": 395173,
-        "metadata_file_count": 3, "download_seconds": 360.0,
+        "metadata_file_count": 10, "download_seconds": 360.0,
         "warnings": ["full archive downloaded; 50 clips selected for evaluation"],
     }
 
@@ -37,7 +37,7 @@ def qwen_report():
         "sample_count": 50, "audio_duration_seconds": 10.0, "inference_seconds": 20.0,
         "real_time_factor": 2.0, "word_errors": 1, "character_errors": 2,
         "reference_words": 100, "reference_characters": 500, "wer": 0.01, "cer": 0.004,
-        "peak_rss_bytes": 1000000, "torch_version": "2.15.0+cpu", "transformers_version": "5.20.1",
+        "peak_rss_bytes": 1000000, "torch_version": "2.11.0+cpu", "transformers_version": "5.20.1",
         "python_version": "3.13", "transcript_text_uploaded": False, "audio_uploaded": False,
         "speaker_ids_used": False, "warnings": ["read speech only"],
         "language_id_model_id": "speechbrain/lang-id-voxlingua107-ecapa",
@@ -60,7 +60,7 @@ def qwen_report():
         },
         "forced_language": "Persian", "max_new_tokens": 256, "do_sample": False,
         "batch_size": 1, "language_id_sample_rate": 16000,
-        "speechbrain_version": "1.1.2", "torchaudio_version": "2.15.0+cpu",
+        "speechbrain_version": "1.1.2", "torchaudio_version": "2.11.0+cpu",
         "huggingface_hub_version": "1.31.0"
     }
 

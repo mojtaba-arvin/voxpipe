@@ -43,6 +43,10 @@ Every pull request must:
 - Identify limitations and follow-up work.
 - Update the work ledger and documentation when behavior or project state changes.
 
-Use matching repository skills from `.agents/skills/` for repeatable workflows. When supported, request read-only specialist reviews from `.codex/agents/` for security, CI failures, and cross-runtime contracts.
+Use matching repository skills from `.agents/skills/` for repeatable workflows. When supported, request read-only specialist reviews from `.codex/agents/` for high-risk security, CI failures, and cross-runtime contracts; these are risk-based supporting reviews, not mandatory independent approvals for every PR.
 
-A green CI run is necessary but not sufficient. Review the diff and verify the acceptance criteria.
+A green CI run is necessary but not sufficient. The implementer must review the complete diff and verify the acceptance criteria, and may merge the PR when all exact-head checks pass, material review threads are resolved, the branch is up to date, and GitHub reports it mergeable. A PR author cannot submit a formal GitHub approval of their own PR; record self-review honestly and never represent it as independent peer review. Never bypass branch protection, rulesets, required checks, or merge queues. Keep sensitive runtime-action approvals, production deployment, paid resources, and destructive actions separate from code-PR merge.
+
+## GitHub Issue title convention
+
+Use `<type>(<scope>): <short, clear description>` for every Issue title. The type must be one of `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `ci`, `chore`, `perf`, or `revert`; scope must be concise lowercase kebab-case. Keep priorities, milestones, feature identifiers, agent identity, and run metadata in labels or the Issue body. Do not use bracketed prefixes, standalone priority codes, `Recover:`, or supervisor identity prefixes. Preserve Issue metadata and relationships when renaming. This repository keeps the complete title convention here so contributors do not depend on external/private policy repositories.

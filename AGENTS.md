@@ -12,7 +12,7 @@ Before acting:
 4. Check dependencies and acceptance criteria before choosing work.
 5. Avoid redoing completed work unless evidence shows it is broken or stale.
 6. Discover and use the matching repository skill under `.agents/skills/` for repeatable workflows. Read its complete `SKILL.md`; do not assume a skill was applied merely because it exists.
-7. For substantial or cross-cutting work, delegate independent read-only reviews to the configured agents under `.codex/agents/` when the active client supports subagents. Reviewers must not edit shared files. If subagents are unavailable, perform the same review lanes sequentially.
+7. For substantial or cross-cutting work, use risk-based read-only specialist review from configured agents under `.codex/agents/` when available. Reviewers must not edit shared files. Specialist review is supporting evidence, not a universal merge gate; when unavailable, the implementer performs and records the relevant security, contract, and regression review lanes without claiming independent review.
 
 ## 2. Work selection and progress
 
@@ -101,3 +101,13 @@ At the end of a work unit, report:
 5. Remaining risks, blockers, and next unblocked task.
 
 A successful tool call is not proof that the resulting system works. Verify the resulting repository state.
+
+## GitHub Issue title convention
+
+Every Issue title must use `<type>(<scope>): <short, clear description>`. Use one lowercase Conventional Commit type: `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `ci`, `chore`, `perf`, or `revert`. Scope must be concise lowercase kebab-case and identify the affected domain/component. Keep priority, milestone, feature identifiers, phase, agent identity, dates, and run metadata in labels, milestones, or the Issue body—not the title. Do not use bracketed prefixes, standalone priority codes, `Recover:`, or agent/supervisor identity prefixes. Use `chore(roadmap): ...` for milestone bookkeeping and `chore(supervisor): ...` for run ledgers. Preserve all Issue metadata and relationships when renaming; change only the title. This repository keeps the complete title convention here so contributors do not depend on external/private policy repositories.
+
+## Evidence-gated PR review and merge
+
+The implementer may review and merge their own PR when the exact head has all required Python, Go, and other applicable CI checks passing, the acceptance criteria and relevant regression tests are evidenced, the complete diff and security/privacy/compatibility risks are recorded, material review threads are resolved, and the branch is up to date and mergeable. A formal GitHub APPROVE review from the PR author is unavailable and is not required by repository policy. Never fabricate approval or describe self-review as independent peer review. Specialist review remains risk-based. Never bypass branch protection, rulesets, required checks, or merge queues.
+
+Merge does not mark a work item done unless its acceptance criteria are evidenced and the work ledger is updated. Preserve separate human approvals for sensitive runtime workflow actions and keep production deployment, paid resources, credential/access-control changes, and destructive actions under their explicit execution policies.

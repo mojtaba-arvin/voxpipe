@@ -1485,7 +1485,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "done",
+      "status": "in_progress",
       "depends_on": [
         "VP-0047"
       ],
@@ -1501,8 +1501,7 @@
         "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
         "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
         "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret.",
-        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run.",
-        "2026-11-27: PR #225 merged to main as b6958422b477dc25375238429a164473e9d7c5b7. Owner-authorized full-archive run #46019633908 downloaded and validated the official CC0-1.0 Persian 27.0 archive: 11,236,660,956 bytes, SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d, 395,173 audio files and 10 TSV files. Archive remained in runner temporary storage; only audio-free provenance was uploaded."
+        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run."
       ],
       "blocked_reason": null
     },
@@ -1511,7 +1510,7 @@
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "in_progress",
+      "status": "blocked",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1528,21 +1527,9 @@
         "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
         "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
         "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
-        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run.",
-        "2026-11-27: The first full-archive run #46019633908 loaded pinned Qwen3-ASR revision 40946090cac63fc01d723a83174e16515073d7c0 but automatic language detection labelled the first selected Persian clip Arabic. The evaluator failed closed; no WER/CER was produced.",
-        "2026-11-28: Diagnosis: Transformers 5.20.1 supports an explicit Persian language argument to Qwen3-ASR apply_transcription_request. The implementation adds an independent local SpeechBrain VoxLingua107 gate (Apache-2.0, revision 0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9; accepted inventory fa/ar) before forced Persian decoding. It uses the repository's existing disjoint FLEURS-calibrated threshold 0.0; only top label fa is accepted, while Arabic and all out-of-inventory labels are rejected. Any rejected/uncertain clip makes the 50-clip report failed with null WER/CER; metrics are emitted only when all 50 clips pass. Audio, references, hypotheses and per-clip LID predictions remain temporary.",
-        "Implementation commits on feat/qwen-persian-language-detection: 726fb24c628fea7c62e7119dc13b2f4f51afc125 (independent LID gate and forced Persian decoding), d7d92106c4bb0732183703c1ac3a0f77a725090d/fb69f3f36f3338d4bec095b4403fa0f134fe7710 (aggregate schema), e35681428b146a2ea61610ca060fd0c28e60a983 (Arabic rejection/privacy regression tests), 470f0867e094b523c24f7b11aea4d2075827cae1 (pinned LID runtime), and 9196cd7f7caa5112f078bb67c9c1274a714f72676 (workflow integration). Exact-head full-archive evaluation evidence is pending; do not mark done or claim Persian accuracy until it passes.",
-        "Language-ID policy follows existing calibration evidence, not the adapter's uncalibrated 0.65 default: FLEURS calibration run #45170396629 used 300 validation and 300 disjoint test samples for the pinned VoxLingua107 revision, selected threshold 0.0 under 0.99 selective-accuracy / 0.50 coverage constraints, and reported 1.0 test selective accuracy at 0.92 coverage (ECE ~0.0226). The runtime still accepts only top label fa; ar and all out-of-inventory labels are rejected. This FLEURS result is not a Common Voice accuracy guarantee.",
-        "Additional implementation commits: 45169ebff3492d964bee5f6ea834f5228f753812 (empty-output failure counts), 8f52ed19b187b90612cac0eb9ea18d3dad361d56 (failure schema), cbde5ccb6ab939955fbbd38db86e959605404dde (empty-output regression), b7ebbbf527fb5dafa5a69e70fa55d1aa34bd7c24 (Arabic failure classification), 516f77dbf459e703644fde6b00661a13a0e7b6e9 (forced-language regression), b74069743682ee21cff781589c8687ec2798d617 (combined LID+ASR inference timing), 115d956a9be960a92153afc971316468ab61374c (calibrated LID policy), d0338b0cb85b8e4174f26f0252321b7d8071b947 (calibration provenance schema), 1d60b1b52467e30b4d2c89c776121909c8dfbc19 (calibration documentation). PR #230 is draft pending exact-head evaluation and CI.",
-        "2026-11-28: Full-archive workflow push trigger was enabled for the feature branch on the exact code/documentation head 1d60b1b52467e30b4d2c89c776121909c8dfbc19, then disabled for subsequent ledger-only bookkeeping to avoid duplicate 11+ GB downloads. The GitHub connector exposes PR-triggered run lists but not push-triggered run enumeration; exact push-run ID/conclusion still requires Actions-page verification. Do not mark done until its aggregate report is inspected.",
-        "2026-11-28: Final privacy/configuration hardening removes the optional persistent intermediate-directory interface and WhisperX alignment/speaker-segment workflow. The evaluator now always uses TemporaryDirectory for extracted audio and never writes per-clip hypotheses; the workflow uploads only the audio-free archive provenance JSON and aggregate Qwen WER/CER/failure report. Report records forced language, max_new_tokens=256, do_sample=false, batch_size=1, LID sample rate, supported inventory, calibrated threshold and FLEURS calibration provenance/license. Inference timing includes LID plus Qwen decoding, excluding model initialization and archive download.",
-        "Additional temporary-only/configuration commits: 612e6e9a65f02735baec7428512790bf00054fda (remove persistent intermediate path), 1d045aa63623f22ad0a97de740b00c31ddfecb21 (temporary-file cleanup regression), 1947fae35b57862e9cbbf7ddc6f681bf13177a87 (remove intermediate manifest interface), dfde732deb41158eb7544e76d4fc1ff2cb87590f (aggregate-only workflow artifacts), 8f60f89e421b4c61566c278676394bb1ec2628f2/5de058c39db2de288ff11bcf1641df511feddf8b (explicit decoding configuration), 4805d5ea9ae9b18e189d5eb1a15538eb00970ffe/f335de8cfa28d062863ea246c39a993343ae8cf8 (config schema and tests), cc9851a8f0af180e1ead840b4bc01281c586d7bb/05e12220c41b6c6fac6950ccba54798c12ebcc0b (calibration license provenance), d10a18b1adf76ecf64e25d786399ec122af3a62a/8c60f54a3f6a17c68b97eb4c152588478da64993 (privacy/timing documentation). Exact-head full-archive run remains pending inspection.",
-        "2026-11-28: Dependency audit now covers requirements-eval-lid.txt and the upstream torchaudio release corresponding to the CPU runtime wheel. Aggregate report also records SpeechBrain, torchaudio and Hugging Face Hub runtime versions.",
-        "Runtime/privacy follow-up commits: 389714d6fa092b456d1a67f96f9792928ea12d91 (dependency audit coverage), dab1bf089739c587cb487948a19a7f3f33dd2af7 (SpeechBrain/torchaudio/Hub version report), 1af9d5693c5734468cc6b88fb487431eefb953a1 (version schema), 07fe878e56a58b7a4dfd5c876dbfc2d023b3f10a (version regression assertions), 0371ff7a6ea00bcfe849800bfb11f5ccc28287e4 (torchaudio audit version), 93cf43d195b1a8bb68de14a60f9f766af83196dd/4d2b1ec26181bb5305fd4790de7456983f8a85b5/c0b4d8d2233fc2b4656f8219ddcb8d3d3701b3b7 (reachable failure categories and matching schema/docs).",
-        "2026-11-28 final scope: the Common Voice workflow no longer runs WhisperX alignment or emits speaker-segment artifacts. The evaluator's public interface has no persistent intermediate-output option; extracted clips are removed automatically, and references/hypotheses stay in memory. The report's language failure counts are the reachable categories under the calibrated 0.0 FLEURS threshold and fa/ar inventory: Arabic, other/undetermined, plus empty transcription output. The report records all relevant runtime package versions and explicit Qwen decoding settings.",
-        "Latest implementation commits after the previous ledger snapshot: 8f60f89e421b4c61566c278676394bb1ec2628f2/5de058c39db2de288ff11bcf1641df511feddf8b (explicit Qwen decoding settings), 4805d5ea9ae9b18e189d5eb1a15538eb00970ffe/f335de8cfa28d062863ea246c39a993343ae8cf8 (schema/tests), cc9851a8f0af180e1ead840b4bc01281c586d7bb/05e12220c41b6c6fac6950ccba54798c12ebcc0b (calibration license), d10a18b1adf76ecf64e25d786399ec122af3a62a/8c60f54a3f6a17c68b97eb4c152588478da64993 (timing/output docs), 93cf43d195b1a8bb68de14a60f9f766af83196dd/4d2b1ec26181bb5305fd4790de7456983f8a85b5/c0b4d8d2233fc2b4656f8219ddcb8d3d3701b3b7 (reachable failure categories), 389714d6fa092b456d1a67f96f9792928ea12d91/0371ff7a6ea00bcfe849800bfb11f5ccc28287e4 (dependency audit coverage), dab1bf089739c587cb487948a19a7f3f33dd2af7/1af9d5693c5734468cc6b88fb487431eefb953a1/07fe878e56a58b7a4dfd5c876dbfc2d023b3f10a (runtime versions), and 0345fdf91f02dc292c9327a858d8606e6a1bb99c (ledger). Current PR #230 remains draft; exact-head evaluation and PR checks are not yet verified."
+        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
       ],
-      "blocked_reason": null
+      "blocked_reason": "The Qwen evaluator and workflow wiring are implemented, but real Persian WER/CER requires VP-0059 to download and validate the official full archive. PR #225 updates the path to the complete archive; do not report metrics until real audio inference succeeds."
     },
     {
       "id": "VP-0061",
@@ -1729,6 +1716,29 @@
         "Do not claim natural conversational performance before the consented dataset and review exist."
       ],
       "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0070",
+      "title": "Optimize CI execution and workflow cost (issue #233)",
+      "phase": 11,
+      "priority": 70,
+      "status": "done",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Measure workflow/job wall time and runner minutes from recent Actions runs and record bottlenecks.",
+        "Preserve all required branch-protection check contexts and correctness/security gates.",
+        "Prevent redundant model/full-archive runs and route heavyweight runtime integration to relevant/default-branch/scheduled/manual paths.",
+        "Add reusable dependency and Docker build caches without adding paid APIs or secrets to ordinary PR checks.",
+        "Verify exact-head CI and report before/after measured durations and any intentional skips."
+      ],
+      "evidence": [
+        "Issue #233 closed by merged PR #234 (squash commit 4f87899b5048b97c47fe06e635bc89bacdcb8a6e).",
+        "Exact PR-head runs passed: Validate #46121970412 and #46122681780; runtime integration #46121970426; dependency audit #46121970404; silver evaluation #46121970464 and #46122681873; FLEURS calibration #46121970499; Ollama smoke #46121970494.",
+        "Main-branch validation #46122805800, runtime integration #46122805888, and alignment runtime #46122805801 passed. Persian FLEURS 100-sample main benchmark was dispatched by the merge path as run #46122805803 (its result is tracked separately).",
+        "Measured: Validate runner allocation 456s baseline versus 229s after separation; runtime S3/quickstart remain path-gated and pass. First main-branch BuildKit cache miss saved cache key Linux-voxpipe-buildx-e41e9ef5d8fca6878e0e225b5ea28c186e37827eefca6c610bc13ee87beff76d; warm-cache savings are not yet measured.",
+        "Follow-up hardens runtime-integration path filters for contracts and the local bootstrap/worker/CLI entrypoints."
+      ],
       "blocked_reason": null
     }
   ]
