@@ -151,7 +151,7 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
         raise ValueError("unable to read Common Voice metadata member")
     rows: list[tuple[tarfile.TarInfo, str]] = []
     with io.TextIOWrapper(stream, encoding="utf-8", newline="") as text_stream:
-        reader = csv.reader(text_stream, delimiter="\\t")
+        reader = csv.reader(text_stream, delimiter="\t")
         try:
             header = next(reader)
         except StopIteration as exc:
