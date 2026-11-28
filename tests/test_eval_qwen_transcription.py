@@ -145,7 +145,7 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as temporary:
                     root = Path(temporary)
                     archive_path = self._archive(root)
-                    with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \\
+                    with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
                          patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
                         report = run_evaluation(
                             archive_path, root / "rejected.json", root / "cache", max_clips=1,
