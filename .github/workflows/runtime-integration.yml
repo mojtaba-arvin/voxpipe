@@ -18,6 +18,10 @@ on:
       - "scripts/reconcile_ingestion.py"
       - "deploy/s3/**"
       - "requirements-s3.txt"
+      - "requirements-dev.txt"
+      - "requirements-postgres.txt"
+      - "tests/test_dev_quickstart.py"
+      - "tests/test_s3_storage_integration.py"
       - ".github/workflows/runtime-integration.yml"
   pull_request:
     branches: [main]
@@ -64,7 +68,7 @@ jobs:
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
-          cache-dependency-glob: "requirements*.txt"
+          cache-dependency-glob: "requirements-dev.txt"
       - name: Verify the guided local stack and sample ingestion
         run: python scripts/dev_quickstart.py up
       - name: Stop the disposable stack
@@ -87,7 +91,9 @@ jobs:
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
-          cache-dependency-glob: "requirements*.txt"
+          cache-dependency-glob: |
+            requirements-postgres.txt
+            requirements-s3.txt
       - name: Set up Go
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
