@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/huggingface
-          key: voxpipe-qwen3-asr-persian-v5-${{ hashFiles('requirements-eval-asr.txt', 'requirements-eval-lid.txt', 'eval/issue47/qwen_transcription.py') }}
+          key: voxpipe-qwen3-asr-persian-align-v6-${{ hashFiles('requirements-eval-asr.txt', 'requirements-eval-lid.txt', 'requirements-eval-align.txt', 'eval/issue47/qwen_transcription.py', 'eval/issue47/persian_alignment.py') }}
       - name: Install pinned CPU-only PyTorch wheel from the official index
         run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.13.0+cpu setuptools==84.2.1
       - name: Install native Transformers ASR and Mozilla SDK dependencies
@@ -46,6 +46,25 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torchaudio==2.11.0+cpu
           uv pip install --system -r requirements-eval-lid.txt
+      - name: Install isolated WhisperX CPU alignment runtime
+        run: |
+          uv venv "$RUNNER_TEMP/voxpipe-align-venv" --python "$(command -v python)"
+          grep -v '^whisperx==' requirements-eval-align.txt > "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
+            --index-strategy unsafe-best-match \
+            -r "$RUNNER_TEMP/voxpipe-align-requirements.txt"
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" \
+            --index-url https://pypi.org/simple --no-deps whisperx==3.8.6
+          uv pip install --python "$RUNNER_TEMP/voxpipe-align-venv/bin/python" pip-audit==2.9.0
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m pip freeze --all > "$RUNNER_TEMP/align-installed.txt"
+          sed -i \
+            -e 's/^torch==2\.13\.0+cpu$/torch==2.13.0/' \
+            -e 's/^torchaudio==2\.11\.1+cpu$/torchaudio==2.11.1/' \
+            "$RUNNER_TEMP/align-installed.txt"
+          grep -v '^whisperx==' "$RUNNER_TEMP/align-installed.txt" > "$RUNNER_TEMP/align-installed-audit.txt"
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/pip-audit" --strict --no-deps -r "$RUNNER_TEMP/align-installed-audit.txt"
       - name: Install FFmpeg for bounded audio duration probing
         run: |
           sudo apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
@@ -92,6 +111,14 @@ jobs:
             --archive "${{ steps.archive.outputs.archive }}" \
             --max-clips 50 \
             --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
+      - name: Run Persian WhisperX forced alignment on the exact Qwen hypotheses
+        run: |
+          "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \
+            --manifest "$RUNNER_TEMP/voxpipe-qwen-alignment-input/alignment_input.jsonl" \
+            --output eval/artifacts/issue47/alignment_cv.json \
+            --speaker-output eval/artifacts/issue47/speaker_segments.json \
+            --cache-dir "$HOME/.cache/huggingface" \
+            --max-clips 50
       - name: Upload aggregate WER/CER and provenance only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -100,6 +127,8 @@ jobs:
           path: |
             eval/artifacts/issue47/common_voice_archive.json
             eval/artifacts/issue47/qwen3_asr_persian.json
+            eval/artifacts/issue47/alignment_cv.json
+            eval/artifacts/issue47/speaker_segments.json
           if-no-files-found: warn
       - name: Remove temporary full publisher archive
         if: always()
