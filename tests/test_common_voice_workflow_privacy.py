@@ -20,6 +20,11 @@ class CommonVoiceWorkflowPrivacyTests(unittest.TestCase):
         self.assertIn("--intermediate-dir \"$RUNNER_TEMP/voxpipe-qwen-alignment-input\"", workflow)
         self.assertIn("--candidate-scan-limit 100", workflow)
         self.assertIn("Run Persian WhisperX forced alignment on the exact Qwen hypotheses", workflow)
+        self.assertIn("Remove the full archive before WhisperX model load", workflow)
+        self.assertLess(
+            workflow.index("Remove the full archive before WhisperX model load"),
+            workflow.index("Run Persian WhisperX forced alignment on the exact Qwen hypotheses"),
+        )
         self.assertIn('rm -rf "$RUNNER_TEMP/voxpipe-qwen-alignment-input"', workflow)
         self.assertNotIn("alignment_input.jsonl", artifact_step)
         self.assertNotIn("predictions.jsonl", artifact_step)
