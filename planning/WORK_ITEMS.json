@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-28T12:42:10.699Z",
+  "updated_at": "2026-11-28T12:55:10.496Z",
   "items": [
     {
       "id": "VP-0001",
@@ -1534,7 +1534,8 @@
         "Common Voice run #46143283108 downloaded and validated the full official archive (11,236,660,956 bytes; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen inference stopped before decoding because the first candidate was shorter than SpeechBrain's 1-second minimum. No Qwen report or WER/CER was produced; only aggregate archive provenance was uploaded.",
         "The evaluator scans at most 100 validated TSV rows and selects the first 50 clips with probed audio duration >=1 second. Short/unprobeable candidates are counted; if fewer than 50 eligible clips are found, the run fails closed. After selection, no clip is replaced after LID or transcription failure.",
         "The Common Voice workflow uploads only aggregate archive provenance and Qwen JSON. It does not run WhisperX, forced alignment or diarization, and uploads no audio, transcript, speaker identifier or per-clip output.",
-        "FLEURS validation and held-out control evidence is being recalibrated with a minimum confidence floor of 0.50; exact-head calibration artifact and exact-head 50-clip Qwen artifact are both required before acceptance."
+        "FLEURS validation and held-out control evidence is being recalibrated with a minimum confidence floor of 0.50; exact-head calibration artifact and exact-head 50-clip Qwen artifact are both required before acceptance.",
+        "FLEURS positive-floor calibration and disjoint held-out test completed in run #46145923356 (benchmark head 7d102ed672a40e90ea29738d45a78cb220335f74): validation 400 clips, selected threshold 0.5, coverage 94.5%, selective accuracy 100% against predeclared floors 50%/99%; held-out 400 clips, accuracy/coverage 92.25%, selective accuracy 100%, macro-F1 0.7637. Persian 100/100, Arabic 99/100, zero fa↔ar cross-confusions (one Arabic abstention); English/German negative controls zero false fa/ar accepts, 30 German abstentions. Qwen LID default is now the calibrated 0.5 floor."
       ],
       "blocked_reason": "Await current-head FLEURS calibration with the stricter confidence floor and exact-head 50-clip Qwen aggregate artifact; PR remains Draft."
     },
@@ -1563,7 +1564,8 @@
         "Workflow run #46019633908 verified the 11,236,660,956-byte Common Voice archive (395,173 audio files; 10 TSV files; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen transcription failed on language detection and WhisperX was skipped. The archive was intentionally deleted in the cleanup step; its artifact contains only audio-free provenance, not audio bytes.",
         "PR #229 merged as 3e7f99060991713eeea83cdd52b8abcfe934f09f with exact timestamp validation and 20 ms overlap boundary tests.",
         "PR #230 restores the same-sample handoff: only after all 50 selected clips pass the independent fa gate and yield non-empty Qwen hypotheses is a temporary manifest created; WhisperX consumes that manifest before cleanup.",
-        "Alignment aggregate now reports unaligned_word_count, timestamp_validation_failure_count and missing_word_timestamp_count in addition to word-level coverage. Any partial timestamp output is marked partial; read-speech diarization remains not_evaluated_read_speech with speaker_segments: []."
+        "Alignment aggregate now reports unaligned_word_count, timestamp_validation_failure_count and missing_word_timestamp_count in addition to word-level coverage. Any partial timestamp output is marked partial; read-speech diarization remains not_evaluated_read_speech with speaker_segments: [].",
+        "FLEURS held-out control run #46145923356 validated the 0.5 minimum confidence floor: validation coverage 94.5%, selective accuracy 100%; held-out coverage 92.25%, selective accuracy 100%, Persian 100/100, Arabic 99/100, zero fa↔ar cross-confusions."
       ],
       "blocked_reason": "Await a successful exact 50-clip duration-eligible Common Voice Qwen run and same-sample WhisperX alignment. Run #46143283108 verified the official archive but stopped before ASR because its first candidate was shorter than the SpeechBrain one-second minimum; no alignment was run. PR #230 now preselects 50 clips with duration >=1 second before the independent Persian gate, never replaces clips after language/transcription failures, and hands the exact accepted audio/hypothesis pairs to WhisperX through a temporary manifest. Do not claim real alignment coverage, gold alignment accuracy, natural-conversation coverage or diarization until the final aggregate artifacts are available and inspected."
     },
