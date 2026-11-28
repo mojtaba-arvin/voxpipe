@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-27",
+  "updated_at": "2026-11-28",
   "items": [
     {
       "id": "VP-0001",
@@ -1716,6 +1716,26 @@
         "Do not claim natural conversational performance before the consented dataset and review exist."
       ],
       "evidence": [],
+      "blocked_reason": null
+    },
+    {
+      "id": "VP-0070",
+      "title": "Optimize CI execution and workflow cost (issue #233)",
+      "phase": 11,
+      "priority": 70,
+      "status": "in_progress",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Measure workflow/job wall time and runner minutes from recent Actions runs and record bottlenecks.",
+        "Preserve all required branch-protection check contexts and correctness/security gates.",
+        "Prevent redundant model/full-archive runs and route heavyweight runtime integration to relevant/default-branch/scheduled/manual paths.",
+        "Add reusable dependency and Docker build caches without adding paid APIs or secrets to ordinary PR checks.",
+        "Verify exact-head CI and report before/after measured durations and any intentional skips."
+      ],
+      "evidence": [
+        "Issue #233 records baseline run #46117453812 job durations, 2,185 workflow runs, repeated full-archive ASR attempts, and model-runtime smoke costs.",
+        "Implementation branch ci/issue-233-workflow-cost-optimization."
+      ],
       "blocked_reason": null
     }
   ]
