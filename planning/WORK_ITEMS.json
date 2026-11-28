@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-28T12:32:28.135Z",
+  "updated_at": "2026-11-28T12:42:10.699Z",
   "items": [
     {
       "id": "VP-0001",
@@ -1533,7 +1533,7 @@
         "PR #230 now writes a job-local temporary manifest containing exactly the accepted audio paths and Qwen hypotheses, then passes those same pairs to WhisperX before cleanup. The manifest, audio, references and hypotheses are not uploaded.",
         "Runtime pins: Qwen CPU torch 2.13.0+cpu, torchaudio 2.11.0+cpu, setuptools 84.2.1; isolated WhisperX 3.8.6 runtime uses its separately pinned torchaudio 2.11.1 CPU environment. Dependency audit passed on the preceding PR head; exact-head checks are rerunning.",
         "2026-11-28: official archive + ASR run #46143283108 completed with archive download/provenance validation successful (11,236,660,956 bytes; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen/LID stopped before decoding because the first candidate was shorter than SpeechBrain's 1-second minimum. No Qwen report or WER/CER was produced; only archive provenance was uploaded and the archive was removed.",
-        "PR #230 fix: deterministically scan up to 1,000 matching validated.tsv rows and preselect the first 50 clips with probed duration >=1 second. Record short/unprobeable candidate counts and any duration shortfall. After the 50 are fixed, no clip is replaced after LID or transcription failure; any shortfall or language failure keeps WER/CER null.",
+        "PR #230 fix: deterministically scan up to 100 matching validated.tsv rows and preselect the first 50 clips with probed duration >=1 second. Record short/unprobeable candidate counts and any duration shortfall. After the 50 are fixed, no clip is replaced after LID or transcription failure; any shortfall or language failure keeps WER/CER null.",
         "FLEURS run #46144284846 verified the independent gate on 400 validation and 400 disjoint test clips across fa/ar/en/de. Validation coverage 95.25%, selective accuracy 100%, threshold 0.0. Held-out accuracy 94%, coverage 94%, selective accuracy 100%, macro-F1 0.7727; Persian 100/100, Arabic 100/100, zero fa↔ar cross-confusions; zero false fa/ar accepts among English/German controls, with 24 German abstentions."
       ],
       "blocked_reason": null
