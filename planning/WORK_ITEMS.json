@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-28T12:04:53.147Z",
+  "updated_at": "2026-11-28T12:28:43.714Z",
   "items": [
     {
       "id": "VP-0001",
@@ -1527,7 +1527,11 @@
         "PR #230 adds independent SpeechBrain VoxLingua107 audio-language validation at pinned revision 0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9; only fa is accepted, while Arabic and out-of-inventory/undetermined results are rejected before forced-Persian Qwen decoding.",
         "Regression coverage includes Arabic rejection, out-of-inventory and undetermined rejection, forced-language validation before ASR runtime import, and empty-hypothesis metric suppression.",
         "Audio, references and hypotheses remain temporary; the workflow uploads only aggregate JSON provenance and metrics. WER/CER remain null unless every requested clip passes language validation and produces a non-empty hypothesis.",
-        "Exact 50-clip execution on the current PR head is pending. No Persian accuracy or WER/CER is claimed until its exact-head artifact is inspected."
+        "Exact 50-clip execution on the current PR head is pending. No Persian accuracy or WER/CER is claimed until its exact-head artifact is inspected.",
+        "FLEURS disjoint Persian/Arabic calibration and held-out control run #46144284846 (benchmark code head 5f9855c0b01a57e8a6b4405afdc0a630a2ac77be): 400 validation clips (100 each fa/ar/en/de), calibrated threshold 0.0, validation coverage 95.25%, selective accuracy 100%; held-out 400-clip test accuracy 94%, coverage 94%, selective accuracy 100%, macro-F1 0.7727. Persian 100/100 and Arabic 100/100; zero fa↔ar cross-confusions. English/German negative controls had zero false fa/ar accepts; 24 German clips abstained. Threshold 0.0 is a no-op confidence floor; effective gate is top-label fa, with zero/tied scores abstaining.",
+        "Official full archive was re-downloaded and validated in run #46143283108. The 50-clip Qwen inference job is still running; no WER/CER is claimed until its aggregate artifact is inspected.",
+        "PR #230 now writes a job-local temporary manifest containing exactly the accepted audio paths and Qwen hypotheses, then passes those same pairs to WhisperX before cleanup. The manifest, audio, references and hypotheses are not uploaded.",
+        "Runtime pins: Qwen CPU torch 2.13.0+cpu, torchaudio 2.11.0+cpu, setuptools 84.2.1; isolated WhisperX 3.8.6 runtime uses its separately pinned torchaudio 2.11.1 CPU environment. Dependency audit passed on the preceding PR head; exact-head checks are rerunning."
       ],
       "blocked_reason": null
     },
@@ -1553,9 +1557,12 @@
         "Exact-head runtime smoke run 45850122656 passed: pip-audit reported no known vulnerabilities in the installed minimal runtime; WhisperX 3.8.6 loaded the immutable Persian model revision 234714078a1398a9db88194c5a40fefe6f376dc1 on CPU with float32 weights. Versions: torch 2.13.0+cpu, torchaudio 2.11.1+cpu, Transformers 5.20.1, Hub 1.31.0. This validates model loading only, not real audio alignment or WER/CER.",
         "PR #225 updates the Common Voice input path to the complete official archive; no audio alignment result is claimed until the full-archive run succeeds.",
         "2026-11-28 independent alignment-preparation update: word timestamp validation now rejects non-finite values, booleans, negative/reversed/out-of-audio timestamps, non-monotonic boundaries and overlaps beyond 20 ms; regression tests cover these cases. Real-audio acceptance remains blocked pending valid Persian hypotheses from VP-0060.",
-        "Workflow run #46019633908 verified the 11,236,660,956-byte Common Voice archive (395,173 audio files; 10 TSV files; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen transcription failed on language detection and WhisperX was skipped. The archive was intentionally deleted in the cleanup step; its artifact contains only audio-free provenance, not audio bytes."
+        "Workflow run #46019633908 verified the 11,236,660,956-byte Common Voice archive (395,173 audio files; 10 TSV files; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen transcription failed on language detection and WhisperX was skipped. The archive was intentionally deleted in the cleanup step; its artifact contains only audio-free provenance, not audio bytes.",
+        "PR #229 merged as 3e7f99060991713eeea83cdd52b8abcfe934f09f with exact timestamp validation and 20 ms overlap boundary tests.",
+        "PR #230 restores the same-sample handoff: only after all 50 selected clips pass the independent fa gate and yield non-empty Qwen hypotheses is a temporary manifest created; WhisperX consumes that manifest before cleanup.",
+        "Alignment aggregate now reports unaligned_word_count, timestamp_validation_failure_count and missing_word_timestamp_count in addition to word-level coverage. Any partial timestamp output is marked partial; read-speech diarization remains not_evaluated_read_speech with speaker_segments: []."
       ],
-      "blocked_reason": "VP-0060 / issue #177 has not yet produced valid Persian hypotheses. In run #46019633908 the archive validation succeeded, but Qwen transcription failed because the first selected clip was detected as Arabic; the WhisperX step was skipped. The archive was deleted from runner temp storage and is not present in the provenance-only artifact. Continue offline alignment preparation and validation now; once #177 produces valid hypotheses, a new run must retrieve the verified same Common Voice release again because the prior runner-local archive no longer exists. Do not claim real alignment coverage before that run."
+      "blocked_reason": "Await the exact 50-clip Common Voice Qwen run and same-sample WhisperX alignment. The official archive has been re-downloaded and validated in run #46143283108; Qwen inference is still in progress. Do not claim real alignment coverage, gold alignment accuracy, natural-conversation coverage or diarization until the final aggregate artifacts are available and inspected."
     },
     {
       "id": "VP-0062",
