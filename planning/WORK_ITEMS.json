@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-28",
+  "updated_at": "2026-11-28T12:04:53.147Z",
   "items": [
     {
       "id": "VP-0001",
@@ -1485,7 +1485,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0047"
       ],
@@ -1497,11 +1497,11 @@
         "Keep read-speech clearly distinguished from natural conversation."
       ],
       "evidence": [
-        "PR #205 merged to main as 9221eeac4d45871bc2c01eee08eaced6b6f2cd39 after exact-head validation run #45752595027 passed all 9 jobs and dependency audit run #45752594998 passed both jobs.",
-        "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
-        "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
-        "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret.",
-        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run."
+        "PR #225's full official Common Voice Persian 27.0 archive download and validation succeeded in run #46019633908 (workflow head febcde3f3eb964408f23c2bd3a57f468d4b792e2); audio-free provenance artifact 15208077681 was downloaded and inspected.",
+        "Verified provenance: dataset cmu5xazgy00finq074vaqo1b3, locale fa, CC0-1.0, 11,236,660,956 bytes, SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d, 395,173 audio files, 10 TSV files, 118.5891 seconds, SDK 0.8.1.",
+        "The pinned Mozilla Data Collective SDK download_dataset API automatically resumes interrupted archive downloads and retries mid-stream connection failures up to three attempts by default; this is documented at https://mozilla-data-collective.github.io/datacollective-python/api/.",
+        "Only common_voice_archive.json provenance was uploaded; the archive and intermediate files were removed from runner temporary storage. The overall run failed later during Qwen ASR and is not evidence of Persian WER/CER.",
+        "Common Voice is scripted read-speech, not natural conversation."
       ],
       "blocked_reason": null
     },
@@ -1510,7 +1510,7 @@
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "blocked",
+      "status": "in_progress",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1522,14 +1522,14 @@
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
       "evidence": [
-        "PR #208 merged to main as 54dc9c7124d0d04c2ba821be46e851460d5437a8. It replaces vulnerable qwen-asr==0.0.6 with native Transformers 5.20.1, Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0, and CPU-only PyTorch 2.15.0+cpu.",
-        "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
-        "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
-        "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
-        "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
-        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
+        "PR #208 merged native Transformers Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0; CPU-only inference, batch size 1, no hosted inference API.",
+        "VP-0059 archive dependency is complete: official Common Voice 27.0 Persian archive provenance was verified in run #46019633908, artifact 15208077681.",
+        "PR #230 adds independent SpeechBrain VoxLingua107 audio-language validation at pinned revision 0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9; only fa is accepted, while Arabic and out-of-inventory/undetermined results are rejected before forced-Persian Qwen decoding.",
+        "Regression coverage includes Arabic rejection, out-of-inventory and undetermined rejection, forced-language validation before ASR runtime import, and empty-hypothesis metric suppression.",
+        "Audio, references and hypotheses remain temporary; the workflow uploads only aggregate JSON provenance and metrics. WER/CER remain null unless every requested clip passes language validation and produces a non-empty hypothesis.",
+        "Exact 50-clip execution on the current PR head is pending. No Persian accuracy or WER/CER is claimed until its exact-head artifact is inspected."
       ],
-      "blocked_reason": "The Qwen evaluator and workflow wiring are implemented, but real Persian WER/CER requires VP-0059 to download and validate the official full archive. PR #225 updates the path to the complete archive; do not report metrics until real audio inference succeeds."
+      "blocked_reason": null
     },
     {
       "id": "VP-0061",
