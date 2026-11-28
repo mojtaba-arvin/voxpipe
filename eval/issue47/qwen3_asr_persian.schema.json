@@ -54,7 +54,9 @@
     "language_id_sample_rate",
     "speechbrain_version",
     "torchaudio_version",
-    "huggingface_hub_version"
+    "huggingface_hub_version",
+    "language_id_threshold_policy",
+    "language_id_held_out_control"
   ],
   "properties": {
     "schema_version": {
@@ -267,7 +269,7 @@
           "const": "6989e5bd2dc37546a93ae5d857bc04325e6a3738"
         },
         "validation_run_id": {
-          "const": 45170396629
+          "const": 46144284846
         },
         "min_selective_accuracy": {
           "const": 0.99
@@ -309,6 +311,96 @@
     "huggingface_hub_version": {
       "type": "string",
       "minLength": 1
+    },
+    "language_id_threshold_policy": {
+      "const": "no_confidence_floor_top_label_fa_with_zero_and_tie_abstention"
+    },
+    "language_id_held_out_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_revision",
+        "dataset_license",
+        "test_run_id",
+        "test_head_sha",
+        "sample_count",
+        "accuracy",
+        "macro_f1",
+        "coverage",
+        "selective_accuracy",
+        "abstention_rate",
+        "persian_samples",
+        "persian_correct",
+        "arabic_samples",
+        "arabic_correct",
+        "persian_arabic_cross_confusions",
+        "negative_control_languages",
+        "negative_control_false_accepts",
+        "negative_control_abstentions"
+      ],
+      "properties": {
+        "dataset_id": {
+          "const": "google/fleurs"
+        },
+        "dataset_revision": {
+          "const": "6989e5bd2dc37546a93ae5d857bc04325e6a3738"
+        },
+        "dataset_license": {
+          "const": "CC-BY-4.0"
+        },
+        "test_run_id": {
+          "const": 46144284846
+        },
+        "test_head_sha": {
+          "const": "5f9855c0b01a57e8a6b4405afdc0a630a2ac77be"
+        },
+        "sample_count": {
+          "const": 400
+        },
+        "accuracy": {
+          "const": 0.94
+        },
+        "macro_f1": {
+          "const": 0.7727272727272727
+        },
+        "coverage": {
+          "const": 0.94
+        },
+        "selective_accuracy": {
+          "const": 1
+        },
+        "abstention_rate": {
+          "const": 0.06
+        },
+        "persian_samples": {
+          "const": 100
+        },
+        "persian_correct": {
+          "const": 100
+        },
+        "arabic_samples": {
+          "const": 100
+        },
+        "arabic_correct": {
+          "const": 100
+        },
+        "persian_arabic_cross_confusions": {
+          "const": 0
+        },
+        "negative_control_languages": {
+          "const": [
+            "en",
+            "de"
+          ]
+        },
+        "negative_control_false_accepts": {
+          "const": 0
+        },
+        "negative_control_abstentions": {
+          "const": 24
+        }
+      }
     }
   },
   "allOf": [
