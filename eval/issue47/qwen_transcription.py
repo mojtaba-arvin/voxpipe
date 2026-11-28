@@ -320,13 +320,16 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    language_identifier: Any | None = None,
                    language_identifier_loader: Callable[[Path], Any] | None = None,
                    language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
-                   intermediate_dir: Path | None = None) -> dict[str, Any]:
+                   intermediate_dir: Path | None = None,
+                   candidate_scan_limit: int = CANDIDATE_SCAN_LIMIT) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("Common Voice archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
         raise ValueError("Common Voice archive exceeds the 12 GiB safety limit")
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
+    if not 1 <= candidate_scan_limit <= 10000:
+        raise ValueError("candidate scan limit must be between 1 and 10000")
 
     if intermediate_dir is not None:
         intermediate_dir = intermediate_dir.resolve()
@@ -343,36 +346,67 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         hypotheses: list[str] = []
         audio_seconds = 0.0
         inference_seconds = 0.0
+        language_id_failures = {"arabic": 0, "other_or_undetermined": 0}
+        transcription_failures = {"empty_output": 0}
+        duration_rejected_count = 0
+        duration_probe_failures = 0
+        candidate_rows_scanned = 0
+        selected: list[tuple[str, Path, float]] = []
         with tarfile.open(archive_path, mode="r:gz") as archive:
             audio_by_basename, metadata_members = _read_archive_records(archive)
-            selected = _load_reference_rows(archive, metadata_members[0][0], audio_by_basename, max_clips)
-            if len(selected) != max_clips:
-                raise ValueError(f"Common Voice archive yielded {len(selected)} matching clips; exactly {max_clips} are required")
-            if model is None:
-                if model_loader is None:
-                    raise ValueError("a model or model_loader is required")
-                model_dir = model_loader(cache_dir)
-                processor, model = _load_model_from_directory(model_dir)
-            if processor is None:
-                raise ValueError("a native Transformers processor is required with an injected model")
-            if language_identifier is None:
-                language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
-            language_id_failures = {"arabic": 0, "other_or_undetermined": 0}
-            transcription_failures = {"empty_output": 0}
-            for index, (member, reference) in enumerate(selected, start=1):
+            candidates = _load_reference_rows(
+                archive, metadata_members[0][0], audio_by_basename, candidate_scan_limit
+            )
+            for candidate_index, (member, reference) in enumerate(candidates, start=1):
+                candidate_rows_scanned += 1
+                audio_path = temp_root / (
+                    f"candidate-{candidate_index:04d}{PurePosixPath(member.name).suffix.lower()}"
+                )
                 extracted = archive.extractfile(member)
                 if extracted is None:
-                    raise ValueError("unable to read selected audio member")
-                audio_path = temp_root / f"clip-{index:03d}{PurePosixPath(member.name).suffix.lower()}"
-                with extracted, audio_path.open("wb") as output:
-                    shutil.copyfileobj(extracted, output, length=1024 * 1024)
-                duration = _audio_duration_seconds(audio_path)
+                    duration_probe_failures += 1
+                    continue
+                try:
+                    with extracted, audio_path.open("wb") as output:
+                        shutil.copyfileobj(extracted, output, length=1024 * 1024)
+                    duration = _audio_duration_seconds(audio_path)
+                except Exception:
+                    duration_probe_failures += 1
+                    audio_path.unlink(missing_ok=True)
+                    continue
+                if duration < MIN_AUDIO_DURATION_SECONDS:
+                    duration_rejected_count += 1
+                    audio_path.unlink(missing_ok=True)
+                    continue
+                selected.append((reference, audio_path, duration))
+                if len(selected) == max_clips:
+                    break
+
+            selected_sample_count = len(selected)
+            duration_shortfall_count = max_clips - selected_sample_count
+            if selected:
+                if model is None:
+                    if model_loader is None:
+                        raise ValueError("a model or model_loader is required")
+                    model_dir = model_loader(cache_dir)
+                    processor, model = _load_model_from_directory(model_dir)
+                if processor is None:
+                    raise ValueError("a native Transformers processor is required with an injected model")
+                if language_identifier is None:
+                    language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
+
+            for reference, audio_path, duration in selected:
                 audio_seconds += duration
                 started_language_id = time.perf_counter()
                 language_prediction = _identify_audio_language(language_identifier, audio_path)
                 inference_seconds += time.perf_counter() - started_language_id
-                raw_language = str(getattr(language_prediction, "raw_language", None) or language_prediction.language).casefold()
-                if language_prediction.language != "fa" or language_prediction.confidence < language_id_confidence_threshold:
+                raw_language = str(
+                    getattr(language_prediction, "raw_language", None) or language_prediction.language
+                ).casefold()
+                if (
+                    language_prediction.language != "fa"
+                    or language_prediction.confidence < language_id_confidence_threshold
+                ):
                     if raw_language in {"ar", "arabic"}:
                         language_id_failures["arabic"] += 1
                     else:
@@ -391,10 +425,17 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 references.append(reference)
                 hypotheses.append(hypothesis)
                 if intermediate_dir is not None:
-                    alignment_rows.append({"audio_path": str(audio_path.resolve()), "transcript": hypothesis})
-        complete_sample = len(references) == len(selected)
+                    alignment_rows.append(
+                        {"audio_path": str(audio_path.resolve()), "transcript": hypothesis}
+                    )
+
+        complete_sample = (
+            selected_sample_count == max_clips
+            and duration_shortfall_count == 0
+            and len(references) == max_clips
+        )
         if intermediate_dir is not None and complete_sample:
-            if len(alignment_rows) != len(selected):
+            if len(alignment_rows) != max_clips:
                 raise RuntimeError("alignment input must contain the exact complete ASR sample")
             manifest_path = intermediate_dir / "alignment_input.jsonl"
             manifest_path.write_text(
@@ -419,11 +460,22 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
         report = build_report(
-            metrics=metrics, sample_count=len(references), requested_sample_count=len(selected),
-            audio_seconds=audio_seconds, inference_seconds=inference_seconds,
-            peak_rss_bytes=peak_rss_bytes, torch_version=torch_version,
-            transformers_version=transformers_version, speechbrain_version=speechbrain_version,
-            torchaudio_version=torchaudio_version, huggingface_hub_version=huggingface_hub_version,
+            metrics=metrics,
+            sample_count=len(references),
+            requested_sample_count=max_clips,
+            selected_sample_count=selected_sample_count,
+            duration_shortfall_count=duration_shortfall_count,
+            candidate_rows_scanned=candidate_rows_scanned,
+            duration_rejected_count=duration_rejected_count,
+            duration_probe_failures=duration_probe_failures,
+            audio_seconds=audio_seconds,
+            inference_seconds=inference_seconds,
+            peak_rss_bytes=peak_rss_bytes,
+            torch_version=torch_version,
+            transformers_version=transformers_version,
+            speechbrain_version=speechbrain_version,
+            torchaudio_version=torchaudio_version,
+            huggingface_hub_version=huggingface_hub_version,
             language_id_failures=language_id_failures,
             transcription_failures=transcription_failures,
             language_id_confidence_threshold=language_id_confidence_threshold,
@@ -431,6 +483,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return report
+
 
 
 def _audio_duration_seconds(path: Path) -> float:
