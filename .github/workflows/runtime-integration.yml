@@ -159,8 +159,41 @@ jobs:
           VOXPIPE_S3_CONNECT_TIMEOUT_SECONDS: "5"
           VOXPIPE_S3_READ_TIMEOUT_SECONDS: "60"
         run: python scripts/verify_s3_staging_interop.py
-      - name: Build the optional S3-enabled ingestion worker image
-        run: docker build --build-arg VOXPIPE_INSTALL_S3=1 -f Dockerfile.worker -t voxpipe-worker-s3:ci .
+      - name: Restore Docker BuildKit layer caches
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            /tmp/voxpipe-buildx-worker
+            /tmp/voxpipe-buildx-api
+          key: ${{ runner.os }}-voxpipe-buildx-${{ hashFiles('Dockerfile.worker', 'Dockerfile.api', 'requirements*.txt', 'src/**', 'migrations/**') }}
+          restore-keys: |
+            ${{ runner.os }}-voxpipe-buildx-
+      - name: Prepare BuildKit builder
+        run: |
+          mkdir -p /tmp/voxpipe-buildx-worker /tmp/voxpipe-buildx-api
+          docker buildx create --name voxpipe-ci --driver docker-container --use
+          docker buildx inspect --bootstrap
+      - name: Build reusable S3 worker and API images with layer caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_cached() {
+            local dockerfile="$1" image="$2" cache_dir="$3" extra_args="$4"
+            local next_dir="${cache_dir}-next"
+            local cache_args=()
+            rm -rf "$next_dir"
+            if [[ -f "$cache_dir/index.json" ]]; then
+              cache_args+=(--cache-from "type=local,src=$cache_dir")
+            fi
+            docker buildx build --load \
+              "${cache_args[@]}" \
+              --cache-to "type=local,dest=$next_dir,mode=max" \
+              $extra_args -f "$dockerfile" -t "$image" .
+            rm -rf "$cache_dir"
+            mv "$next_dir" "$cache_dir"
+          }
+          build_cached Dockerfile.worker voxpipe-worker-s3-e2e:ci /tmp/voxpipe-buildx-worker "--build-arg VOXPIPE_INSTALL_S3=1"
+          build_cached Dockerfile.api voxpipe-api-s3-e2e:ci /tmp/voxpipe-buildx-api ""
       - name: Stop adapter-level Silo before isolated deployment E2E
         run: docker rm -f voxpipe-silo || true
       - name: Prepare ephemeral S3 deployment credentials
@@ -169,7 +202,7 @@ jobs:
         run: docker compose -f compose.s3-e2e.yaml config --quiet
       - name: Start PostgreSQL and disposable Silo for identity provisioning
         run: |
-          docker compose -f compose.s3-e2e.yaml up --build --detach postgres bootstrap silo silo-init
+          docker compose -f compose.s3-e2e.yaml up --no-build --detach postgres bootstrap silo silo-init
           docker compose -f compose.s3-e2e.yaml wait bootstrap silo-init
       - name: Configure and verify S3 staging lifecycle and recovery
         env:
@@ -215,7 +248,7 @@ jobs:
           run_mc admin policy attach local voxpipe-api-staging --user "$VOXPIPE_S3_STAGING_ACCESS_KEY_ID"
           run_mc admin policy attach local voxpipe-worker-storage --user "$VOXPIPE_S3_ACCESS_KEY_ID"
       - name: Start Go API and Python worker without shared staging storage
-        run: docker compose -f compose.s3-e2e.yaml up --build --detach --wait --wait-timeout 180 api worker
+        run: docker compose -f compose.s3-e2e.yaml up --no-build --detach --wait --wait-timeout 180 api worker
       - name: Upload and process generated audio through Go API and Python queue worker
         id: s3-deployment-e2e
         env:
