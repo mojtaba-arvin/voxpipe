@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import time
 import unicodedata
+from contextlib import nullcontext
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
@@ -253,7 +254,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
             "Inference time and real-time factor include independent language identification plus Qwen decoding, but exclude model initialization and archive download.",
-            "No per-clip alignment or speaker-segment artifacts are generated or published.",
+            "The temporary alignment manifest contains only the same accepted audio paths and Qwen hypotheses; it is deleted after WhisperX runs and is never uploaded.",
             "An independent pinned VoxLingua107 audio-language gate must classify Persian as the top label in the explicit fa/ar inventory before Qwen inference.",
             "The FLEURS-calibrated confidence threshold is 0.0, so it applies no additional confidence floor; acceptance is based on the independent model top label being fa, not on a confidence guarantee.",
             "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
@@ -274,7 +275,8 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    model_loader: Callable[[Path], Any] | None = None,
                    language_identifier: Any | None = None,
                    language_identifier_loader: Callable[[Path], Any] | None = None,
-                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD) -> dict[str, Any]:
+                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
+                   intermediate_dir: Path | None = None) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("Common Voice archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
@@ -282,7 +284,15 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
 
-    temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
+    if intermediate_dir is not None:
+        intermediate_dir = intermediate_dir.resolve()
+        intermediate_dir.mkdir(parents=True, exist_ok=True)
+        if any(intermediate_dir.iterdir()):
+            raise ValueError("alignment intermediate directory must be empty")
+        temporary_context = nullcontext(str(intermediate_dir))
+    else:
+        temporary_context = tempfile.TemporaryDirectory(prefix="voxpipe-qwen-persian-")
+    alignment_rows: list[dict[str, str]] = []
     with temporary_context as temporary:
         temp_root = Path(temporary)
         references: list[str] = []
@@ -336,7 +346,17 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                     continue
                 references.append(reference)
                 hypotheses.append(hypothesis)
+                if intermediate_dir is not None:
+                    alignment_rows.append({"audio_path": str(audio_path.resolve()), "transcript": hypothesis})
         complete_sample = len(references) == len(selected)
+        if intermediate_dir is not None and complete_sample:
+            if len(alignment_rows) != len(selected):
+                raise RuntimeError("alignment input must contain the exact complete ASR sample")
+            manifest_path = intermediate_dir / "alignment_input.jsonl"
+            manifest_path.write_text(
+                "".join(json.dumps(row, ensure_ascii=False) + "\\n" for row in alignment_rows),
+                encoding="utf-8",
+            )
 
         metrics = corpus_error_rates(references, hypotheses) if complete_sample else None
         try:
@@ -471,10 +491,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
+    parser.add_argument("--intermediate-dir", type=Path)
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
         model_loader=_download_model, language_identifier_loader=_download_language_identifier,
+        intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if report["status"] == "passed" else 1
