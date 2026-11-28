@@ -172,8 +172,6 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
             rows.append((member, sentence))
             if len(rows) >= candidate_limit:
                 break
-    if not rows:
-        raise ValueError("sample archive has no matching audio/reference rows")
     return rows
 
 
@@ -202,6 +200,7 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         or not 0 <= candidate_rows_scanned <= candidate_scan_limit
         or not 0 <= duration_rejected_count <= candidate_rows_scanned
         or not 0 <= duration_probe_failures <= candidate_rows_scanned
+        or duration_rejected_count + duration_probe_failures > candidate_rows_scanned
     ):
         raise ValueError("candidate selection counts are invalid")
     if audio_seconds < 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
@@ -304,13 +303,13 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
             "Inference time and real-time factor include independent language identification plus Qwen decoding, but exclude model initialization and archive download.",
-            "Selection deterministically scans validated.tsv for the first 50 clips with at least one second of audio before the independent language gate; no clip is replaced after language or transcription failure.",
+            "Selection deterministically scans up to candidate_scan_limit matching validated.tsv rows for the first requested clips with at least one second of audio before the independent language gate; no clip is replaced after language or transcription failure.",
             "The temporary alignment manifest contains only the same accepted audio paths and Qwen hypotheses; it is deleted after WhisperX runs and is never uploaded.",
             "An independent pinned VoxLingua107 audio-language gate must classify Persian as the top label in the explicit fa/ar inventory before Qwen inference.",
             "The FLEURS-calibrated confidence threshold is 0.0, so it applies no additional confidence floor; acceptance is based on the independent model top label being fa, not on a confidence guarantee.",
             "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
             "Arabic and other/undetermined language-gate failures, plus empty transcription outputs, are counted separately.",
-            "If any requested clip fails language validation or produces an empty hypothesis, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
+            "If the duration filter cannot fill the requested sample, any selected clip fails language validation, or any hypothesis is empty, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
     }
