@@ -105,6 +105,13 @@ jobs:
         with:
           go-version: '1.26.11'
           cache: true
+      - name: Cache Go build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-voxpipe-go-build-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-voxpipe-go-build-
       - name: Lint the evaluation workflow
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
       - name: Validate Go API, formatting, vet, race safety, and PostgreSQL integration
