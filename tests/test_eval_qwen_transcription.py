@@ -452,17 +452,19 @@ class QwenPersianEvaluationTests(unittest.TestCase):
                 report["language_id_model_revision"],
                 "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
             )
-            self.assertEqual(report["language_id_confidence_threshold"], 0.0)
+            self.assertEqual(report["language_id_confidence_threshold"], 0.5)
             self.assertEqual(
                 report["language_id_threshold_policy"],
-                "no_confidence_floor_top_label_fa_with_zero_and_tie_abstention",
+                "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention",
             )
             held_out = report["language_id_held_out_control"]
             self.assertEqual(held_out["sample_count"], 400)
             self.assertEqual(held_out["persian_correct"], 100)
-            self.assertEqual(held_out["arabic_correct"], 100)
+            self.assertEqual(held_out["arabic_correct"], 99)
             self.assertEqual(held_out["persian_arabic_cross_confusions"], 0)
             self.assertEqual(held_out["selective_accuracy"], 1.0)
+            self.assertEqual(held_out["coverage"], 0.9225)
+            self.assertEqual(held_out["negative_control_abstentions"], 30)
             self.assertEqual(report["forced_language"], "Persian")
             self.assertEqual(report["max_new_tokens"], 256)
             self.assertFalse(report["do_sample"])
