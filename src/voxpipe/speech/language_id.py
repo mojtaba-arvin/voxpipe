@@ -212,7 +212,8 @@ def evaluate_language_id(references, predictions, *, bins: int=10) -> dict:
 
 
 def calibrate_abstention_threshold(references, predictions, *, min_selective_accuracy: float=0.90,
-                                   min_coverage: float=0.50) -> dict:
+                                   min_coverage: float=0.50,
+                                   minimum_threshold: float=0.0) -> dict:
     """Choose the lowest confidence threshold meeting validation-set accuracy and coverage floors.
 
     Run only on a calibration split disjoint from the final test split. Predictions must
@@ -222,7 +223,8 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
     """
     if len(references)!=len(predictions) or not references:
         raise ValueError("equal non-empty reference/prediction arrays required")
-    for value, name in ((min_selective_accuracy, "min_selective_accuracy"), (min_coverage, "min_coverage")):
+    for value, name in ((min_selective_accuracy, "min_selective_accuracy"),
+                        (min_coverage, "min_coverage"), (minimum_threshold, "minimum_threshold")):
         if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not 0 <= value <= 1:
             raise ValueError(f"{name} must be finite and between 0 and 1")
     for reference, prediction in zip(references, predictions):
@@ -238,8 +240,8 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
         if (not isinstance(prediction.confidence, (int, float)) or isinstance(prediction.confidence, bool)
                 or not math.isfinite(prediction.confidence) or not 0 <= prediction.confidence <= 1):
             raise ValueError("prediction confidence must be finite and between 0 and 1")
-    candidates=sorted({0.0, *(float(prediction.confidence) for prediction in predictions
-                                  if prediction.language != "und")})
+    candidates=sorted({float(minimum_threshold), *(float(prediction.confidence) for prediction in predictions
+                                  if prediction.language != "und" and prediction.confidence >= minimum_threshold)})
     feasible=[]
     for threshold in candidates:
         accepted=[(reference,prediction) for reference,prediction in zip(references,predictions)
@@ -251,7 +253,9 @@ def calibrate_abstention_threshold(references, predictions, *, min_selective_acc
             feasible.append((coverage, threshold, accuracy))
     if not feasible:
         return {"feasible":False,"threshold":None,"coverage":0.0,"selective_accuracy":None,
+                "minimum_threshold":float(minimum_threshold),
                 "min_coverage":float(min_coverage),"min_selective_accuracy":float(min_selective_accuracy)}
     coverage,threshold,accuracy=max(feasible,key=lambda item:(item[0],-item[1]))
     return {"feasible":True,"threshold":threshold,"coverage":coverage,"selective_accuracy":accuracy,
+            "minimum_threshold":float(minimum_threshold),
             "min_coverage":float(min_coverage),"min_selective_accuracy":float(min_selective_accuracy)}
