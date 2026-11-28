@@ -46,7 +46,12 @@ def qwen_report():
         "language_id_confidence_threshold": 0.0,
         "language_id_failures": {"arabic": 0, "other_or_undetermined": 0},
         "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
-        "requested_sample_count": 50, "rejected_sample_count": 0,
+        "requested_sample_count": 50, "selected_sample_count": 50,
+        "duration_shortfall_count": 0, "candidate_scan_limit": 1000,
+        "candidate_rows_scanned": 52, "duration_rejected_count": 2,
+        "duration_probe_failures": 0,
+        "selection_policy": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s",
+        "min_audio_duration_seconds": 1.0, "rejected_sample_count": 0,
         "transcription_failures": {"empty_output": 0},
         "language_id_supported_languages": ["ar", "fa"],
         "language_id_threshold_calibration": {
