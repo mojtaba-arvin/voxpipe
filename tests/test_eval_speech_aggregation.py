@@ -139,7 +139,7 @@ class SpeechAggregateTests(unittest.TestCase):
             archive_report=archive_report(),
             run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
         )
-        self.assertEqual(report["status"], "success")
+        self.assertEqual(report["status"], "success", report["warnings"])
         self.assertEqual(report["read_speech"]["metrics"]["wer"], 0.01)
         self.assertEqual(report["synthetic_overlap"]["metrics"]["overlap_count"], 50)
         self.assertFalse(report["natural_conversation_evidence"])
