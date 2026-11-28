@@ -32,7 +32,7 @@ MODEL_LICENSE = "Apache-2.0"
 LID_MODEL_ID = "speechbrain/lang-id-voxlingua107-ecapa"
 LID_MODEL_REVISION = "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
 LID_MODEL_LICENSE = "Apache-2.0"
-LID_CONFIDENCE_THRESHOLD = 0.0
+LID_CONFIDENCE_THRESHOLD = 0.5
 FORCED_LANGUAGE = "Persian"
 MAX_NEW_TOKENS = 256
 DO_SAMPLE = False
@@ -232,32 +232,33 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
             "dataset_id": "google/fleurs",
             "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
             "dataset_license": "CC-BY-4.0",
-            "validation_run_id": 46144284846,
+            "validation_run_id": 46145923356,
             "min_selective_accuracy": 0.99,
             "min_coverage": 0.50,
-            "selected_threshold": 0.0,
+            "minimum_confidence_floor": 0.50,
+            "selected_threshold": 0.50,
         },
-        "language_id_threshold_policy": "no_confidence_floor_top_label_fa_with_zero_and_tie_abstention",
+        "language_id_threshold_policy": "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention",
         "language_id_held_out_control": {
             "dataset_id": "google/fleurs",
             "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
             "dataset_license": "CC-BY-4.0",
-            "test_run_id": 46144284846,
-            "test_head_sha": "5f9855c0b01a57e8a6b4405afdc0a630a2ac77be",
+            "test_run_id": 46145923356,
+            "test_head_sha": "7d102ed672a40e90ea29738d45a78cb220335f74",
             "sample_count": 400,
-            "accuracy": 0.94,
-            "macro_f1": 0.7727272727272727,
-            "coverage": 0.94,
+            "accuracy": 0.9225,
+            "macro_f1": 0.763700857227313,
+            "coverage": 0.9225,
             "selective_accuracy": 1.0,
-            "abstention_rate": 0.06,
+            "abstention_rate": 0.0775,
             "persian_samples": 100,
             "persian_correct": 100,
             "arabic_samples": 100,
-            "arabic_correct": 100,
+            "arabic_correct": 99,
             "persian_arabic_cross_confusions": 0,
             "negative_control_languages": ["en", "de"],
             "negative_control_false_accepts": 0,
-            "negative_control_abstentions": 24,
+            "negative_control_abstentions": 30,
         },
         "language_id_failures": language_id_failures,
         "transcription_failures": transcription_failures,
