@@ -15,7 +15,7 @@
 
 Use the official `datacollective==0.8.1` SDK and publisher `download_dataset()` API. The repository secret `MDC_API_KEY` is required, and the dataset terms/access must be authorized for the key's organization. Do not use third-party mirrors or external inference.
 
-The complete archive is downloaded to job-local temporary storage, validated for publisher identity/license, byte size, SHA-256, tar member/path safety, uncompressed-size limits, and audio/TSV presence. The evaluator reads only the first 50 matching rows from `validated.tsv`, extracts only those clips to a temporary directory, and removes the archive and temporary files after the job. The archive is never committed or uploaded.
+The complete archive is downloaded to job-local temporary storage, validated for publisher identity/license, byte size, SHA-256, tar member/path safety, uncompressed-size limits, and audio/TSV presence. The evaluator reads only the first 50 matching rows from `validated.tsv` and extracts those clips to a temporary directory. Only after all 50 clips pass independent language validation and produce non-empty Qwen hypotheses, it writes a temporary manifest of those exact audio paths and hypotheses and passes them to WhisperX forced alignment in an isolated CPU environment. The manifest, audio, references, hypotheses and per-word alignment intermediates are removed after the job. The archive and any per-clip data are never committed or uploaded.
 
 ## Persian/Arabic language validation
 
@@ -31,6 +31,6 @@ Qwen model: `Qwen/Qwen3-ASR-0.6B-hf`, revision `40946090cac63fc01d723a83174e1651
 
 ## Privacy and interpretation
 
-Raw audio, references, hypotheses, client IDs, speaker IDs and per-clip language predictions remain temporary and are never uploaded, committed or logged. The workflow does not generate or publish per-clip alignment or speaker-segment artifacts. Only aggregate WER/CER, aggregate language-gate/transcription failure counts, model/runtime configuration and dataset provenance may be published. Reported inference time/RTF includes both language identification and Qwen decoding, but excludes model initialization and archive download.
+Raw audio, references, hypotheses, client IDs, speaker IDs, per-clip language predictions, the alignment manifest and per-word alignment intermediates remain temporary and are never uploaded, committed or logged. Only aggregate WER/CER, aggregate language-gate/transcription failure counts, alignment coverage/counts, pinned model/runtime configuration and dataset provenance may be published. Read-speech diarization remains `not_evaluated_read_speech` with `speaker_segments: []`. Reported inference time/RTF includes both language identification and Qwen decoding, but excludes model initialization and archive download.
 
 Common Voice is scripted read-speech, not natural conversation or human-gold annotation. CC0 licensing does not establish individual consent for natural-conversation use. These results cannot establish conversational ASR, diarization, speaker identity, production accuracy or medical readiness.
