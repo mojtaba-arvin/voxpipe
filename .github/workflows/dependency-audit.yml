@@ -35,11 +35,13 @@ jobs:
       - name: Audit Python requirement sets
         run: |
           set -euo pipefail
-          for requirements in requirements-dev.txt requirements-benchmark.txt requirements-vad.txt requirements-lid.txt requirements-eval-lid.txt requirements-eval-mdc.txt requirements-eval-asr-audit.txt; do
+          for requirements in requirements-dev.txt requirements-benchmark.txt requirements-vad.txt requirements-lid.txt requirements-eval-lid.txt requirements-eval-mdc.txt; do
             if [[ -f "$requirements" ]]; then
               pip-audit --strict -r "$requirements"
             fi
           done
+          # The pinned CPU wheels are hosted on the official PyTorch index, not PyPI.
+          pip-audit --strict --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -r requirements-eval-asr-audit.txt
 
   go:
     name: Go vulnerability audit
