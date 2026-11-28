@@ -178,22 +178,26 @@ jobs:
         run: |
           set -euo pipefail
           build_cached() {
-            local dockerfile="$1" image="$2" cache_dir="$3" extra_args="$4"
+            local dockerfile="$1" image="$2" cache_dir="$3"
             local next_dir="${cache_dir}-next"
             local cache_args=()
+            local build_args=()
             rm -rf "$next_dir"
             if [[ -f "$cache_dir/index.json" ]]; then
               cache_args+=(--cache-from "type=local,src=$cache_dir")
             fi
+            if [[ "$dockerfile" == "Dockerfile.worker" ]]; then
+              build_args+=(--build-arg VOXPIPE_INSTALL_S3=1)
+            fi
             docker buildx build --load \
               "${cache_args[@]}" \
               --cache-to "type=local,dest=$next_dir,mode=max" \
-              $extra_args -f "$dockerfile" -t "$image" .
+              "${build_args[@]}" -f "$dockerfile" -t "$image" .
             rm -rf "$cache_dir"
             mv "$next_dir" "$cache_dir"
           }
-          build_cached Dockerfile.worker voxpipe-worker-s3-e2e:ci /tmp/voxpipe-buildx-worker "--build-arg VOXPIPE_INSTALL_S3=1"
-          build_cached Dockerfile.api voxpipe-api-s3-e2e:ci /tmp/voxpipe-buildx-api ""
+          build_cached Dockerfile.worker voxpipe-worker-s3-e2e:ci /tmp/voxpipe-buildx-worker
+          build_cached Dockerfile.api voxpipe-api-s3-e2e:ci /tmp/voxpipe-buildx-api
       - name: Stop adapter-level Silo before isolated deployment E2E
         run: docker rm -f voxpipe-silo || true
       - name: Prepare ephemeral S3 deployment credentials
