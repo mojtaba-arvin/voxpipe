@@ -129,7 +129,7 @@ class PersianAlignmentTests(unittest.TestCase):
             audio.write_bytes(b"temporary-audio")
             manifest = root / "input.jsonl"
             manifest.write_text(
-                json.dumps({"audio_path": str(audio), "transcript": "سلام دنیا"}) + "\n",
+                json.dumps({"audio_path": str(audio), "transcript": "سلام دنیا دوست"}) + "\n",
                 encoding="utf-8",
             )
 
