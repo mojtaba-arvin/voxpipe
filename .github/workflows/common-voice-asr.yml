@@ -5,7 +5,6 @@ on:
     branches:
       - feat/common-voice-full-archive-evaluation
       - feat/qwen-persian-language-detection
-      - feat/qwen-persian-language-detection
   workflow_call:
     secrets:
       MDC_API_KEY:
@@ -17,7 +16,7 @@ permissions:
 
 concurrency:
   group: common-voice-asr-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   persian-asr:
