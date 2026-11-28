@@ -354,7 +354,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                 raise RuntimeError("alignment input must contain the exact complete ASR sample")
             manifest_path = intermediate_dir / "alignment_input.jsonl"
             manifest_path.write_text(
-                "".join(json.dumps(row, ensure_ascii=False) + "\\n" for row in alignment_rows),
+                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in alignment_rows),
                 encoding="utf-8",
             )
 
