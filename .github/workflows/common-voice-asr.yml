@@ -112,6 +112,11 @@ jobs:
             --max-clips 50 \
             --candidate-scan-limit 100 \
             --intermediate-dir "$RUNNER_TEMP/voxpipe-qwen-alignment-input"
+      - name: Remove the full archive before WhisperX model load
+        if: always()
+        run: |
+          archive="${{ steps.archive.outputs.archive }}"
+          if [ -n "$archive" ]; then rm -f "$archive"; fi
       - name: Run Persian WhisperX forced alignment on the exact Qwen hypotheses
         run: |
           "$RUNNER_TEMP/voxpipe-align-venv/bin/python" -m eval.issue47.persian_alignment \
