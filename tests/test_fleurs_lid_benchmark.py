@@ -114,5 +114,13 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
         self.assertIn("benchmark-results/fleurs-lid/summary.json", workflow)
         self.assertNotIn("path: benchmark-results/fleurs-lid/", workflow)
 
+    def test_benchmark_uses_pinned_cpu_runtime(self):
+        workflow = (SCRIPT.parents[1] / ".github" / "workflows" / "fleurs-lid-calibration.yml").read_text(encoding="utf-8")
+        requirements = (SCRIPT.parents[1] / "requirements-lid-benchmark.txt").read_text(encoding="utf-8")
+        self.assertIn("torch==2.13.0+cpu", workflow)
+        self.assertIn("torchaudio==2.11.0+cpu", workflow)
+        self.assertNotIn("torch==", requirements)
+        self.assertNotIn("torchaudio==", requirements)
+
 if __name__ == "__main__":
     unittest.main()

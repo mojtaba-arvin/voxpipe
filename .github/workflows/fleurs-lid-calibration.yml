@@ -47,9 +47,10 @@ jobs:
           key: speechbrain-voxlingua107-0253049-${{ runner.os }}
       - name: Install local benchmark dependencies
         run: |
-          python -m pip install --disable-pip-version-check -r requirements-speech.txt
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch==2.13.0+cpu torchaudio==2.11.0+cpu setuptools==84.2.1
           python -m pip install --disable-pip-version-check -r requirements-lid-benchmark.txt
           python -m pip check
+          python -c "import torch, torchaudio; assert torch.__version__ == '2.13.0+cpu'; assert torchaudio.__version__ == '2.11.0+cpu'; print(torch.__version__, torchaudio.__version__)"
           mkdir -p benchmark-results/fleurs-lid
           python -m pip freeze > benchmark-results/fleurs-lid/pip-freeze.txt
       - name: Run strict 99% inventory-aware validation calibration and disjoint test evaluation
