@@ -210,6 +210,27 @@ class QwenPersianEvaluationTests(unittest.TestCase):
             )
             Draft202012Validator(schema).validate(report)
 
+    def test_low_confidence_persian_top_label_is_rejected_before_qwen_decode(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive_path = self._archive(root)
+            prediction = SimpleNamespace(
+                language="und", confidence=0.49, raw_language="fa",
+                abstention_reason="low_confidence",
+            )
+            with patch("eval.issue47.qwen_transcription._identify_audio_language", return_value=prediction), \
+                 patch("eval.issue47.qwen_transcription._transcribe_audio") as transcribe:
+                report = run_evaluation(
+                    archive_path, root / "low-confidence.json", root / "cache", max_clips=1,
+                    model=SimpleNamespace(dtype="float32"), processor=object(),
+                    language_identifier=object(), language_id_confidence_threshold=0.5,
+                )
+            transcribe.assert_not_called()
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["language_id_failures"]["other_or_undetermined"], 1)
+            self.assertIsNone(report["wer"])
+            self.assertIsNone(report["cer"])
+
     def test_out_of_inventory_and_undetermined_audio_are_rejected(self) -> None:
         cases = (
             SimpleNamespace(language="und", confidence=0.91, raw_language="en", abstention_reason="out_of_inventory"),
