@@ -117,7 +117,8 @@ def run(max_samples:int,output_dir:Path,threshold:float|None=None,*,calibration_
         "".join(json.dumps(row,ensure_ascii=False)+"\n" for row in rows),encoding="utf-8")
     weight_hashes={p.name:hash_file(p) for p in sorted(model_dir.iterdir())
         if p.is_file() and p.suffix in (".ckpt",".txt",".yaml")}
-    summary={"dataset":{"id":"google/fleurs","revision":REVISION,"split":"test",
+    summary={"language_controls":{"persian":"fa","arabic":"ar","negative_controls":["en","de"]},
+        "dataset":{"id":"google/fleurs","revision":REVISION,"split":"test",
         "license":"CC BY 4.0",
         "attribution":"FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech; Google FLEURS dataset, CC BY 4.0.",
         "configs":{k:{"language":v["language"],"test_parquet_sha256":v["sha256"]} for k,v in CONFIGS.items()},
