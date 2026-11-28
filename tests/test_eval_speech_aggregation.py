@@ -141,6 +141,10 @@ class SpeechAggregateTests(unittest.TestCase):
         )
         self.assertEqual(report["status"], "success", report["warnings"])
         self.assertEqual(report["read_speech"]["metrics"]["wer"], 0.01)
+        self.assertEqual(report["read_speech"]["metrics"]["alignment_coverage"], 1.0)
+        self.assertEqual(report["read_speech"]["metrics"]["unaligned_word_count"], 0)
+        self.assertEqual(report["read_speech"]["metrics"]["timestamp_validation_failure_count"], 0)
+        self.assertEqual(report["read_speech"]["metrics"]["missing_word_timestamp_count"], 0)
         self.assertEqual(report["synthetic_overlap"]["metrics"]["overlap_count"], 50)
         self.assertFalse(report["natural_conversation_evidence"])
 
