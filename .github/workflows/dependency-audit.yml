@@ -55,6 +55,13 @@ jobs:
         with:
           go-version: '1.26.11'
           cache: true
+      - name: Cache Go build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-voxpipe-audit-go-build-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-voxpipe-audit-go-build-
       - name: Install pinned govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Audit Go packages
