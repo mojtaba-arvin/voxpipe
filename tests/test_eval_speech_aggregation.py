@@ -14,15 +14,15 @@ def archive_report():
         "dataset_version": "cv-corpus-27.0-2026-09-11",
         "release_date": "2026-09-17", "locale": "fa", "task": "ASR",
         "license": "CC0-1.0", "source_kind": "scripted_read_speech",
-        "source_url": "https://datacollective.mozillafoundation.org/datasets/cmu5xazgy00finq074vaqo1b3",
-        "recorded_hours": 20.0, "validated_hours": 10.0, "clip_count": 1000,
-        "speaker_count": 500, "dataset_archive_size_bytes": None,
-        "dataset_archive_checksum": "a" * 64,
-        "downloaded_at": "2026-11-26T14:00:00Z", "sdk_version": "0.2.0",
-        "archive_name": "common-voice-fa-27.0.tar.gz",
-        "archive_size_bytes": 11236660956, "archive_sha256": "b" * 64,
+        "source_url": "https://mozilladatacollective.com/datasets/cmu5xazgy00finq074vaqo1b3",
+        "recorded_hours": 431.44, "validated_hours": 373.15, "clip_count": 395173,
+        "speaker_count": 4668, "dataset_archive_size_bytes": 11236660956,
+        "dataset_archive_checksum": "f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d",
+        "downloaded_at": "2026-11-26T14:00:00Z", "sdk_version": "0.8.1",
+        "archive_name": "common-voice-scripted-speech-27-0-persia-9d86e98b.tar.gz",
+        "archive_size_bytes": 11236660956, "archive_sha256": "f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d",
         "audio_file_count": 395173,
-        "metadata_file_count": 3, "download_seconds": 360.0,
+        "metadata_file_count": 10, "download_seconds": 360.0,
         "warnings": ["full archive downloaded; 50 clips selected for evaluation"],
     }
 
@@ -37,9 +37,58 @@ def qwen_report():
         "sample_count": 50, "audio_duration_seconds": 10.0, "inference_seconds": 20.0,
         "real_time_factor": 2.0, "word_errors": 1, "character_errors": 2,
         "reference_words": 100, "reference_characters": 500, "wer": 0.01, "cer": 0.004,
-        "peak_rss_bytes": 1000000, "torch_version": "2.15.0+cpu", "transformers_version": "5.20.1",
+        "peak_rss_bytes": 1000000, "torch_version": "2.13.0+cpu", "transformers_version": "5.20.1",
         "python_version": "3.13", "transcript_text_uploaded": False, "audio_uploaded": False,
-        "speaker_ids_used": False, "warnings": ["read speech only"]
+        "speaker_ids_used": False, "warnings": ["read speech only"],
+        "language_id_model_id": "speechbrain/lang-id-voxlingua107-ecapa",
+        "language_id_model_revision": "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9",
+        "language_id_model_license": "Apache-2.0",
+        "language_id_confidence_threshold": 0.5,
+        "language_id_failures": {"arabic": 0, "other_or_undetermined": 0},
+        "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
+        "requested_sample_count": 50, "selected_sample_count": 50,
+        "duration_shortfall_count": 0, "candidate_scan_limit": 100,
+        "candidate_rows_scanned": 52, "duration_rejected_count": 2,
+        "duration_probe_failures": 0,
+        "selection_policy": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s",
+        "min_audio_duration_seconds": 1.0, "rejected_sample_count": 0,
+        "transcription_failures": {"empty_output": 0},
+        "language_id_supported_languages": ["ar", "fa"],
+        "language_id_threshold_calibration": {
+            "dataset_id": "google/fleurs",
+            "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "validation_run_id": 46145923356,
+            "min_selective_accuracy": 0.99,
+            "min_coverage": 0.5,
+            "minimum_confidence_floor": 0.5, "selected_threshold": 0.5,
+            "dataset_license": "CC-BY-4.0",
+        },
+        "language_id_threshold_policy": "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention",
+        "language_id_held_out_control": {
+            "dataset_id": "google/fleurs",
+            "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "dataset_license": "CC-BY-4.0",
+            "test_run_id": 46145923356,
+            "test_head_sha": "7d102ed672a40e90ea29738d45a78cb220335f74",
+            "sample_count": 400,
+            "accuracy": 0.9225,
+            "macro_f1": 0.763700857227313,
+            "coverage": 0.9225,
+            "selective_accuracy": 1.0,
+            "abstention_rate": 0.0775,
+            "persian_samples": 100,
+            "persian_correct": 100,
+            "arabic_samples": 100,
+            "arabic_correct": 99,
+            "persian_arabic_cross_confusions": 0,
+            "negative_control_languages": ["en", "de"],
+            "negative_control_false_accepts": 0,
+            "negative_control_abstentions": 30,
+        },
+        "forced_language": "Persian", "max_new_tokens": 256, "do_sample": False,
+        "batch_size": 1, "language_id_sample_rate": 16000,
+        "speechbrain_version": "1.1.2", "torchaudio_version": "2.11.0+cpu",
+        "huggingface_hub_version": "1.31.0"
     }
 
 
@@ -51,7 +100,9 @@ def alignment_report():
         "model_license": "Apache-2.0", "whisperx_version": "3.8.6",
         "device": "cpu", "model_dtype": "float32", "sample_rate": 16000, "batch_size": 1,
         "clip_count": 50, "aligned_clip_count": 50, "failed_clip_count": 0,
-        "word_count": 100, "aligned_word_count": 95, "alignment_coverage": 0.95,
+        "word_count": 100, "aligned_word_count": 100, "unaligned_word_count": 0,
+        "timestamp_validation_failure_count": 0, "missing_word_timestamp_count": 0,
+        "alignment_coverage": 1.0,
         "alignment_intermediate_uploaded": False, "audio_uploaded": False,
         "transcript_text_uploaded": False, "speaker_ids_used": False,
         "diarization_status": "not_evaluated_read_speech", "speaker_segment_count": 0,
@@ -88,8 +139,12 @@ class SpeechAggregateTests(unittest.TestCase):
             archive_report=archive_report(),
             run_url="https://github.com/mojtaba-arvin/voxpipe/actions/runs/123",
         )
-        self.assertEqual(report["status"], "success")
+        self.assertEqual(report["status"], "success", report["warnings"])
         self.assertEqual(report["read_speech"]["metrics"]["wer"], 0.01)
+        self.assertEqual(report["read_speech"]["metrics"]["alignment_coverage"], 1.0)
+        self.assertEqual(report["read_speech"]["metrics"]["unaligned_word_count"], 0)
+        self.assertEqual(report["read_speech"]["metrics"]["timestamp_validation_failure_count"], 0)
+        self.assertEqual(report["read_speech"]["metrics"]["missing_word_timestamp_count"], 0)
         self.assertEqual(report["synthetic_overlap"]["metrics"]["overlap_count"], 50)
         self.assertFalse(report["natural_conversation_evidence"])
 

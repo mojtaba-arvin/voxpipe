@@ -1,0 +1,2 @@
+# Independent CPU-only Persian/Arabic audio-language gate for the Common Voice ASR experiment.
+speechbrain==1.1.2

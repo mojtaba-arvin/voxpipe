@@ -20,6 +20,9 @@
     "failed_clip_count",
     "word_count",
     "aligned_word_count",
+    "unaligned_word_count",
+    "timestamp_validation_failure_count",
+    "missing_word_timestamp_count",
     "alignment_coverage",
     "alignment_intermediate_uploaded",
     "audio_uploaded",
@@ -86,6 +89,18 @@
       "minimum": 1
     },
     "aligned_word_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unaligned_word_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp_validation_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "missing_word_timestamp_count": {
       "type": "integer",
       "minimum": 0
     },

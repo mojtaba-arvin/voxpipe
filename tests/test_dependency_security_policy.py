@@ -24,6 +24,17 @@ class DependencySecurityPolicyTests(unittest.TestCase):
             if path in ("requirements-benchmark.txt", "requirements-lid.txt"):
                 self.assertRegex(requirements, r"(?m)^huggingface_hub>=2\.4\.0,<3$")
 
+    def test_persian_asr_runtime_pins_vulnerability_fixed_cpu_stack(self):
+        workflow = (ROOT / ".github/workflows/common-voice-asr.yml").read_text(encoding="utf-8")
+        audit = (ROOT / "requirements-eval-asr-audit.txt").read_text(encoding="utf-8")
+        runtime = (ROOT / "requirements-eval-asr.txt").read_text(encoding="utf-8")
+        self.assertIn("torch==2.13.0+cpu setuptools==84.2.1", workflow)
+        self.assertIn("torchaudio==2.11.0+cpu", workflow)
+        self.assertIn("torch==2.13.0", audit)
+        self.assertIn("torchaudio==2.11.0", audit)
+        self.assertIn("setuptools==84.2.1", audit)
+        self.assertIn("setuptools==84.2.1", runtime)
+
     def test_all_go_ci_jobs_use_the_patched_toolchain(self):
         for path in (
             ".github/workflows/validate.yml",

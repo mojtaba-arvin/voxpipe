@@ -39,6 +39,10 @@ on:
       MDC_API_KEY:
         required: false
 
+  push:
+    branches:
+      - feat/qwen-persian-language-detection
+
   workflow_dispatch:
     inputs:
       run_eval_32:
@@ -308,14 +312,14 @@ jobs:
 
   common-voice-asr:
     name: Group C — Persian Common Voice ASR (read-speech)
-    if: ${{ inputs.run_common_voice_asr }}
+    if: ${{ inputs.run_common_voice_asr || (github.event_name == 'push' && github.ref == 'refs/heads/feat/qwen-persian-language-detection') }}
     uses: ./.github/workflows/common-voice-asr.yml
     secrets:
       MDC_API_KEY: ${{ secrets.MDC_API_KEY }}
 
   tts-overlap:
     name: Synthetic Persian TTS overlap fixtures
-    if: ${{ inputs.run_tts_overlap || (github.event_name == 'pull_request' && github.workflow == 'Evaluation baseline') }}
+    if: ${{ inputs.run_tts_overlap || (github.event_name == 'pull_request' && github.workflow == 'Evaluation baseline') || (github.event_name == 'push' && github.ref == 'refs/heads/feat/qwen-persian-language-detection') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

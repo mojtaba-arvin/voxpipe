@@ -1,15 +1,15 @@
-"""Bounded Qwen3-ASR Persian evaluation over a publisher-provided sample archive.
+"""Bounded Qwen3-ASR Persian evaluation over a publisher-provided full archive.
 
-Audio and reference sentences are temporary. Only aggregate metrics and pinned
-model/dataset provenance are written to the report.
+Audio, reference sentences and hypotheses are temporary. Only aggregate metrics,
+failure counts and pinned model/dataset provenance are written to the report.
 """
 from __future__ import annotations
 
 import argparse
-from contextlib import nullcontext
 import csv
 import io
 import json
+import math
 import platform
 import resource
 import shutil
@@ -17,6 +17,7 @@ import tarfile
 import tempfile
 import time
 import unicodedata
+from contextlib import nullcontext
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
@@ -28,6 +29,15 @@ DATASET_VERSION = "cv-corpus-27.0-2026-09-11"
 MODEL_ID = "Qwen/Qwen3-ASR-0.6B-hf"
 MODEL_REVISION = "40946090cac63fc01d723a83174e16515073d7c0"
 MODEL_LICENSE = "Apache-2.0"
+LID_MODEL_ID = "speechbrain/lang-id-voxlingua107-ecapa"
+LID_MODEL_REVISION = "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+LID_MODEL_LICENSE = "Apache-2.0"
+LID_CONFIDENCE_THRESHOLD = 0.5
+FORCED_LANGUAGE = "Persian"
+MAX_NEW_TOKENS = 256
+DO_SAMPLE = False
+BATCH_SIZE = 1
+LID_SAMPLE_RATE = 16000
 DEFAULT_OUTPUT = ROOT / "eval" / "artifacts" / "issue47" / "qwen3_asr_persian.json"
 OUTPUT_SCHEMA = ROOT / "eval" / "issue47" / "qwen3_asr_persian.schema.json"
 MAX_ARCHIVE_BYTES = 12 * 1024 * 1024 * 1024
@@ -35,6 +45,8 @@ MAX_UNCOMPRESSED_BYTES = 128 * 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 500_000
 MAX_AUDIO_FILE_BYTES = 32 * 1024 * 1024
 MAX_CLIPS = 50
+MIN_AUDIO_DURATION_SECONDS = 1.0
+CANDIDATE_SCAN_LIMIT = 100
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".flac", ".m4a"}
 _TRANSLATION = str.maketrans({
     "ي": "ی", "ى": "ی", "ك": "ک", "ۀ": "ه",
@@ -131,7 +143,10 @@ def _read_archive_records(archive: tarfile.TarFile) -> tuple[dict[str, tarfile.T
 
 
 def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarInfo,
-                         audio_by_basename: dict[str, tarfile.TarInfo], max_clips: int) -> list[tuple[tarfile.TarInfo, str]]:
+                         audio_by_basename: dict[str, tarfile.TarInfo],
+                         candidate_limit: int = CANDIDATE_SCAN_LIMIT) -> list[tuple[tarfile.TarInfo, str]]:
+    if not 1 <= candidate_limit <= 100:
+        raise ValueError("candidate scan limit must be between 1 and 100")
     stream = archive.extractfile(metadata_member)
     if stream is None:
         raise ValueError("unable to read Common Voice metadata member")
@@ -156,21 +171,49 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
             if member is None or not sentence:
                 continue
             rows.append((member, sentence))
-            if len(rows) >= max_clips:
+            if len(rows) >= candidate_limit:
                 break
-    if not rows:
-        raise ValueError("sample archive has no matching audio/reference rows")
     return rows
 
 
-def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: float,
-                 inference_seconds: float, peak_rss_bytes: int, torch_version: str,
-                 transformers_version: str, compute_type: str = "float32") -> dict[str, Any]:
-    if sample_count < 1 or min(audio_seconds, inference_seconds, peak_rss_bytes) <= 0:
-        raise ValueError("sample count, audio/inference duration and peak RSS must be positive")
+
+def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested_sample_count: int,
+                 selected_sample_count: int, duration_shortfall_count: int,
+                 candidate_scan_limit: int, candidate_rows_scanned: int,
+                 duration_rejected_count: int, duration_probe_failures: int,
+                 audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
+                 torch_version: str, transformers_version: str,
+                 speechbrain_version: str, torchaudio_version: str, huggingface_hub_version: str,
+                 language_id_failures: dict[str, int],
+                 transcription_failures: dict[str, int],
+                 language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
+                 compute_type: str = "float32") -> dict[str, Any]:
+    if not 0 <= sample_count <= MAX_CLIPS or not 1 <= requested_sample_count <= MAX_CLIPS:
+        raise ValueError("sample counts must remain within the 50-clip experiment bound")
+    if not 0 <= selected_sample_count <= requested_sample_count:
+        raise ValueError("selected sample count must remain within the requested sample bound")
+    if selected_sample_count + duration_shortfall_count != requested_sample_count:
+        raise ValueError("selected clips and duration shortfall must account for the requested sample")
+    if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != selected_sample_count:
+        raise ValueError("accepted and failed language/transcription counts must account for selected clips")
+    if (
+        not 1 <= candidate_scan_limit <= 100
+        or not 0 <= candidate_rows_scanned <= candidate_scan_limit
+        or not 0 <= duration_rejected_count <= candidate_rows_scanned
+        or not 0 <= duration_probe_failures <= candidate_rows_scanned
+        or duration_rejected_count + duration_probe_failures > candidate_rows_scanned
+    ):
+        raise ValueError("candidate selection counts are invalid")
+    if audio_seconds < 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
+        raise ValueError("audio duration, inference duration and peak RSS must be valid")
+    if not 0.0 <= language_id_confidence_threshold <= 1.0:
+        raise ValueError("language-ID confidence threshold must be between 0 and 1")
+    status = "passed" if sample_count == requested_sample_count and selected_sample_count == requested_sample_count and duration_shortfall_count == 0 else "failed"
+    if status == "passed" and metrics is None:
+        raise ValueError("a complete Persian sample requires aggregate metrics")
     result = {
         "schema_version": 1,
-        "status": "passed",
+        "status": status,
         "dataset_id": DATASET_ID,
         "dataset_version": DATASET_VERSION,
         "source_kind": "scripted_read_speech",
@@ -180,21 +223,79 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
         "model_id": MODEL_ID,
         "model_revision": MODEL_REVISION,
         "model_license": MODEL_LICENSE,
+        "language_id_model_id": LID_MODEL_ID,
+        "language_id_model_revision": LID_MODEL_REVISION,
+        "language_id_model_license": LID_MODEL_LICENSE,
+        "language_id_confidence_threshold": language_id_confidence_threshold,
+        "language_id_supported_languages": ["ar", "fa"],
+        "language_id_threshold_calibration": {
+            "dataset_id": "google/fleurs",
+            "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "dataset_license": "CC-BY-4.0",
+            "validation_run_id": 46145923356,
+            "min_selective_accuracy": 0.99,
+            "min_coverage": 0.50,
+            "minimum_confidence_floor": 0.50,
+            "selected_threshold": 0.50,
+        },
+        "language_id_threshold_policy": "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention",
+        "language_id_held_out_control": {
+            "dataset_id": "google/fleurs",
+            "dataset_revision": "6989e5bd2dc37546a93ae5d857bc04325e6a3738",
+            "dataset_license": "CC-BY-4.0",
+            "test_run_id": 46145923356,
+            "test_head_sha": "7d102ed672a40e90ea29738d45a78cb220335f74",
+            "sample_count": 400,
+            "accuracy": 0.9225,
+            "macro_f1": 0.763700857227313,
+            "coverage": 0.9225,
+            "selective_accuracy": 1.0,
+            "abstention_rate": 0.0775,
+            "persian_samples": 100,
+            "persian_correct": 100,
+            "arabic_samples": 100,
+            "arabic_correct": 99,
+            "persian_arabic_cross_confusions": 0,
+            "negative_control_languages": ["en", "de"],
+            "negative_control_false_accepts": 0,
+            "negative_control_abstentions": 30,
+        },
+        "language_id_failures": language_id_failures,
+        "transcription_failures": transcription_failures,
+        "language_strategy": "independent_voxlingua107_gate_then_forced_persian",
+        "forced_language": FORCED_LANGUAGE,
+        "max_new_tokens": MAX_NEW_TOKENS,
+        "do_sample": DO_SAMPLE,
+        "batch_size": BATCH_SIZE,
+        "language_id_sample_rate": LID_SAMPLE_RATE,
         "device": "cpu",
         "compute_type": compute_type,
         "sample_count": sample_count,
+        "requested_sample_count": requested_sample_count,
+        "selected_sample_count": selected_sample_count,
+        "duration_shortfall_count": duration_shortfall_count,
+        "candidate_scan_limit": candidate_scan_limit,
+        "candidate_rows_scanned": candidate_rows_scanned,
+        "duration_rejected_count": duration_rejected_count,
+        "duration_probe_failures": duration_probe_failures,
+        "selection_policy": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s",
+        "min_audio_duration_seconds": MIN_AUDIO_DURATION_SECONDS,
+        "rejected_sample_count": requested_sample_count - sample_count,
         "audio_duration_seconds": round(audio_seconds, 4),
         "inference_seconds": round(inference_seconds, 6),
-        "real_time_factor": round(inference_seconds / audio_seconds, 6),
-        "word_errors": metrics["word_errors"],
-        "character_errors": metrics["character_errors"],
-        "reference_words": metrics["reference_words"],
-        "reference_characters": metrics["reference_characters"],
-        "wer": metrics["wer"],
-        "cer": metrics["cer"],
+        "real_time_factor": round(inference_seconds / audio_seconds, 6) if audio_seconds > 0 else None,
+        "word_errors": metrics["word_errors"] if metrics is not None else None,
+        "character_errors": metrics["character_errors"] if metrics is not None else None,
+        "reference_words": metrics["reference_words"] if metrics is not None else None,
+        "reference_characters": metrics["reference_characters"] if metrics is not None else None,
+        "wer": metrics["wer"] if metrics is not None else None,
+        "cer": metrics["cer"] if metrics is not None else None,
         "peak_rss_bytes": peak_rss_bytes,
         "torch_version": torch_version,
         "transformers_version": transformers_version,
+        "speechbrain_version": speechbrain_version,
+        "torchaudio_version": torchaudio_version,
+        "huggingface_hub_version": huggingface_hub_version,
         "python_version": platform.python_version(),
         "transcript_text_uploaded": False,
         "audio_uploaded": False,
@@ -203,6 +304,14 @@ def build_report(*, metrics: dict[str, Any], sample_count: int, audio_seconds: f
             "Common Voice is scripted read-speech, not natural conversation.",
             "WER/CER describe only this bounded 50-clip evaluation from the full publisher archive and are not human-gold or production-quality evidence.",
             "Audio, reference sentences and model hypotheses are temporary; only aggregate metrics and pinned provenance are reported.",
+            "Inference time and real-time factor include independent language identification plus Qwen decoding, but exclude model initialization and archive download.",
+            "Selection deterministically scans up to candidate_scan_limit matching validated.tsv rows for the first requested clips with at least one second of audio before the independent language gate; no clip is replaced after language or transcription failure.",
+            "The temporary alignment manifest contains only the same accepted audio paths and Qwen hypotheses; it is deleted after WhisperX runs and is never uploaded.",
+            "An independent pinned VoxLingua107 audio-language gate must classify Persian as the top label in the explicit fa/ar inventory before Qwen inference.",
+            "The FLEURS-calibrated confidence threshold is 0.0, so it applies no additional confidence floor; acceptance is based on the independent model top label being fa, not on a confidence guarantee.",
+            "Qwen is conditioned with language=Persian only after the independent language gate; language forcing is not treated as evidence that the audio itself is Persian.",
+            "Arabic and other/undetermined language-gate failures, plus empty transcription outputs, are counted separately.",
+            "If the duration filter cannot fill the requested sample, any selected clip fails language validation, or any hypothesis is empty, the experiment is failed and WER/CER are null rather than computed on a reduced or mixed-language sample.",
             "Qwen3-ForcedAligner does not list Persian; this ASR report contains no timestamps or alignment claims.",
         ],
     }
@@ -216,13 +325,19 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
                    max_clips: int = MAX_CLIPS, model: Any | None = None,
                    processor: Any | None = None,
                    model_loader: Callable[[Path], Any] | None = None,
-                   intermediate_dir: Path | None = None) -> dict[str, Any]:
+                   language_identifier: Any | None = None,
+                   language_identifier_loader: Callable[[Path], Any] | None = None,
+                   language_id_confidence_threshold: float = LID_CONFIDENCE_THRESHOLD,
+                   intermediate_dir: Path | None = None,
+                   candidate_scan_limit: int = CANDIDATE_SCAN_LIMIT) -> dict[str, Any]:
     if not archive_path.is_file() or archive_path.stat().st_size <= 0:
         raise ValueError("Common Voice archive must be an existing non-empty file")
     if archive_path.stat().st_size > MAX_ARCHIVE_BYTES:
         raise ValueError("Common Voice archive exceeds the 12 GiB safety limit")
     if not 1 <= max_clips <= MAX_CLIPS:
         raise ValueError(f"max_clips must be between 1 and {MAX_CLIPS}")
+    if not 1 <= candidate_scan_limit <= 100:
+        raise ValueError("candidate scan limit must be between 1 and 100")
 
     if intermediate_dir is not None:
         intermediate_dir = intermediate_dir.resolve()
@@ -239,42 +354,104 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         hypotheses: list[str] = []
         audio_seconds = 0.0
         inference_seconds = 0.0
+        language_id_failures = {"arabic": 0, "other_or_undetermined": 0}
+        transcription_failures = {"empty_output": 0}
+        duration_rejected_count = 0
+        duration_probe_failures = 0
+        candidate_rows_scanned = 0
+        selected: list[tuple[str, Path, float]] = []
         with tarfile.open(archive_path, mode="r:gz") as archive:
             audio_by_basename, metadata_members = _read_archive_records(archive)
-            selected = _load_reference_rows(archive, metadata_members[0][0], audio_by_basename, max_clips)
-            if model is None:
-                if model_loader is None:
-                    raise ValueError("a model or model_loader is required")
-                model_dir = model_loader(cache_dir)
-                processor, model = _load_model_from_directory(model_dir)
-            if processor is None:
-                raise ValueError("a native Transformers processor is required with an injected model")
-            for index, (member, reference) in enumerate(selected, start=1):
+            candidates = _load_reference_rows(
+                archive, metadata_members[0][0], audio_by_basename, candidate_scan_limit
+            )
+            for candidate_index, (member, reference) in enumerate(candidates, start=1):
+                candidate_rows_scanned += 1
+                audio_path = temp_root / (
+                    f"candidate-{candidate_index:04d}{PurePosixPath(member.name).suffix.lower()}"
+                )
                 extracted = archive.extractfile(member)
                 if extracted is None:
-                    raise ValueError("unable to read selected audio member")
-                audio_path = temp_root / f"clip-{index:03d}{PurePosixPath(member.name).suffix.lower()}"
-                with extracted, audio_path.open("wb") as output:
-                    shutil.copyfileobj(extracted, output, length=1024 * 1024)
-                duration = _audio_duration_seconds(audio_path)
+                    duration_probe_failures += 1
+                    continue
+                try:
+                    with extracted, audio_path.open("wb") as output:
+                        shutil.copyfileobj(extracted, output, length=1024 * 1024)
+                    duration = _audio_duration_seconds(audio_path)
+                except Exception:
+                    duration_probe_failures += 1
+                    audio_path.unlink(missing_ok=True)
+                    continue
+                if duration < MIN_AUDIO_DURATION_SECONDS:
+                    duration_rejected_count += 1
+                    audio_path.unlink(missing_ok=True)
+                    continue
+                selected.append((reference, audio_path, duration))
+                if len(selected) == max_clips:
+                    break
+
+            selected_sample_count = len(selected)
+            duration_shortfall_count = max_clips - selected_sample_count
+            if selected:
+                if model is None:
+                    if model_loader is None:
+                        raise ValueError("a model or model_loader is required")
+                    model_dir = model_loader(cache_dir)
+                    processor, model = _load_model_from_directory(model_dir)
+                if processor is None:
+                    raise ValueError("a native Transformers processor is required with an injected model")
+                if language_identifier is None:
+                    language_identifier = (language_identifier_loader or _download_language_identifier)(cache_dir)
+
+            for reference, audio_path, duration in selected:
+                audio_seconds += duration
+                started_language_id = time.perf_counter()
+                language_prediction = _identify_audio_language(language_identifier, audio_path)
+                inference_seconds += time.perf_counter() - started_language_id
+                raw_language = str(
+                    getattr(language_prediction, "raw_language", None) or language_prediction.language
+                ).casefold()
+                if (
+                    language_prediction.language != "fa"
+                    or language_prediction.confidence < language_id_confidence_threshold
+                ):
+                    if raw_language in {"ar", "arabic"}:
+                        language_id_failures["arabic"] += 1
+                    else:
+                        language_id_failures["other_or_undetermined"] += 1
+                    continue
                 started_inference = time.perf_counter()
-                hypothesis = _transcribe_audio(model, processor, audio_path)
+                parsed = _transcribe_audio(model, processor, audio_path, language=FORCED_LANGUAGE)
                 inference_seconds += time.perf_counter() - started_inference
-                if not hypothesis.strip():
-                    raise RuntimeError(f"Qwen3-ASR returned an empty transcription for sample {index}")
+                try:
+                    hypothesis = _parse_persian_transcription(parsed)
+                except RuntimeError as exc:
+                    if "empty Persian transcription" not in str(exc):
+                        raise
+                    transcription_failures["empty_output"] += 1
+                    continue
                 references.append(reference)
                 hypotheses.append(hypothesis)
                 if intermediate_dir is not None:
-                    alignment_rows.append({"audio_path": str(audio_path), "transcript": hypothesis})
-                audio_seconds += duration
-        if intermediate_dir is not None:
+                    alignment_rows.append(
+                        {"audio_path": str(audio_path.resolve()), "transcript": hypothesis}
+                    )
+
+        complete_sample = (
+            selected_sample_count == max_clips
+            and duration_shortfall_count == 0
+            and len(references) == max_clips
+        )
+        if intermediate_dir is not None and complete_sample:
+            if len(alignment_rows) != max_clips:
+                raise RuntimeError("alignment input must contain the exact complete ASR sample")
             manifest_path = intermediate_dir / "alignment_input.jsonl"
             manifest_path.write_text(
                 "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in alignment_rows),
                 encoding="utf-8",
             )
 
-        metrics = corpus_error_rates(references, hypotheses)
+        metrics = corpus_error_rates(references, hypotheses) if complete_sample else None
         try:
             import torch
             torch_version = str(torch.__version__)
@@ -283,18 +460,39 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
         try:
             from importlib.metadata import version
             transformers_version = version("transformers")
+            speechbrain_version = version("speechbrain")
+            torchaudio_version = version("torchaudio")
+            huggingface_hub_version = version("huggingface-hub")
         except Exception:
-            transformers_version = "unknown"
+            transformers_version = speechbrain_version = torchaudio_version = huggingface_hub_version = "unknown"
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         peak_rss_bytes = int(peak if __import__("sys").platform == "darwin" else peak * 1024)
         report = build_report(
-            metrics=metrics, sample_count=len(references), audio_seconds=audio_seconds,
-            inference_seconds=inference_seconds, peak_rss_bytes=peak_rss_bytes,
-            torch_version=torch_version, transformers_version=transformers_version,
+            metrics=metrics,
+            sample_count=len(references),
+            requested_sample_count=max_clips,
+            selected_sample_count=selected_sample_count,
+            duration_shortfall_count=duration_shortfall_count,
+            candidate_scan_limit=candidate_scan_limit,
+            candidate_rows_scanned=candidate_rows_scanned,
+            duration_rejected_count=duration_rejected_count,
+            duration_probe_failures=duration_probe_failures,
+            audio_seconds=audio_seconds,
+            inference_seconds=inference_seconds,
+            peak_rss_bytes=peak_rss_bytes,
+            torch_version=torch_version,
+            transformers_version=transformers_version,
+            speechbrain_version=speechbrain_version,
+            torchaudio_version=torchaudio_version,
+            huggingface_hub_version=huggingface_hub_version,
+            language_id_failures=language_id_failures,
+            transcription_failures=transcription_failures,
+            language_id_confidence_threshold=language_id_confidence_threshold,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return report
+
 
 
 def _audio_duration_seconds(path: Path) -> float:
@@ -303,13 +501,15 @@ def _audio_duration_seconds(path: Path) -> float:
         with wave.open(str(path), "rb") as audio:
             frames, rate = audio.getnframes(), audio.getframerate()
         if frames > 0 and rate > 0:
-            return frames / rate
+            duration = frames / rate
+            if math.isfinite(duration) and duration > 0:
+                return duration
     except (wave.Error, OSError):
         pass
     try:
         import soundfile as sf
         info = sf.info(str(path))
-        if info.duration > 0:
+        if math.isfinite(float(info.duration)) and info.duration > 0:
             return float(info.duration)
     except Exception:
         pass
@@ -322,7 +522,7 @@ def _audio_duration_seconds(path: Path) -> float:
         check=True, capture_output=True, text=True, timeout=30,
     )
     duration = float(completed.stdout.strip())
-    if duration <= 0:
+    if not math.isfinite(duration) or duration <= 0:
         raise ValueError("audio duration must be positive")
     return duration
 
@@ -350,18 +550,40 @@ def _parse_persian_transcription(parsed: dict[str, Any]) -> str:
     return transcription
 
 
-def _transcribe_audio(model: Any, processor: Any, audio_path: Path) -> str:
+def _transcribe_audio(model: Any, processor: Any, audio_path: Path, *, language: str = FORCED_LANGUAGE) -> dict[str, str]:
+    # Validate the language contract before importing or initializing the ASR runtime.
+    # This keeps non-Persian requests rejected even in minimal test/audit environments.
+    if not isinstance(language, str) or language.casefold() not in {"persian", "fa"}:
+        raise ValueError("the Common Voice Persian evaluator only permits forced Persian decoding")
     import torch
-    # Automatic language detection avoids a forced-language chat-template path
-    # that is incompatible with the pinned Transformers processor revision.
     inputs = processor.apply_transcription_request(
-        audio=str(audio_path)
+        audio=str(audio_path), language=language
     ).to("cpu", model.dtype)
     with torch.inference_mode():
-        output_ids = model.generate(**inputs, max_new_tokens=256, do_sample=False)
+        output_ids = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=DO_SAMPLE)
     generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
-    parsed = processor.decode(generated_ids, return_format="parsed")[0]
-    return _parse_persian_transcription(parsed)
+    transcription = processor.decode(generated_ids, return_format="transcription_only")[0]
+    return {"language": "Persian", "transcription": str(transcription)}
+
+
+def _identify_audio_language(language_identifier: Any, audio_path: Path) -> Any:
+    import librosa
+    samples, sample_rate = librosa.load(str(audio_path), sr=LID_SAMPLE_RATE, mono=True)
+    return language_identifier.identify(samples.tolist(), sample_rate=int(sample_rate))
+
+
+def _download_language_identifier(cache_dir: Path) -> Any:
+    import sys
+    from huggingface_hub import snapshot_download
+    sys.path.insert(0, str(ROOT / "src"))
+    from voxpipe.speech.language_id import SpeechBrainLanguageIdentifier
+    model_dir = snapshot_download(
+        repo_id=LID_MODEL_ID, revision=LID_MODEL_REVISION, cache_dir=str(cache_dir)
+    )
+    return SpeechBrainLanguageIdentifier(
+        model_dir=model_dir, threshold=LID_CONFIDENCE_THRESHOLD,
+        model_version=LID_MODEL_REVISION, supported_languages=frozenset({"fa", "ar"}),
+    )
 
 
 def _download_model(cache_dir: Path) -> Path:
@@ -377,16 +599,16 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=Path.home() / ".cache" / "huggingface")
     parser.add_argument("--max-clips", type=int, default=MAX_CLIPS)
-    parser.add_argument("--intermediate-dir", type=Path, default=None,
-                        help="Keep temporary audio and Qwen hypotheses for a downstream ephemeral alignment step")
+    parser.add_argument("--candidate-scan-limit", type=int, default=CANDIDATE_SCAN_LIMIT)
+    parser.add_argument("--intermediate-dir", type=Path)
     args = parser.parse_args()
     report = run_evaluation(
         args.archive, args.output, args.cache_dir, max_clips=args.max_clips,
-        model_loader=_download_model,
-        intermediate_dir=args.intermediate_dir,
+        model_loader=_download_model, language_identifier_loader=_download_language_identifier,
+        candidate_scan_limit=args.candidate_scan_limit, intermediate_dir=args.intermediate_dir,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
-    return 0
+    return 0 if report["status"] == "passed" else 1
 
 
 if __name__ == "__main__":

@@ -75,12 +75,15 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
             "validation", 1, FakeModel(), dataset_loader=dataset_loader, audio_type=FakeAudio,
             soundfile=FakeSoundFile, numpy=FakeNumpy,
         )
-        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(calls), 4)
         self.assertTrue(all(call[2] == "validation" and call[3] is True for call in calls))
         self.assertTrue(all("/validation-00000-of-00001.parquet" in call[1]["validation"] for call in calls))
-        self.assertEqual(len(references), 3)
-        self.assertEqual(len(predictions), 3)
+        self.assertEqual(len(references), 4)
+        self.assertEqual(len(predictions), 4)
         self.assertTrue(all(row["dataset_split"] == "validation" for row in rows))
+        self.assertIn("ar_eg", BENCHMARK.CONFIGS)
+        self.assertEqual(BENCHMARK.CONFIGS["ar_eg"]["language"], "ar")
+        self.assertEqual(BENCHMARK.SUPPORTED_LANGUAGES, frozenset({"fa", "ar", "en", "de"}))
         self.assertTrue(all(row["model_revision"] == "model-sha" for row in rows))
 
     def test_load_split_rejects_missing_audio_bytes(self):
@@ -100,7 +103,28 @@ class LanguageIdBenchmarkSplitTests(unittest.TestCase):
             BENCHMARK.run(1, Path("unused"), calibration_samples=0)
         with self.assertRaises(ValueError):
             BENCHMARK.run(1, Path("unused"), min_coverage=1.1)
+        with self.assertRaises(ValueError):
+            BENCHMARK.run(1, Path("unused"), minimum_confidence_floor=1.1)
 
+
+    def test_benchmark_artifacts_are_aggregate_only(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        workflow = (SCRIPT.parents[1] / ".github" / "workflows" / "fleurs-lid-calibration.yml").read_text(encoding="utf-8")
+        self.assertNotIn("calibration_predictions.jsonl", source)
+        self.assertNotIn("predictions.jsonl", source)
+        self.assertIn("benchmark-results/fleurs-lid/calibration.json", workflow)
+        self.assertIn("benchmark-results/fleurs-lid/summary.json", workflow)
+        self.assertNotIn("path: benchmark-results/fleurs-lid/", workflow)
+
+    def test_benchmark_uses_pinned_cpu_runtime(self):
+        workflow = (SCRIPT.parents[1] / ".github" / "workflows" / "fleurs-lid-calibration.yml").read_text(encoding="utf-8")
+        requirements = (SCRIPT.parents[1] / "requirements-lid-benchmark.txt").read_text(encoding="utf-8")
+        self.assertIn("torch==2.13.0+cpu", workflow)
+        self.assertIn("torchaudio==2.11.0+cpu", workflow)
+        self.assertIn("--minimum-confidence-floor 0.50", workflow)
+        self.assertIn("minimum_threshold=minimum_confidence_floor", SCRIPT.read_text(encoding="utf-8"))
+        self.assertNotIn("torch==", requirements)
+        self.assertNotIn("torchaudio==", requirements)
 
 if __name__ == "__main__":
     unittest.main()

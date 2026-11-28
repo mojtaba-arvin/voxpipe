@@ -35,14 +35,46 @@
     "transcript_text_uploaded",
     "audio_uploaded",
     "speaker_ids_used",
-    "warnings"
+    "warnings",
+    "language_id_model_id",
+    "language_id_model_revision",
+    "language_id_model_license",
+    "language_id_confidence_threshold",
+    "language_id_failures",
+    "language_strategy",
+    "requested_sample_count",
+    "rejected_sample_count",
+    "transcription_failures",
+    "language_id_supported_languages",
+    "language_id_threshold_calibration",
+    "forced_language",
+    "max_new_tokens",
+    "do_sample",
+    "batch_size",
+    "language_id_sample_rate",
+    "speechbrain_version",
+    "torchaudio_version",
+    "huggingface_hub_version",
+    "language_id_threshold_policy",
+    "language_id_held_out_control",
+    "selected_sample_count",
+    "duration_shortfall_count",
+    "candidate_scan_limit",
+    "candidate_rows_scanned",
+    "duration_rejected_count",
+    "duration_probe_failures",
+    "selection_policy",
+    "min_audio_duration_seconds"
   ],
   "properties": {
     "schema_version": {
       "const": 1
     },
     "status": {
-      "const": "passed"
+      "enum": [
+        "passed",
+        "failed"
+      ]
     },
     "dataset_id": {
       "const": "cmu5xazgy00finq074vaqo1b3"
@@ -79,44 +111,59 @@
     },
     "sample_count": {
       "type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "maximum": 50
     },
     "audio_duration_seconds": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "inference_seconds": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "real_time_factor": {
-      "type": "number",
-      "exclusiveMinimum": 0
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
     },
     "word_errors": {
-      "type": "integer",
-      "minimum": 0
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "character_errors": {
-      "type": "integer",
-      "minimum": 0
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "reference_words": {
-      "type": "integer",
-      "minimum": 1
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "reference_characters": {
-      "type": "integer",
-      "minimum": 1
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "wer": {
-      "type": "number",
-      "minimum": 0
+      "type": [
+        "number",
+        "null"
+      ]
     },
     "cer": {
-      "type": "number",
-      "minimum": 0
+      "type": [
+        "number",
+        "null"
+      ]
     },
     "peak_rss_bytes": {
       "type": "integer",
@@ -150,6 +197,353 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "language_id_model_id": {
+      "const": "speechbrain/lang-id-voxlingua107-ecapa"
+    },
+    "language_id_model_revision": {
+      "const": "0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9"
+    },
+    "language_id_model_license": {
+      "const": "Apache-2.0"
+    },
+    "language_id_confidence_threshold": {
+      "const": 0.5
+    },
+    "language_id_failures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "arabic",
+        "other_or_undetermined"
+      ],
+      "properties": {
+        "arabic": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "other_or_undetermined": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "language_strategy": {
+      "const": "independent_voxlingua107_gate_then_forced_persian"
+    },
+    "requested_sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "rejected_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "transcription_failures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "empty_output"
+      ],
+      "properties": {
+        "empty_output": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "language_id_supported_languages": {
+      "const": [
+        "ar",
+        "fa"
+      ]
+    },
+    "language_id_threshold_calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_revision",
+        "validation_run_id",
+        "min_selective_accuracy",
+        "min_coverage",
+        "selected_threshold",
+        "dataset_license",
+        "minimum_confidence_floor"
+      ],
+      "properties": {
+        "dataset_id": {
+          "const": "google/fleurs"
+        },
+        "dataset_revision": {
+          "const": "6989e5bd2dc37546a93ae5d857bc04325e6a3738"
+        },
+        "validation_run_id": {
+          "const": 46145923356
+        },
+        "min_selective_accuracy": {
+          "const": 0.99
+        },
+        "min_coverage": {
+          "const": 0.5
+        },
+        "selected_threshold": {
+          "const": 0.5
+        },
+        "dataset_license": {
+          "const": "CC-BY-4.0"
+        },
+        "minimum_confidence_floor": {
+          "const": 0.5
+        }
+      }
+    },
+    "forced_language": {
+      "const": "Persian"
+    },
+    "max_new_tokens": {
+      "const": 256
+    },
+    "do_sample": {
+      "const": false
+    },
+    "batch_size": {
+      "const": 1
+    },
+    "language_id_sample_rate": {
+      "const": 16000
+    },
+    "speechbrain_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "torchaudio_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "huggingface_hub_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language_id_threshold_policy": {
+      "const": "validation_calibrated_minimum_confidence_floor_0_5_top_label_fa_with_zero_and_tie_abstention"
+    },
+    "language_id_held_out_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_revision",
+        "dataset_license",
+        "test_run_id",
+        "test_head_sha",
+        "sample_count",
+        "accuracy",
+        "macro_f1",
+        "coverage",
+        "selective_accuracy",
+        "abstention_rate",
+        "persian_samples",
+        "persian_correct",
+        "arabic_samples",
+        "arabic_correct",
+        "persian_arabic_cross_confusions",
+        "negative_control_languages",
+        "negative_control_false_accepts",
+        "negative_control_abstentions"
+      ],
+      "properties": {
+        "dataset_id": {
+          "const": "google/fleurs"
+        },
+        "dataset_revision": {
+          "const": "6989e5bd2dc37546a93ae5d857bc04325e6a3738"
+        },
+        "dataset_license": {
+          "const": "CC-BY-4.0"
+        },
+        "test_run_id": {
+          "const": 46145923356
+        },
+        "test_head_sha": {
+          "const": "7d102ed672a40e90ea29738d45a78cb220335f74"
+        },
+        "sample_count": {
+          "const": 400
+        },
+        "accuracy": {
+          "const": 0.9225
+        },
+        "macro_f1": {
+          "const": 0.763700857227313
+        },
+        "coverage": {
+          "const": 0.9225
+        },
+        "selective_accuracy": {
+          "const": 1
+        },
+        "abstention_rate": {
+          "const": 0.0775
+        },
+        "persian_samples": {
+          "const": 100
+        },
+        "persian_correct": {
+          "const": 100
+        },
+        "arabic_samples": {
+          "const": 100
+        },
+        "arabic_correct": {
+          "const": 99
+        },
+        "persian_arabic_cross_confusions": {
+          "const": 0
+        },
+        "negative_control_languages": {
+          "const": [
+            "en",
+            "de"
+          ]
+        },
+        "negative_control_false_accepts": {
+          "const": 0
+        },
+        "negative_control_abstentions": {
+          "const": 30
+        }
+      }
+    },
+    "selected_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "duration_shortfall_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "candidate_scan_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "candidate_rows_scanned": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "duration_rejected_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "duration_probe_failures": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "selection_policy": {
+      "const": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s"
+    },
+    "min_audio_duration_seconds": {
+      "const": 1
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "passed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sample_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "rejected_sample_count": {
+            "const": 0
+          },
+          "wer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "word_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "character_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reference_words": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reference_characters": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "selected_sample_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "duration_shortfall_count": {
+            "const": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "wer": {
+            "type": "null"
+          },
+          "cer": {
+            "type": "null"
+          },
+          "word_errors": {
+            "type": "null"
+          },
+          "character_errors": {
+            "type": "null"
+          },
+          "reference_words": {
+            "type": "null"
+          },
+          "reference_characters": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -62,6 +62,35 @@ class LanguageIdContractTests(unittest.TestCase):
         self.assertEqual(result["coverage"], 0.50)
         self.assertEqual(result["selective_accuracy"], 1.0)
 
+    def test_abstention_calibrator_enforces_positive_minimum_confidence_floor(self):
+        references = ["fa", "fa", "ar", "ar"]
+        predictions = [
+            LanguagePrediction("fa", 0.90),
+            LanguagePrediction("fa", 0.40),
+            LanguagePrediction("ar", 0.80),
+            LanguagePrediction("ar", 0.60),
+        ]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.99,
+            min_coverage=0.50, minimum_threshold=0.50,
+        )
+        self.assertTrue(result["feasible"])
+        self.assertEqual(result["minimum_threshold"], 0.50)
+        self.assertEqual(result["threshold"], 0.50)
+        self.assertEqual(result["coverage"], 0.75)
+        self.assertEqual(result["selective_accuracy"], 1.0)
+
+    def test_abstention_calibrator_rejects_all_scores_below_minimum_floor(self):
+        references = ["fa", "ar"]
+        predictions = [LanguagePrediction("fa", 0.4), LanguagePrediction("ar", 0.3)]
+        result = calibrate_abstention_threshold(
+            references, predictions, min_selective_accuracy=0.99,
+            min_coverage=0.50, minimum_threshold=0.50,
+        )
+        self.assertFalse(result["feasible"])
+        self.assertIsNone(result["threshold"])
+        self.assertEqual(result["minimum_threshold"], 0.50)
+
     def test_abstention_calibrator_fails_closed_when_no_threshold_is_feasible(self):
         references = ["fa", "de"]
         predictions = [
@@ -156,6 +185,29 @@ class LanguageIdContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "malformed probability or label arrays"):
             identifier.identify([0.0] * 16000, sample_rate=16000)
 
+
+    def test_identifier_abstains_on_zero_probability_at_zero_threshold(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.0, 0.0], ("fa", "ar")),
+            threshold=0.0,
+            supported_languages=frozenset({"fa", "ar"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "und")
+        self.assertEqual(prediction.confidence, 0.0)
+        self.assertEqual(prediction.raw_language, "fa")
+        self.assertEqual(prediction.abstention_reason, "low_confidence")
+
+    def test_identifier_abstains_on_tied_top_language_scores(self):
+        identifier = SpeechBrainLanguageIdentifier(
+            model=FakeClassifier([0.5, 0.5], ("fa", "ar")),
+            threshold=0.0,
+            supported_languages=frozenset({"fa", "ar"}),
+        )
+        prediction = identifier.identify([0.0] * 16000, sample_rate=16000)
+        self.assertEqual(prediction.language, "und")
+        self.assertEqual(prediction.raw_language, "fa")
+        self.assertEqual(prediction.abstention_reason, "low_confidence")
 
 if __name__ == "__main__":
     unittest.main()

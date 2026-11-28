@@ -110,7 +110,7 @@ def build_report(*, archive_name: str, archive_size_bytes: int, archive_sha256: 
         "download_seconds": round(download_seconds, 4),
         "warnings": [
             "The complete official Common Voice Persian archive was downloaded to job-local temporary storage.",
-            "Only 50 selected read-speech clips are used for Qwen/WhisperX evaluation; the full archive is not extracted.",
+            "Only 50 duration-qualified read-speech clips are used for independent VoxLingua107 validation and local Qwen3-ASR evaluation; no forced alignment or speaker-level output is produced.",
             "Common Voice is scripted read-speech, not natural conversation or human gold.",
             "Raw audio, transcripts, speaker identifiers and the archive are never uploaded or committed.",
             "Dataset license is CC0-1.0; this does not establish individual consent for natural-conversation use.",

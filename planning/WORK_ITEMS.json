@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "voxpipe",
-  "updated_at": "2026-11-28",
+  "updated_at": "2026-11-28T12:55:10.496Z",
   "items": [
     {
       "id": "VP-0001",
@@ -1485,7 +1485,7 @@
       "title": "Add licensed Common Voice Persian download job (issue #176)",
       "phase": 9,
       "priority": 59,
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "VP-0047"
       ],
@@ -1497,11 +1497,11 @@
         "Keep read-speech clearly distinguished from natural conversation."
       ],
       "evidence": [
-        "PR #205 merged to main as 9221eeac4d45871bc2c01eee08eaced6b6f2cd39 after exact-head validation run #45752595027 passed all 9 jobs and dependency audit run #45752594998 passed both jobs.",
-        "The Common Voice job uploaded the audio-free provenance artifact, but its report explicitly says status=access_denied. The job is green only because the implementation reports external entitlement denial as a non-code-validation outcome; no sample bytes were downloaded.",
-        "The repository owner confirmed completing the requested MDC dataset-terms action. The post-action authenticated attempt still returned HTTP 403, so terms acceptance alone has not resolved organization/profile authorization.",
-        "2026-11-26: Owner confirmed dataset-terms action completed; authenticated sample download still returns HTTP 403. This is an MDC organization/profile/access-approval blocker, not a missing GitHub secret.",
-        "PR #225 (feat/common-voice-full-archive-evaluation) implements the full-archive API path, bounded 50-clip handoff, archive provenance and safety checks. Exact-head CI is pending; a real authenticated download has not yet been run."
+        "PR #225's full official Common Voice Persian 27.0 archive download and validation succeeded in run #46019633908 (workflow head febcde3f3eb964408f23c2bd3a57f468d4b792e2); audio-free provenance artifact 15208077681 was downloaded and inspected.",
+        "Verified provenance: dataset cmu5xazgy00finq074vaqo1b3, locale fa, CC0-1.0, 11,236,660,956 bytes, SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d, 395,173 audio files, 10 TSV files, 118.5891 seconds, SDK 0.8.1.",
+        "The pinned Mozilla Data Collective SDK download_dataset API automatically resumes interrupted archive downloads and retries mid-stream connection failures up to three attempts by default; this is documented at https://mozilla-data-collective.github.io/datacollective-python/api/.",
+        "Only common_voice_archive.json provenance was uploaded; the archive and intermediate files were removed from runner temporary storage. The overall run failed later during Qwen ASR and is not evidence of Persian WER/CER.",
+        "Common Voice is scripted read-speech, not natural conversation."
       ],
       "blocked_reason": null
     },
@@ -1510,7 +1510,7 @@
       "title": "Add Qwen3-ASR transcription job (issue #177)",
       "phase": 9,
       "priority": 60,
-      "status": "blocked",
+      "status": "in_progress",
       "depends_on": [
         "VP-0049",
         "VP-0059"
@@ -1522,14 +1522,22 @@
         "Respect the smoke-benchmark gate and avoid production-quality claims."
       ],
       "evidence": [
-        "PR #208 merged to main as 54dc9c7124d0d04c2ba821be46e851460d5437a8. It replaces vulnerable qwen-asr==0.0.6 with native Transformers 5.20.1, Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0, and CPU-only PyTorch 2.15.0+cpu.",
-        "Native model CPU smoke succeeded on the publisher English sample in run #45772661236: 15.0512s audio, 19.81s inference, RTF 1.3162, peak RSS about 5,126 MiB on 4 CPU cores. This is CPU batch feasibility only, not Persian WER or real-time performance.",
-        "Exact-head validation run #45778111718 passed all 9 jobs; dependency audit #45778111759 passed both jobs; silver evaluation PR checks #45778111705 succeeded.",
-        "The dedicated Common Voice Persian ASR workflow now supports workflow_call and is exposed as the opt-in run_common_voice_asr job in eval.yml; the parent summary reports its result separately. The workflow remains gated by MDC_API_KEY and must not be interpreted as Persian evaluation until the bounded sample downloads and aggregate WER/CER is produced.",
-        "Latest exact-head run 45849042461 uploaded audio-free sample provenance artifact 15132441838; it records sample_unavailable and 11,236,660,956-byte release metadata, with no sample archive downloaded. Live acquisition is opt-in and not a PR gate.",
-        "PR #225 updates the workflow to use the complete official archive and retains aggregate-only 50-clip WER/CER output. Actual inference remains pending the full-archive workflow run."
+        "PR #208 merged native Transformers Qwen/Qwen3-ASR-0.6B-hf at pinned revision 40946090cac63fc01d723a83174e16515073d7c0; CPU-only inference, batch size 1, no hosted inference API.",
+        "VP-0059 archive dependency is complete: official Common Voice 27.0 Persian archive provenance was verified in run #46019633908, artifact 15208077681.",
+        "PR #230 adds independent SpeechBrain VoxLingua107 audio-language validation at pinned revision 0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9; only fa is accepted, while Arabic and out-of-inventory/undetermined results are rejected before forced-Persian Qwen decoding.",
+        "Regression coverage includes Arabic rejection, out-of-inventory and undetermined rejection, forced-language validation before ASR runtime import, and empty-hypothesis metric suppression.",
+        "Audio, references and hypotheses remain temporary; the workflow uploads only aggregate JSON provenance and metrics. WER/CER remain null unless every requested clip passes language validation and produces a non-empty hypothesis.",
+        "Exact 50-clip execution on the current PR head is pending. No Persian accuracy or WER/CER is claimed until its exact-head artifact is inspected.",
+        "FLEURS disjoint Persian/Arabic calibration and held-out control run #46144284846 (benchmark code head 5f9855c0b01a57e8a6b4405afdc0a630a2ac77be): 400 validation clips (100 each fa/ar/en/de), calibrated threshold 0.0, validation coverage 95.25%, selective accuracy 100%; held-out 400-clip test accuracy 94%, coverage 94%, selective accuracy 100%, macro-F1 0.7727. Persian 100/100 and Arabic 100/100; zero fa↔ar cross-confusions. English/German negative controls had zero false fa/ar accepts; 24 German clips abstained. Threshold 0.0 is a no-op confidence floor; effective gate is top-label fa, with zero/tied scores abstaining.",
+        "2026-11-28: official archive + ASR run #46143283108 completed with archive download/provenance validation successful (11,236,660,956 bytes; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen/LID stopped before decoding because the first candidate was shorter than SpeechBrain's 1-second minimum. No Qwen report or WER/CER was produced; only archive provenance was uploaded and the archive was removed.",
+        "PR #230 fix: deterministically scan up to 100 matching validated.tsv rows and preselect the first 50 clips with probed duration >=1 second. Record short/unprobeable candidate counts and any duration shortfall. After the 50 are fixed, no clip is replaced after LID or transcription failure; any shortfall or language failure keeps WER/CER null.",
+        "Common Voice run #46143283108 downloaded and validated the full official archive (11,236,660,956 bytes; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen inference stopped before decoding because the first candidate was shorter than SpeechBrain's 1-second minimum. No Qwen report or WER/CER was produced; only aggregate archive provenance was uploaded.",
+        "The evaluator scans at most 100 validated TSV rows and selects the first 50 clips with probed audio duration >=1 second. Short/unprobeable candidates are counted; if fewer than 50 eligible clips are found, the run fails closed. After selection, no clip is replaced after LID or transcription failure.",
+        "The Common Voice workflow uploads only aggregate archive provenance and Qwen JSON. It does not run WhisperX, forced alignment or diarization, and uploads no audio, transcript, speaker identifier or per-clip output.",
+        "FLEURS validation and held-out control evidence is being recalibrated with a minimum confidence floor of 0.50; exact-head calibration artifact and exact-head 50-clip Qwen artifact are both required before acceptance.",
+        "FLEURS positive-floor calibration and disjoint held-out test completed in run #46145923356 (benchmark head 7d102ed672a40e90ea29738d45a78cb220335f74): validation 400 clips, selected threshold 0.5, coverage 94.5%, selective accuracy 100% against predeclared floors 50%/99%; held-out 400 clips, accuracy/coverage 92.25%, selective accuracy 100%, macro-F1 0.7637. Persian 100/100, Arabic 99/100, zero fa↔ar cross-confusions (one Arabic abstention); English/German negative controls zero false fa/ar accepts, 30 German abstentions. Qwen LID default is now the calibrated 0.5 floor."
       ],
-      "blocked_reason": "The Qwen evaluator and workflow wiring are implemented, but real Persian WER/CER requires VP-0059 to download and validate the official full archive. PR #225 updates the path to the complete archive; do not report metrics until real audio inference succeeds."
+      "blocked_reason": "Await current-head FLEURS calibration with the stricter confidence floor and exact-head 50-clip Qwen aggregate artifact; PR remains Draft."
     },
     {
       "id": "VP-0061",
@@ -1553,9 +1561,13 @@
         "Exact-head runtime smoke run 45850122656 passed: pip-audit reported no known vulnerabilities in the installed minimal runtime; WhisperX 3.8.6 loaded the immutable Persian model revision 234714078a1398a9db88194c5a40fefe6f376dc1 on CPU with float32 weights. Versions: torch 2.13.0+cpu, torchaudio 2.11.1+cpu, Transformers 5.20.1, Hub 1.31.0. This validates model loading only, not real audio alignment or WER/CER.",
         "PR #225 updates the Common Voice input path to the complete official archive; no audio alignment result is claimed until the full-archive run succeeds.",
         "2026-11-28 independent alignment-preparation update: word timestamp validation now rejects non-finite values, booleans, negative/reversed/out-of-audio timestamps, non-monotonic boundaries and overlaps beyond 20 ms; regression tests cover these cases. Real-audio acceptance remains blocked pending valid Persian hypotheses from VP-0060.",
-        "Workflow run #46019633908 verified the 11,236,660,956-byte Common Voice archive (395,173 audio files; 10 TSV files; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen transcription failed on language detection and WhisperX was skipped. The archive was intentionally deleted in the cleanup step; its artifact contains only audio-free provenance, not audio bytes."
+        "Workflow run #46019633908 verified the 11,236,660,956-byte Common Voice archive (395,173 audio files; 10 TSV files; SHA-256 f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d), but Qwen transcription failed on language detection and WhisperX was skipped. The archive was intentionally deleted in the cleanup step; its artifact contains only audio-free provenance, not audio bytes.",
+        "PR #229 merged as 3e7f99060991713eeea83cdd52b8abcfe934f09f with exact timestamp validation and 20 ms overlap boundary tests.",
+        "PR #230 restores the same-sample handoff: only after all 50 selected clips pass the independent fa gate and yield non-empty Qwen hypotheses is a temporary manifest created; WhisperX consumes that manifest before cleanup.",
+        "Alignment aggregate now reports unaligned_word_count, timestamp_validation_failure_count and missing_word_timestamp_count in addition to word-level coverage. Any partial timestamp output is marked partial; read-speech diarization remains not_evaluated_read_speech with speaker_segments: [].",
+        "FLEURS held-out control run #46145923356 validated the 0.5 minimum confidence floor: validation coverage 94.5%, selective accuracy 100%; held-out coverage 92.25%, selective accuracy 100%, Persian 100/100, Arabic 99/100, zero fa↔ar cross-confusions."
       ],
-      "blocked_reason": "VP-0060 / issue #177 has not yet produced valid Persian hypotheses. In run #46019633908 the archive validation succeeded, but Qwen transcription failed because the first selected clip was detected as Arabic; the WhisperX step was skipped. The archive was deleted from runner temp storage and is not present in the provenance-only artifact. Continue offline alignment preparation and validation now; once #177 produces valid hypotheses, a new run must retrieve the verified same Common Voice release again because the prior runner-local archive no longer exists. Do not claim real alignment coverage before that run."
+      "blocked_reason": "Await a successful exact 50-clip duration-eligible Common Voice Qwen run and same-sample WhisperX alignment. Run #46143283108 verified the official archive but stopped before ASR because its first candidate was shorter than the SpeechBrain one-second minimum; no alignment was run. PR #230 now preselects 50 clips with duration >=1 second before the independent Persian gate, never replaces clips after language/transcription failures, and hands the exact accepted audio/hypothesis pairs to WhisperX through a temporary manifest. Do not claim real alignment coverage, gold alignment accuracy, natural-conversation coverage or diarization until the final aggregate artifacts are available and inspected."
     },
     {
       "id": "VP-0062",
