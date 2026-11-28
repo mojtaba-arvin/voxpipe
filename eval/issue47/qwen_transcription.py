@@ -180,8 +180,9 @@ def _load_reference_rows(archive: tarfile.TarFile, metadata_member: tarfile.TarI
 
 def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested_sample_count: int,
                  selected_sample_count: int, duration_shortfall_count: int,
-                 candidate_rows_scanned: int, duration_rejected_count: int,
-                 duration_probe_failures: int, audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
+                 candidate_scan_limit: int, candidate_rows_scanned: int,
+                 duration_rejected_count: int, duration_probe_failures: int,
+                 audio_seconds: float, inference_seconds: float, peak_rss_bytes: int,
                  torch_version: str, transformers_version: str,
                  speechbrain_version: str, torchaudio_version: str, huggingface_hub_version: str,
                  language_id_failures: dict[str, int],
@@ -196,8 +197,13 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         raise ValueError("selected clips and duration shortfall must account for the requested sample")
     if sample_count + sum(language_id_failures.values()) + sum(transcription_failures.values()) != selected_sample_count:
         raise ValueError("accepted and failed language/transcription counts must account for selected clips")
-    if min(candidate_rows_scanned, duration_rejected_count, duration_probe_failures) < 0:
-        raise ValueError("candidate selection counts must be non-negative")
+    if (
+        not 1 <= candidate_scan_limit <= 10000
+        or not 0 <= candidate_rows_scanned <= candidate_scan_limit
+        or not 0 <= duration_rejected_count <= candidate_rows_scanned
+        or not 0 <= duration_probe_failures <= candidate_rows_scanned
+    ):
+        raise ValueError("candidate selection counts are invalid")
     if audio_seconds < 0 or inference_seconds < 0 or peak_rss_bytes <= 0:
         raise ValueError("audio duration, inference duration and peak RSS must be valid")
     if not 0.0 <= language_id_confidence_threshold <= 1.0:
@@ -267,10 +273,11 @@ def build_report(*, metrics: dict[str, Any] | None, sample_count: int, requested
         "requested_sample_count": requested_sample_count,
         "selected_sample_count": selected_sample_count,
         "duration_shortfall_count": duration_shortfall_count,
+        "candidate_scan_limit": candidate_scan_limit,
         "candidate_rows_scanned": candidate_rows_scanned,
         "duration_rejected_count": duration_rejected_count,
         "duration_probe_failures": duration_probe_failures,
-        "selection_policy": "first_50_validated_tsv_rows_with_audio_duration_at_least_1s",
+        "selection_policy": "first_requested_validated_tsv_rows_with_audio_duration_at_least_1s",
         "min_audio_duration_seconds": MIN_AUDIO_DURATION_SECONDS,
         "rejected_sample_count": requested_sample_count - sample_count,
         "audio_duration_seconds": round(audio_seconds, 4),
@@ -465,6 +472,7 @@ def run_evaluation(archive_path: Path, output_path: Path, cache_dir: Path,
             requested_sample_count=max_clips,
             selected_sample_count=selected_sample_count,
             duration_shortfall_count=duration_shortfall_count,
+            candidate_scan_limit=candidate_scan_limit,
             candidate_rows_scanned=candidate_rows_scanned,
             duration_rejected_count=duration_rejected_count,
             duration_probe_failures=duration_probe_failures,
@@ -492,13 +500,15 @@ def _audio_duration_seconds(path: Path) -> float:
         with wave.open(str(path), "rb") as audio:
             frames, rate = audio.getnframes(), audio.getframerate()
         if frames > 0 and rate > 0:
-            return frames / rate
+            duration = frames / rate
+            if math.isfinite(duration) and duration > 0:
+                return duration
     except (wave.Error, OSError):
         pass
     try:
         import soundfile as sf
         info = sf.info(str(path))
-        if info.duration > 0:
+        if math.isfinite(float(info.duration)) and info.duration > 0:
             return float(info.duration)
     except Exception:
         pass
@@ -511,7 +521,7 @@ def _audio_duration_seconds(path: Path) -> float:
         check=True, capture_output=True, text=True, timeout=30,
     )
     duration = float(completed.stdout.strip())
-    if duration <= 0:
+    if not math.isfinite(duration) or duration <= 0:
         raise ValueError("audio duration must be positive")
     return duration
 
